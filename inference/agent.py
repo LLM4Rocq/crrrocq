@@ -1,15 +1,9 @@
 from typing import List, Dict, Any, Optional, Union, Tuple
 import re
+import json
 
-# ===============================================
-# Custom Exception for Nested Tags
-# ===============================================
-
-
-class NestedTagError(Exception):
-    """Exception raised when nested tags are detected."""
-
-    pass
+from tools import Tool
+from llm import LLM
 
 
 # ===============================================
@@ -25,27 +19,13 @@ class Parser:
         self.search_pattern = re.compile(r"<SEARCH>(.*?)</SEARCH>", re.DOTALL)
         self.coq_pattern = re.compile(r"<SCRIPT>(.*?)</SCRIPT>", re.DOTALL)
 
-        # Patterns to detect nested tags
-        self.nested_search_pattern = re.compile(
-            r"<SEARCH>.*?<(SEARCH|SCRIPT)>", re.DOTALL
-        )
-        self.nested_coq_pattern = re.compile(r"<SCRIPT>.*?<(SEARCH|SCRIPT)>", re.DOTALL)
-
     def extract_next_tool_call(self, text: str) -> Optional[Tuple[str, str, int, int]]:
         """
         Extract the next tool call from text.
 
-        Raises:
-            NestedTagError: If nested tags are detected.
-
         Returns:
             Tuple of (tool_name, tool_input, start_position, end_position) or None if no tool call is found
         """
-        # Check for nested tags first
-        if self.nested_search_pattern.search(text) or self.nested_coq_pattern.search(
-            text
-        ):
-            raise NestedTagError("Nested tool tags detected. Tags cannot be nested.")
 
         # Find all matches for each pattern
         search_matches = [
@@ -61,9 +41,9 @@ class Parser:
         # Combine and sort by position
         all_matches = sorted(search_matches + coq_matches)
 
-        # Return the last match if any
+        # Return the first match if any
         if all_matches:
-            start_pos, end_pos, tool_name, tool_input = all_matches[-1]
+            start_pos, end_pos, tool_name, tool_input = all_matches[0]
             return (tool_name, tool_input, start_pos, end_pos)
 
         return None
@@ -105,7 +85,7 @@ class ToolHandler:
             full_response += response
 
             # Check if there's a tool call
-            tool_call = self.parser.extract_next_tool_call(full_response)
+            tool_call = self.parser.extract_next_tool_call(response)
 
             if not tool_call:
                 # No tool call found, we're done
@@ -122,7 +102,10 @@ class ToolHandler:
                     result_text = f"Search results: {json.dumps(tool_result, indent=2)}"
                 elif tool_name == "coq-prover":
                     if tool_result["status"] == "success":
-                        result_text = f"New goal: {tool_result['goal']}"
+                        if tool_result["is_complete"]:
+                            result_text = "Proof completed successfully."
+                        else:
+                            result_text = f"New goal: {tool_result['goal']}"
                     else:
                         result_text = f"Error: {tool_result['message']}"
                 else:
@@ -130,12 +113,12 @@ class ToolHandler:
 
                 # Append tool result to the response
                 if tool_name == "search":
-                    tool_response = f"<SEARCH>{tool_input}</SEARCH>\n{result_text}\n"
+                    tool_response = f"<RESULT>\n{result_text}\n</RESULT>"
                 elif tool_name == "coq-prover":
-                    tool_response = f"<SCRIPT>{tool_input}</SCRIPT>\n{result_text}\n"
+                    tool_response = f"<RESULT>\n{result_text}\n</RESULT>"
 
                 # Update full response with tool response
-                full_response = full_response[:end_pos] + tool_response
+                full_response = full_response + tool_response
 
                 # Continue generation with updated context
                 current_prompt = prompt + full_response

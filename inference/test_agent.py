@@ -1,5 +1,5 @@
 import unittest
-from agent import Parser, NestedTagError
+from agent import Parser
 
 
 class TestParser(unittest.TestCase):
@@ -35,27 +35,6 @@ class TestParser(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result[0], "search")
         self.assertEqual(result[1], "")  # Empty content
-
-    def test_nested_tags_search_in_search(self):
-        text = "This has nested content: <SEARCH>Find <SEARCH>nested</SEARCH> tags</SEARCH>"
-
-        # Should raise NestedTagError
-        with self.assertRaises(NestedTagError):
-            self.parser.extract_next_tool_call(text)
-
-    def test_nested_tags_script_in_search(self):
-        text = "This has nested content: <SEARCH>Find <SCRIPT>nested</SCRIPT> tags</SEARCH>"
-
-        # Should raise NestedTagError
-        with self.assertRaises(NestedTagError):
-            self.parser.extract_next_tool_call(text)
-
-    def test_nested_tags_search_in_script(self):
-        text = "This has nested content: <SCRIPT>Try <SEARCH>nested</SEARCH> approach</SCRIPT>"
-
-        # Should raise NestedTagError
-        with self.assertRaises(NestedTagError):
-            self.parser.extract_next_tool_call(text)
 
     def test_malformed_tags(self):
         text = "<SEARCH>incomplete tag"
