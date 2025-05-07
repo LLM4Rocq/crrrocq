@@ -66,11 +66,11 @@ Here is an exhaustive list of all the tools available to the model:
 
 - the LLM write some Rocq code
 - how does it works:
-  - the LLM provides an informal description of a theorem enclosed in `<script>` and `</script>` tags;
+  - the LLM generates Rocq code in `<script>` and `</script>` tags;
   - at this point, we stop the inference of the model to obtain the report of the script;
   - the script is send to the Rocq type-checker via petanque;
   - the outputs of the type-checker are written inside of `<result>` and `</result>` tags;
-  - we provide the new goal to the LLM between `<goal>` and `</goal>` tags;
+  - we provide the new goals to the LLM between `<goals>` and `</goals>` tags;
   - the model continues the inference
 
 ### TODO: Definition
@@ -91,7 +91,7 @@ Here is an exhaustive list of all the tools available to the model:
   - at this point, we stop the inference of the model to try to prove this intermediate goal;
   - the intermediate goal is given to the model as a new lemma to prove in Rocq, meaning we have a recursive call to the model on a smaller proof;
   - the result of the model is written between `<result>` and `</result>` tags;
-  - in case the model succeed to prove the intermediate goal, we provide the new goal to the LLM inside of `<goal>` and `</goal>` tags;
+  - in case the model succeed to prove the intermediate goal, we provide the new goal to the LLM inside of `<goals>` and `</goals>` tags;
   - the model continues the inference
 
 ### Chain of thought (CoT)
@@ -178,5 +178,12 @@ No more goals. The proof is finished.
 
 ## Training
 
+To train the model, we first follow the ["s1: simple test-time scaling"](https://arxiv.org/pdf/2501.19393) paper.
+We select 1000 high quality examples from the math-comp library and finetune an openweight model on these examples. 
+
+
 ## Benchmarks
 
+- [] split of the math-comp dataset (selected for difficulty and diversity)
+- [] [MiniF2F-Rocq](https://arxiv.org/pdf/2501.19393) a translation of the MiniF2F dataset (highschool exercices) in Rocq
+- [] [BB4 / BB5](https://github.com/ccz181078/Coq-BB5) recent proofs for the Busy Beaver problem.
