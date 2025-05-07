@@ -1,0 +1,19 @@
+Below is a lambda term:
+{term}
+
+Your task is to generate a sequence of tactics in SSReflect (Coq/Rocq proof assistant) to generate a proof of this lemma.
+
+Here are some constants that could be useful:
+{constants}
+
+And here are some notations that could be useful:
+{notations}
+
+Please carefully read the previous given elements, and deduce a sequence of tactics.
+Think step by step, ensuring each tactic is justified by the structure of the lambda term and the available constants and notations.
+Write directly the final sequence of tactics, and only tactics, between \boxed{{}}.
+Example of expected output:
+\boxed{{apply/exponentP=> _ /morphimP[x Dx Gx ->].
+by rewrite -morphX // expg_exponent // morph1.}}
+
+Don't write anything more than tactics inside \boxed{{}}

@@ -1,0 +1,11 @@
+You are given two reasoning processes that attempt to extract a sequence of tactics (Rocq/Coq) from a lambda term. Your goal is to analyze both processes in detail and determine which one packs more useful insights and is more effective for learning and understanding the underlying problem.
+First reasoning:
+
+"{reasoning_1}"
+
+Second reasoning
+
+"{reasoning_2}"
+
+Please proceed with a detailed, step-by-step analysis and then provide your conclusion on which reasoning process is more effective for understanding the underlying problem.
+Finally, your answer should conclude with a final decision inside \boxed{{}} (either \boxed{{1}} if the first reasoning is more insightful, or \boxed{{2}} if the second reasoning is more insightful).

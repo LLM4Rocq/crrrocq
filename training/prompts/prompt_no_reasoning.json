@@ -1,0 +1,6 @@
+{
+    "text_before": "<|im_start|>user\nBelow is a lambda term:\n{term}\n\nYour task is to generate a sequence of tactics in SSReflect (Coq/Rocq proof assistant) to generate a proof of this lemma.\n\nHere are some constants that could be useful:\n{constants}\n\nAnd here are some notations that could be useful:\n{notations}\n\nPlease carefully read the previous given elements, and deduce a sequence of tactics. Provide your final answer enclosed within `\\boxed{{ ... }}`.",
+    "text_after": "\n\\boxed{{{proof}}}",
+    "end": "<|im_end|>",
+    "sep": "<|im_end|>\n<|im_start|>assistant"
+}
