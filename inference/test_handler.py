@@ -2,7 +2,6 @@ import unittest
 import os
 import sys
 from typing import List, Dict, Any, Optional
-from unittest.mock import Mock, patch
 
 # Add parent directory to Python path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -59,7 +58,7 @@ class FakeSearchTool(Tool):
 
     def run(self, input_text: str) -> Any:
         """Return a predefined search result."""
-        return [f"Search result for query: {input_text}"]
+        return [f"{input_text}", "another irrelevant lemma"]
 
 
 class TestToolHandler(unittest.TestCase):
@@ -110,7 +109,7 @@ class TestToolHandler(unittest.TestCase):
         """Test processing text with a search tool call."""
         # Create a fake LLM that returns text with a search tool call
         fake_llm = FakeLLM(
-            "Let me search for that. <SEARCH>mathematics theorems</SEARCH> in the library."
+            "Let me search for that. <SEARCH>mathematics theorems</SEARCH>"
         )
 
         # Process the response
@@ -120,7 +119,7 @@ class TestToolHandler(unittest.TestCase):
 
         # The result should include the tool call and result
         self.assertIn("<SEARCH>mathematics theorems</SEARCH>", result)
-        self.assertIn("Search result for query: mathematics theorems", result)
+        self.assertIn("<RESULT>", result)
 
     def test_process_with_coq_tool(self):
         """Test processing text with a Coq prover tool call."""
@@ -152,10 +151,13 @@ class TestToolHandler(unittest.TestCase):
 
         # The result should include all tool calls and results
         self.assertIn("<SEARCH>natural number theorems</SEARCH>", result)
-        self.assertIn("Search result for query: natural number theorems", result)
+        self.assertIn("Search results:", result)
+        self.assertIn("natural number theorems", result)
         self.assertIn("<SCRIPT>intros n.</SCRIPT>", result)
+        self.assertIn("Goals: n  : nat\n⊢ 1 + n > n", result)
         self.assertIn("<SCRIPT>lia.</SCRIPT>", result)
-        self.assertIn("The proof is complete!", result)
+        self.assertIn("<RESULT>\nNo more goals.\n</RESULT>", result)
+        self.assertNotIn("The proof is complete!", result)
 
     def test_process_with_invalid_tool(self):
         """Test processing text with an invalid tool name."""
@@ -192,8 +194,7 @@ class TestToolHandler(unittest.TestCase):
 
         # The result should include the tool call and success message
         self.assertIn("<SCRIPT>lia.</SCRIPT>", result)
-        self.assertIn("success", result)
-        self.assertIn("Proof completed", result)
+        self.assertIn("<RESULT>\nNo more goals.\n</RESULT>", result)
 
     def test_interleaved_conversation_with_tools(self):
         """Test a more realistic conversation with interleaved tool calls."""
@@ -222,7 +223,7 @@ class TestToolHandler(unittest.TestCase):
         self.assertIn("<SEARCH>arithmetic inequality theorem nat</SEARCH>", result)
         self.assertIn("<SCRIPT>intros n.</SCRIPT>", result)
         self.assertIn("<SCRIPT>lia.</SCRIPT>", result)
-        self.assertIn("Perfect! We've completed the proof.", result)
+        self.assertNotIn("Perfect! We've completed the proof.", result)
 
 
 if __name__ == "__main__":

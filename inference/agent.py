@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Union, Tuple
 import re
 import json
+from dataclasses import dataclass
 
 from tools import Tool
 from llm import LLM
@@ -78,6 +79,7 @@ class ToolHandler:
         """
         full_response = ""
         current_prompt = prompt
+        stop = False
 
         while True:
             # Generate text until a potential tool call
@@ -103,22 +105,22 @@ class ToolHandler:
                 elif tool_name == "coq-prover":
                     if tool_result["status"] == "success":
                         if tool_result["is_complete"]:
-                            result_text = "Proof completed successfully."
+                            result_text = "No more goals."
+                            stop = True
                         else:
-                            result_text = f"New goal: {tool_result['goal']}"
+                            result_text = f"Goals: {tool_result['goal']}"
                     else:
                         result_text = f"Error: {tool_result['message']}"
+                        stop = True
                 else:
                     result_text = f"Tool result: {json.dumps(tool_result, indent=2)}"
 
-                # Append tool result to the response
-                if tool_name == "search":
-                    tool_response = f"<RESULT>\n{result_text}\n</RESULT>"
-                elif tool_name == "coq-prover":
-                    tool_response = f"<RESULT>\n{result_text}\n</RESULT>"
+                tool_response = f"<RESULT>\n{result_text}\n</RESULT>"
 
                 # Update full response with tool response
                 full_response = full_response + tool_response
+                if stop:
+                    break
 
                 # Continue generation with updated context
                 current_prompt = prompt + full_response
@@ -127,3 +129,67 @@ class ToolHandler:
                 break
 
         return full_response
+
+
+# ===============================================
+# Main Agent Class
+# ===============================================
+
+
+@dataclass
+class Status:
+    success: bool
+    proof: str
+
+
+class MathProofAgent:
+    """Main agent for formal mathematics proving."""
+
+    def __init__(self, llm: LLM, search_tool: Tool, coq_tool: Tool):
+        self.llm = llm
+        self.tools = {search_tool.name: search_tool, coq_tool.name: coq_tool}
+        self.tool_handler = ToolHandler(parser=Parser(), tools=self.tools)
+        self.current_proof = coq_tool.env.thm_code
+        self.coq_tool = coq_tool
+        self.search_tool = search_tool
+
+    def build_prompt(self) -> str:
+        """Build the prompt for the LLM."""
+
+        # Get available tools
+        tool_descriptions = "\n".join(
+            [
+                f"{i+1}. {tool.name}: {tool.description}"
+                for i, tool in enumerate(self.tools.values())
+            ]
+        )
+
+        # Build the prompt
+        prompt = f"""You are a formal mathematics proving assistant.
+
+Available tools:
+{tool_descriptions}
+
+- To search for theorems or definitions, use: <SEARCH>your search query</SEARCH>
+- To apply Coq tactics, use: <SCRIPT>your tactics</SCRIPT>
+
+Here is the theorem I am trying to prove:
+{self.current_proof}
+Please help me progress with this proof. Explain your reasoning step by step.
+"""
+        return prompt
+
+    def run_proof(self, verbose: bool = False) -> Status:
+        # Build prompt
+        prompt = self.build_prompt()
+
+        # Generate response with tool support
+        response = self.tool_handler.process_with_tools(self.llm, prompt)
+
+        if verbose:
+            print("LLM Response:", response)
+
+        if self.coq_tool.env.proof_finished:
+            return Status(success=True, proof=self.coq_tool.env.proof)
+        else:
+            return Status(success=False, proof=self.coq_tool.env.proof)
