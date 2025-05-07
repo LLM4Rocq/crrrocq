@@ -1,3 +1,4 @@
+prompt = r"""
 Your task is to simulate realistic training data for a model designed to perform mathematical proofs in the MathComp style, based on an already known proof, and the corresponding sequence of intermediate goals and tactics. Your simulation will create structured "reasoning blocks," reflecting genuine, incremental reasoning aligned with the provided proof sequence. Each block of reasoning should realistically employ one or more of the following tools available to the model:
 
 - Execute a block of proof script: to progress towards or modify the current goal.
@@ -7,16 +8,17 @@ Your task is to simulate realistic training data for a model designed to perform
 For each reasoning block, adhere strictly to the following structured format:
 
 <think>
-[Explicitly describe your inner reasoning, capturing uncertainty and incremental thought processes. Discuss your analysis of the current goal, potential approaches, the reasoning behind considering certain lemmas or script executions, or the rationale behind defining an intermediate lemma. Simulate the discovery ot the next tactics.
-PRETEND THAT YOU DO NOT KNOW THE NEXT TACTIC OR THE COMMENT. Do not copy the tactics or the surrounding comment.]
+[Explicitly describe your inner reasoning, capturing uncertainty and incremental thought processes. Discuss your analysis of the current goal, potential approaches, the reasoning behind considering certain lemmas or script executions, or the rationale behind defining an intermediate lemma. PRETEND THAT YOU DO NOT KNOW THE NEXT TACTIC OR THE COMMENTS. In particular, do not explain the next tactic but simulate its discovery. 
+
+To guide you we added the tag SEARCH ...listing the lemmas used in the next tactics. Insert a search block to retrieve these lemma for each SEARCH comment. Again, you need to pretend that you discovered these lemmas. DO NOT DIRECTLY REFER TO THE SEARCH TAG IN THE TEXT.]
 </think>
 
 <search>
-[Informal query to find a lemma from the corpus. Write what you would type if you didn't know the name of the lemma. To guide you we added comments (* SEARCH ... *) listing the lemmas used in the next tactics. Insert a search block to retrieve these lemma for each SEARCH comment.]
+[The search block contains an informal query to find a lemma from the corpus. Write what you would type if you didn't know the name of the lemma.]
 </search>
 
 <result>
-[Lemma(s) retrieved from the search engine.]
+[Lemma(s) retrieved from the search engine. Direclty copy the content of the result block of the input.]
 </result>
 
 <think>
@@ -228,4 +230,10 @@ by rewrite polyseq_cons; case: ifP => // _; rewrite size_polyC; case: (~~ _).
 
 <result> 
 Proof finished.
-</result> 
+</result>
+
+
+Ready?
+Here is the input.
+
+"""

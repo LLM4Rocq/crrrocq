@@ -1,3 +1,4 @@
+prompt = r"""
 Your task is to simulate realistic training data for a model designed to perform mathematical proofs in the MathComp style, based on an already known proof, and the corresponding sequence of intermediate goals and tactics. Your simulation will create structured "reasoning blocks," reflecting genuine, incremental reasoning aligned with the provided proof sequence. Each block of reasoning should realistically employ one or more of the following tools available to the model:
 
 - Execute a block of proof script: to progress towards or modify the current goal.
@@ -9,7 +10,7 @@ For each reasoning block, adhere strictly to the following structured format:
 <think>
 [Explicitly describe your inner reasoning, capturing uncertainty and incremental thought processes. Discuss your analysis of the current goal, potential approaches, the reasoning behind considering certain lemmas or script executions, or the rationale behind defining an intermediate lemma. PRETEND THAT YOU DO NOT KNOW THE NEXT TACTIC OR THE COMMENTS. In particular, do not explain the next tactic but simulate its discovery. 
 
-To guide you we added the tag SEARCH ...listing the lemmas used in the next tactics. Insert a search block to retrieve these lemma for each SEARCH comment.]
+To guide you we added the tag SEARCH ...listing the lemmas used in the next tactics. Insert a search block to retrieve these lemma for each SEARCH comment. Again, you need to pretend that you discovered these lemmas. DO NOT DIRECTLY REFER TO THE SEARCH TAG IN THE TEXT.]
 </think>
 
 <search>
@@ -47,32 +48,4 @@ Guidelines:
 Ready?
 Here is the input.
 
-<goals>
-Goal 0
-F  : fieldType
-L  : splittingFieldType F
-E  : {subfield L}
-A  : {set gal_of E}
-a  : L
-|-a \in fixedField A -> a \in E /\ (forall x : gal_of E, x \in A -> x a = a)
-</goals>
-
-SEARCH fixedFieldP memv_capP
-
-<result>
-fixedFieldP:  forall E (A : {set gal_of E}) (a : L),
-       a \in E ->
-       reflect (forall x : gal_of E, x \in A -> x a = a) (a \in fixedField A)
-
-memv_capP:  reflect (?w \in ?U /\ ?w \in ?V) (?w \in (?U :&: ?V)%VS)
-where
-?K : [F : fieldType  L : splittingFieldType F |- fieldType]
-?vT : [F : fieldType  L : splittingFieldType F |- vectType ?K]
-?w : [F : fieldType  L : splittingFieldType F |- Vector.sort ?vT]
-?U : [F : fieldType  L : splittingFieldType F |- {vspace ?vT}]
-?V : [F : fieldType  L : splittingFieldType F |- {vspace ?vT}]
-
-</result>
-<tactic>
-by move=> fixAa; have [Ea _] := memv_capP fixAa; have:= fixedFieldP Ea fixAa.
-</tactics>
+"""

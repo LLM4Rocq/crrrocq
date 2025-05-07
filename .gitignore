@@ -1,4 +1,5 @@
 .vscode
 .python-version
+.envrc
 __pycache__/
 dataset
