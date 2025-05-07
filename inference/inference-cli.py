@@ -29,7 +29,10 @@ def main():
         "--llm-url", type=str, default="http://localhost:8000", help="LLM API URL"
     )
     parser.add_argument(
-        "--model", type=str, default="mistral-7b", help="LLM model name"
+        "--model",
+        type=str,
+        default="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        help="LLM model name",
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
@@ -54,6 +57,7 @@ def main():
         api_url=args.llm_url,
         model=args.model,
         temperature=0.1,
+        verbose=args.verbose,
     )
 
     # Create agent and run proof

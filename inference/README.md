@@ -6,6 +6,14 @@
 ### Requirements
 - Pet-server running
 - vLLM server running (To be tested)
+```bash
+VLLM_USE_CUDA=0 python -m vllm.entrypoints.api_server \
+    --model deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
+    --tensor-parallel-size 1 \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --max-model-len 74000 
+```
 
 ### Running the CLI
 

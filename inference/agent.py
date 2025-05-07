@@ -187,7 +187,7 @@ Please help me progress with this proof. Explain your reasoning step by step.
         response = self.tool_handler.process_with_tools(self.llm, prompt)
 
         if verbose:
-            print("LLM Response:", response)
+            print("LLM final response:", response)
 
         if self.coq_tool.env.proof_finished:
             return Status(success=True, proof=self.coq_tool.env.proof)
