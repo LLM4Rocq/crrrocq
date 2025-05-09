@@ -24,6 +24,12 @@ class Tool(ABC):
         """Return a description of what the tool does."""
         pass
 
+    @property
+    @abstractmethod
+    def tag(self) -> str:
+        """Return the XML tag name to use for this tool."""
+        pass
+
     @abstractmethod
     def run(self, input_text: str) -> Any:
         """Execute the tool functionality."""
@@ -45,6 +51,10 @@ class SearchTool(Tool):
     @property
     def description(self) -> str:
         return "Search for relevant mathematical theorems, definitions, or proofs."
+
+    @property
+    def tag(self) -> str:
+        return "SEARCH"
 
     def run(self, query: str) -> List[str]:
         """
@@ -83,6 +93,10 @@ class CoqProverTool(Tool):
     @property
     def description(self) -> str:
         return "Execute Coq tactics and return the new proof state or error."
+
+    @property
+    def tag(self) -> str:
+        return "SCRIPT"
 
     def run(self, input_text: str) -> Dict[str, Any]:
         """

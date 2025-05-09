@@ -56,6 +56,10 @@ class FakeSearchTool(Tool):
     def description(self) -> str:
         return "Search for information."
 
+    @property
+    def tag(self) -> str:
+        return "SEARCH"
+
     def run(self, input_text: str) -> Any:
         """Return a predefined search result."""
         return [f"Search result for: {input_text}", "another relevant theorem"]
@@ -221,7 +225,7 @@ class TestMathProofAgent(unittest.TestCase):
 
         # Check if verbose output was generated
         output = f.getvalue()
-        self.assertIn("LLM Response:", output)
+        self.assertIn("LLM final response:", output)
 
     def test_foofoo_theorem(self):
         """Test proving a different theorem (foofoo)."""

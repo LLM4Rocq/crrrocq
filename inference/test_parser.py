@@ -5,6 +5,9 @@ from agent import Parser
 class TestParser(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
+        # Register tools with their tags
+        self.parser.register_tool("search", "SEARCH")
+        self.parser.register_tool("coq-prover", "SCRIPT")
 
     def test_extract_search_tool_call(self):
         text = "I think we should <SEARCH>mathematical induction principles</SEARCH> to solve this."

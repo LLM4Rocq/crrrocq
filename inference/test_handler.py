@@ -56,6 +56,10 @@ class FakeSearchTool(Tool):
     def description(self) -> str:
         return "Search for information."
 
+    @property
+    def tag(self) -> str:
+        return "SEARCH"
+
     def run(self, input_text: str) -> Any:
         """Return a predefined search result."""
         return [f"{input_text}", "another irrelevant lemma"]

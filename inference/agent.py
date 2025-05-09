@@ -16,9 +16,20 @@ class Parser:
     """Parse LLM outputs to identify tool calls."""
 
     def __init__(self):
-        # Patterns for tool extraction - using non-greedy matching
-        self.search_pattern = re.compile(r"<SEARCH>(.*?)</SEARCH>", re.DOTALL)
-        self.coq_pattern = re.compile(r"<SCRIPT>(.*?)</SCRIPT>", re.DOTALL)
+        # We'll dynamically create patterns based on registered tools
+        self.tool_patterns = {}
+
+    def register_tool(self, tool_name: str, tag: str):
+        """
+        Register a tool with its XML tag for pattern matching.
+
+        Args:
+            tool_name: The name of the tool
+            tag: The XML tag to use for this tool (without angle brackets)
+        """
+        # Create a regex pattern for this tag - using non-greedy matching
+        pattern = re.compile(f"<{tag}>(.*?)</{tag}>", re.DOTALL)
+        self.tool_patterns[tool_name] = pattern
 
     def extract_next_tool_call(self, text: str) -> Optional[Tuple[str, str, int, int]]:
         """
@@ -27,20 +38,18 @@ class Parser:
         Returns:
             Tuple of (tool_name, tool_input, start_position, end_position) or None if no tool call is found
         """
+        # Find all matches for each registered pattern
+        all_matches = []
 
-        # Find all matches for each pattern
-        search_matches = [
-            (m.start(), m.end(), "search", m.group(1).strip())
-            for m in self.search_pattern.finditer(text)
-        ]
+        for tool_name, pattern in self.tool_patterns.items():
+            matches = [
+                (m.start(), m.end(), tool_name, m.group(1).strip())
+                for m in pattern.finditer(text)
+            ]
+            all_matches.extend(matches)
 
-        coq_matches = [
-            (m.start(), m.end(), "coq-prover", m.group(1).strip())
-            for m in self.coq_pattern.finditer(text)
-        ]
-
-        # Combine and sort by position
-        all_matches = sorted(search_matches + coq_matches)
+        # Sort by position to get the first occurrence
+        all_matches.sort()
 
         # Return the first match if any
         if all_matches:
@@ -69,6 +78,13 @@ class ToolHandler:
         self.parser = parser
         self.tools = tools
 
+        # Register all tools with the parser
+        for tool_name, tool in tools.items():
+            self.parser.register_tool(tool_name, tool.tag)
+
+        # Define a constant for the result tag
+        self.RESULT_TAG = "RESULT"
+
     def process_with_tools(self, llm: LLM, prompt: str) -> str:
         """
         Process LLM generation with tool support.
@@ -81,9 +97,12 @@ class ToolHandler:
         current_prompt = prompt
         stop = False
 
+        # Create a list of stop sequences from tool tags
+        stop_sequences = [f"</{tool.tag}>" for tool in self.tools.values()]
+
         while True:
             # Generate text until a potential tool call
-            response = llm.generate(current_prompt, ["</SEARCH>", "</SCRIPT>"])
+            response = llm.generate(current_prompt, stop_sequences)
             full_response += response
 
             # Check if there's a tool call
@@ -115,7 +134,9 @@ class ToolHandler:
                 else:
                     result_text = f"Tool result: {json.dumps(tool_result, indent=2)}"
 
-                tool_response = f"<RESULT>\n{result_text}\n</RESULT>"
+                tool_response = (
+                    f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
+                )
 
                 # Update full response with tool response
                 full_response = full_response + tool_response
@@ -139,7 +160,7 @@ class ToolHandler:
 @dataclass
 class Status:
     success: bool
-    proof: str
+    proof: List[str]
 
 
 class MathProofAgent:
@@ -156,11 +177,19 @@ class MathProofAgent:
     def build_prompt(self) -> str:
         """Build the prompt for the LLM."""
 
-        # Get available tools
+        # Get available tools with their descriptions
         tool_descriptions = "\n".join(
             [
                 f"{i+1}. {tool.name}: {tool.description}"
                 for i, tool in enumerate(self.tools.values())
+            ]
+        )
+
+        # Build instructions for tool usage with proper tags
+        tool_instructions = "\n".join(
+            [
+                f"- To use the {tool.name} tool, use: <{tool.tag}>your input</{tool.tag}>"
+                for tool in self.tools.values()
             ]
         )
 
@@ -170,8 +199,8 @@ class MathProofAgent:
 Available tools:
 {tool_descriptions}
 
-- To search for theorems or definitions, use: <SEARCH>your search query</SEARCH>
-- To apply Coq tactics, use: <SCRIPT>your tactics</SCRIPT>
+How to use tools:
+{tool_instructions}
 
 Here is the theorem I am trying to prove:
 {self.current_proof}

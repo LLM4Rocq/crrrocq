@@ -64,6 +64,6 @@ class VLLM(LLM):
                 f"LLM API returned error: {response.status_code} - {response.text}"
             )
         if self.verbose:
-            print(f"LLM API response: {response.json()["text"][0][len_prompt:]}")
+            print(f"LLM API response: {response.json()['text'][0][len_prompt:]}")
 
         return response.json()["text"][0][len_prompt:]
