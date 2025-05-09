@@ -1,3 +1,4 @@
+import os
 from tools.embedding_model import MxbaiEmbedding
 from tools.cosim_index import FaissIndex
 
@@ -8,6 +9,7 @@ index = FaissIndex(model, embedding_pt_path)
 
 while True:
     query = input('Query:')
+    os.system('clear')
     result = index.query(query)
 
     for score, key, docstring in result:
