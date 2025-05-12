@@ -25,10 +25,10 @@ class VLLM(LLM):
         self,
         api_url: str,
         model: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",  # not used!
-        temperature: float = 0.1,
+        temperature: float = 1.0,
         top_p: float = 0.9,
         top_k: int = 40,
-        max_tokens: int = 20480,
+        max_tokens: int = 2048,
         verbose: bool = False,
     ):
         self.api_url = api_url
