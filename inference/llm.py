@@ -86,7 +86,7 @@ class VLLM(LLM):
             # "top_p": self.top_p,
             # "top_k": self.top_k,
             "max_tokens": self.max_tokens,
-            "skip_special_tokens": False,
+            "include_stop_str"=True,
             "stream": False,
         }
         len_prompts = [len(p) for p in prompts]
@@ -105,6 +105,6 @@ class VLLM(LLM):
                 f"LLM API returned error: {responses.status_code} - {responses.text}"
             )
         # print("json ", responses.json())
-        llm_responses = [r["text"] + "</SCRIPT>" for r in responses.json()["choices"]]
+        llm_responses = [r["text"] for r in responses.json()["choices"]]
 
         return llm_responses
