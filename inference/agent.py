@@ -111,15 +111,23 @@ class ToolHandler:
             new_prompts = [f + r for (f, r) in zip(current_prompts, responses)]
             # print("new_prompts", new_prompts)
 
+            first = True
+
             for i, response in enumerate(responses):
                 # Check if there's a tool call
                 tool_call = self.parser.extract_next_tool_call(response)
                 print(f"response {i}", tool_call)
 
                 if i == 0:
-                    tool_name = "coq-prover"
-                    tool_input = "lia."
-                    tool_call = (tool_name, tool_input, 0, len(tool_input))
+                    if first:
+                        tool_name = "coq-prover"
+                        tool_input = "intros n."
+                        tool_call = (tool_name, tool_input, 0, len(tool_input))
+                        first = False
+                    else:
+                        tool_name = "coq-prover"
+                        tool_input = "lia."
+                        tool_call = (tool_name, tool_input, 0, len(tool_input))
 
                 if not tool_call:
                     # No tool call found, we're done
