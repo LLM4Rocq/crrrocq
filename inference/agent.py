@@ -157,6 +157,7 @@ class ToolHandler:
                                     result_text = "No more goals."
                                     index_proof = i
                                     first_proof = current_tool.env.proof
+                                    stops = [True]
                                     break
                                 else:
                                     result_text = f"Goals: {tool_result['goal']}"
