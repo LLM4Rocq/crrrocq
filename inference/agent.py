@@ -85,7 +85,7 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "RESULT"
 
-    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 8) -> str:
+    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 2) -> str:
         """
         Process LLM generation with tool support.
 
@@ -107,7 +107,7 @@ class ToolHandler:
         while not all(stops):
             # Generate text until a potential tool call
             responses = llm.generate_batch(current_prompts, stop_sequences)
-            print(responses)
+
             new_prompts = [f + r for (f, r) in zip(current_prompts, responses)]
 
             for i, response in enumerate(responses):
