@@ -42,7 +42,7 @@ class Env(ABC):
         self.thm = thm
         self.proof: list[str] = []
         self.initial_state: State = self.pet.start(self.path, thm)
-        self.thm_code = pp_goals(self.pet.goals(self.initial_state))
+        #self.thm_code = pp_goals(self.pet.goals(self.initial_state))
         self.n_interactions = 0
         self.verbose = verbose
         self.failed = False
@@ -79,6 +79,7 @@ class ScriptEnv(Env):
     def __init__(self, pet: Pytanque, workspace: str, file: str, thm: str):
         super().__init__(pet, workspace, file, thm)
         self.state: State = self.initial_state
+        self.thm_code = pp_goals(self.pet.goals(self.state))
 
     def exec(self, tactics):
         self.n_interactions += 1

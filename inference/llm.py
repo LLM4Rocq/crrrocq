@@ -28,7 +28,7 @@ class VLLM(LLM):
         temperature: float = 0.1,
         top_p: float = 0.9,
         top_k: int = 40,
-        max_tokens: int = 2048,
+        max_tokens: int = 20480,
         verbose: bool = False,
     ):
         self.api_url = api_url
@@ -41,16 +41,17 @@ class VLLM(LLM):
 
     def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:
         """Generate a completion using VLLM's OpenAI-compatible API."""
+        prompt = [prompt]
         payload = {
-            "model": self.model,
-            "prompt": prompt * 32,
+            "model": self.model, 
+            "prompt": prompt,
             "temperature": self.temperature,
             # "top_p": self.top_p,
             # "top_k": self.top_k,
             "max_tokens": self.max_tokens,
             "stream": False,
         }
-        len_prompt = len(prompt)
+        len_prompt = len(prompt[0])
 
         if stop_sequences:
             payload["stop"] = stop_sequences
@@ -66,8 +67,9 @@ class VLLM(LLM):
                 f"LLM API returned error: {response.status_code} - {response.text}"
             )
 
-        llm_response = response.json()["choices"][0]["text"][len_prompt:]
+        llm_responses = [r["text"][len_prompt:] + "</SCRIPT>" for r in response.json()["choices"]]
+        llm_response = response.json()["choices"][0]["text"][len_prompt:] + "</SCRIPT>"
         if self.verbose:
-            print(f"LLM API response: {llm_response}")
+            print(f"LLM API response: {llm_responses}")
 
         return llm_response
