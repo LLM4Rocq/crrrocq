@@ -109,6 +109,7 @@ class ToolHandler:
             responses = llm.generate_batch(current_prompts, stop_sequences)
 
             new_prompts = [f + r for (f, r) in zip(current_prompts, responses)]
+            print("new_prompts", new_prompts)
 
             for i, response in enumerate(responses):
                 # Check if there's a tool call
@@ -279,7 +280,6 @@ Here are the current goals.
     def run_proof(self, verbose: bool = False) -> Status:
         # Build prompt
         prompt = self.build_prompt()
-        print("prompt:", prompt)
 
         # Generate response with tool support
         response = self.tool_handler.process_with_tools(self.llm, prompt)
