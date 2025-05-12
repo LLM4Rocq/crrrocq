@@ -160,6 +160,7 @@ class ToolHandler:
                         tool_response = (
                             f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
                         )
+                        print(f"tool_response {i}: ", tool_response)
 
                         # Update prompts with tool response
                         if stops[i]:
