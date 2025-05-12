@@ -114,7 +114,7 @@ class ToolHandler:
             for i, response in enumerate(responses):
                 # Check if there's a tool call
                 tool_call = self.parser.extract_next_tool_call(response)
-                print(f"response {i}", response)
+                print(f"response {i}", tool_call)
 
                 if not tool_call:
                     # No tool call found, we're done
