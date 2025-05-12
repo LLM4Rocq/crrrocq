@@ -118,7 +118,7 @@ class ToolHandler:
 
                 if i == 0:
                     tool_name = "coq-prover"
-                    tool_input = "intros n."
+                    tool_input = "lia."
                     tool_call = (tool_name, tool_input, 0, len(tool_input))
 
                 if not tool_call:
