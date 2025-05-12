@@ -96,6 +96,7 @@ class ToolHandler:
         # full_responses = [prompt] * passk
         current_prompts = [prompt] * passk
         stops = [False] * passk
+        first_proof = -1
 
         if "coq-prover" in self.tools:
             coq_tools = [self.tools["coq-prover"].deepcopy() for _ in range(passk)]
@@ -136,7 +137,9 @@ class ToolHandler:
                             if tool_result["status"] == "success":
                                 if tool_result["is_complete"]:
                                     result_text = "No more goals."
-                                    stop[i] = True
+                                    index_proof = i
+                                    first_proof = current_tool.env.proof
+                                    break
                                 else:
                                     result_text = f"Goals: {tool_result['goal']}"
                             else:
@@ -158,8 +161,10 @@ class ToolHandler:
                 current_prompts = [
                     p for (i, p) in enumerate(new_prompts) if not stops[i]
                 ]
-
-        return full_response
+        if index_proof > -1:
+            return first_proof
+        else:
+            return None
 
 
 # ===============================================
@@ -279,7 +284,7 @@ Here are the current goals.
         if verbose:
             print("LLM final response:", response)
 
-        if self.coq_tool.env.proof_finished:
-            return Status(success=True, proof=self.coq_tool.env.proof)
+        if response:
+            return Status(success=True, proof=response)
         else:
-            return Status(success=False, proof=self.coq_tool.env.proof)
+            return Status(success=False, proof="No proof found.")
