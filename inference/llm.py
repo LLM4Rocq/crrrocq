@@ -43,7 +43,7 @@ class VLLM(LLM):
         """Generate a completion using VLLM's OpenAI-compatible API."""
         payload = {
             "model": self.model,
-            "prompt": prompt,
+            "prompt": prompt * 32,
             "temperature": self.temperature,
             # "top_p": self.top_p,
             # "top_k": self.top_k,
@@ -55,17 +55,16 @@ class VLLM(LLM):
         if stop_sequences:
             payload["stop"] = stop_sequences
 
-        for _ in range(32):
-            response = requests.post(
-                f"{self.api_url}/v1/completions",
-                headers={"Content-Type": "application/json"},
-                data=json.dumps(payload),
-            )
+        response = requests.post(
+            f"{self.api_url}/v1/completions",
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(payload),
+        )
     
-            if response.status_code != 200:
-                raise Exception(
-                    f"LLM API returned error: {response.status_code} - {response.text}"
-                )
+        if response.status_code != 200:
+            raise Exception(
+                f"LLM API returned error: {response.status_code} - {response.text}"
+            )
 
         llm_response = response.json()["choices"][0]["text"][len_prompt:]
         if self.verbose:
