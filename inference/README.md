@@ -1,25 +1,37 @@
 # Simple Inference Pipeline
 
+## Install
+
+Set up a virtualenv with UV.
+
+```bash
+$ uv venv --python 3.11
+$ source .venv/bin/activate
+$ uv pip install vllm
+```
 
 ## Usage
 
 ### Requirements
 - Pet-server running
 - vLLM server running (To be tested)
+
+To run you need multiple terminal session in parallel.
+In a terminal:
 ```bash
-VLLM_USE_CUDA=0 python -m vllm.entrypoints.api_server \
-    --model deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
-    --tensor-parallel-size 1 \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --max-model-len 74000 
+$ pet-server
+```
+
+In another:
+```bash
+$ vllm serve --tensor-parallel-size 4 --max-num-seqs 512 --gpu-memory-utilization 0.90 $DSDIR/HuggingFace_Models/Qwen/Qwen3-32B
 ```
 
 ### Running the CLI
 
 ```bash
 # To prove a theorem using the real LLM:
-python inference-cli.py --theorem foo --file foo.v --workspace examples
+python inference-cli.py --theorem foo --file foo.v --workspace examples --model $DSDIR/HuggingFace_Models/Qwen/Qwen3-32B
 
 # To use the mock LLM for interactive testing:
 python mock_inference.py --theorem foo --file foo.v --workspace examples
