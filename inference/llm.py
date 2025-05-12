@@ -106,7 +106,7 @@ class VLLM(LLM):
             )
 
         llm_responses = [
-            r["text"][l:] for (r, l) in zip(responses.json()["choices"], len_prompts)
+            r["text"] for (r, l) in zip(responses.json()["choices"], len_prompts)
         ]
 
         return llm_responses
