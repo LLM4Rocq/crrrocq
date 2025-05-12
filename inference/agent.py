@@ -156,7 +156,7 @@ class ToolHandler:
                             new_prompts[i] = new_prompts[i] + tool_response
 
                 current_prompts = [
-                    p for (p, i) in enumerate(new_prompts) if not stops[i]
+                    p for (i, p) in enumerate(new_prompts) if not stops[i]
                 ]
 
         return full_response
