@@ -246,7 +246,7 @@ and here is one possible proof step.
 
 <SCRIPT>
 rewrite Nat.add_assoc.
-</Script>
+</SCRIPT>
 
 Example 2.
 Here are the current goals.
@@ -263,7 +263,7 @@ and here is one possible proof step.
 
 <SCRIPT>
 rewrite (I n1).
-<SCRIPT>
+</SCRIPT>
 
 
 Ready?
