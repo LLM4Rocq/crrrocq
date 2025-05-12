@@ -2,6 +2,7 @@
 
 import re
 import os
+import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from collections import deque
