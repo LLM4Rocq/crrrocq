@@ -104,14 +104,14 @@ class ToolHandler:
         # Create a list of stop sequences from tool tags
         stop_sequences = [f"</{tool.tag}>" for tool in self.tools.values()]
 
+        first = True
+
         while not all(stops):
             # Generate text until a potential tool call
             responses = llm.generate_batch(current_prompts, stop_sequences)
 
             new_prompts = [f + r for (f, r) in zip(current_prompts, responses)]
             # print("new_prompts", new_prompts)
-
-            first = True
 
             for i, response in enumerate(responses):
                 # Check if there's a tool call
