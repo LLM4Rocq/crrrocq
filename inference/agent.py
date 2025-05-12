@@ -85,7 +85,7 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "RESULT"
 
-    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 2) -> str:
+    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 8) -> str:
         """
         Process LLM generation with tool support.
 
