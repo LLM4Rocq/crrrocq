@@ -42,7 +42,7 @@ class Env(ABC):
         self.thm = thm
         self.proof: list[str] = []
         self.initial_state: State = self.pet.start(self.path, thm)
-        #self.thm_code = pp_goals(self.pet.goals(self.initial_state))
+        # self.thm_code = pp_goals(self.pet.goals(self.initial_state))
         self.n_interactions = 0
         self.verbose = verbose
         self.failed = False
@@ -75,9 +75,7 @@ class Env(ABC):
             return False
 
     def deepcopy(self):
-        new = self.__class__(
-            self.pet, self.workspace, self.file, self.thm, self.verbose
-        )
+        new = self.__class__(self.pet, self.workspace, self.file, self.thm)
         new.proof = copy.deepcopy(self.proof)
         new.n_interactions = copy.deepcopy(self.n_interactions)
         return new
