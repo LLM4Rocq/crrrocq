@@ -85,7 +85,7 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "RESULT"
 
-    def process_with_tools(self, llm: LLM, prompt: str) -> str:
+    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 1) -> str:
         """
         Process LLM generation with tool support.
 
@@ -93,61 +93,72 @@ class ToolHandler:
         It generates text until a tool call is detected, executes the tool,
         and then continues generation with the tool's response.
         """
-        full_response = ""
-        current_prompt = prompt
-        stop = False
+        # full_responses = [prompt] * passk
+        current_prompts = [prompt] * passk
+        stops = [False] * passk
+
+        if "coq-prover" in self.tools:
+            coq_tools = [self.tools["coq-prover"].deepcopy() for _ in rage(passk)]
 
         # Create a list of stop sequences from tool tags
         stop_sequences = [f"</{tool.tag}>" for tool in self.tools.values()]
 
-        while True:
+        while not all(stops):
             # Generate text until a potential tool call
-            response = llm.generate(current_prompt, stop_sequences)
-            full_response += response
+            responses = llm.generate_batch(current_prompts, stop_sequences)
+            new_prompts = [f + r for (f, r) in zip(current_prompts, responses)]
 
-            # Check if there's a tool call
-            tool_call = self.parser.extract_next_tool_call(response)
+            for i, response in enumerate(responses):
+                # Check if there's a tool call
+                tool_call = self.parser.extract_next_tool_call(response)
 
-            if not tool_call:
-                # No tool call found, we're done
-                break
+                if not tool_call:
+                    # No tool call found, we're done
+                    stops[i] = True
 
-            tool_name, tool_input, start_pos, end_pos = tool_call
+                tool_name, tool_input, start_pos, end_pos = tool_call
 
-            if tool_name in self.tools:
-                # Execute the tool
-                tool_result = self.tools[tool_name].run(tool_input)
-
-                # Format the tool result
-                if tool_name == "search":
-                    result_text = f"Search results: {json.dumps(tool_result, indent=2)}"
-                elif tool_name == "coq-prover":
-                    if tool_result["status"] == "success":
-                        if tool_result["is_complete"]:
-                            result_text = "No more goals."
-                            stop = True
-                        else:
-                            result_text = f"Goals: {tool_result['goal']}"
+                if tool_name in self.tools:
+                    if tool_name == "coq-prover":
+                        current_tool = coq_tools[i]
                     else:
-                        result_text = f"Error: {tool_result['message']}"
-                        stop = True
+                        current_tool = self.tools[tool_name]
+
+                    # Execute the tool
+                    tool_result = current_tool.run(tool_input)
+
+                    # Format the tool result
+                    if tool_name == "search":
+                        result_text = (
+                            f"Search results: {json.dumps(tool_result, indent=2)}"
+                        )
+                    elif tool_name == "coq-prover":
+                        if tool_result["status"] == "success":
+                            if tool_result["is_complete"]:
+                                result_text = "No more goals."
+                                stop[i] = True
+                            else:
+                                result_text = f"Goals: {tool_result['goal']}"
+                        else:
+                            result_text = f"Error: {tool_result['message']}"
+                            stop[i] = True
+                    else:
+                        result_text = (
+                            f"Tool result: {json.dumps(tool_result, indent=2)}"
+                        )
+
+                    tool_response = (
+                        f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
+                    )
+
+                    # Update prompts with tool response
+                    new_prompts[i] = new_prompts[i] + tool_response
                 else:
-                    result_text = f"Tool result: {json.dumps(tool_result, indent=2)}"
+                    stops[i] = True
 
-                tool_response = (
-                    f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
-                )
-
-                # Update full response with tool response
-                full_response = full_response + tool_response
-                if stop:
-                    break
-
-                # Continue generation with updated context
-                current_prompt = prompt + full_response
-            else:
-                # Unknown tool, just continue
-                break
+                current_prompts = [
+                    p for (p, i) in enumerate(new_prompts) if not stops[i]
+                ]
 
         return full_response
 
@@ -256,7 +267,7 @@ Here are the current goals.
 {self.current_proof}
 </GOALS>
         """
-        
+
         return prompt
 
     def run_proof(self, verbose: bool = False) -> Status:

@@ -137,3 +137,9 @@ class CoqProverTool(Tool):
     def reset(self) -> None:
         """Reset the prover to the initial state."""
         self.env = ScriptEnv(self.pet, self.workspace, self.file, self.theorem)
+
+    def deepcopy(self) -> "CoqProverTool":
+        """Create a deep copy of the CoqProverTool instance."""
+        new = self.__class__(self.pet, self.workspace, self.file, self.theorem)
+        new.env = self.env.deepcopy()
+        return new
