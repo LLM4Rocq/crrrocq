@@ -1,4 +1,5 @@
 .vscode
+.DS_Store
 .python-version
 .envrc
 __pycache__/
