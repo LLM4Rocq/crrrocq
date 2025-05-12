@@ -224,7 +224,7 @@ Here is the theorem I am trying to prove:
 Please help me progress with this proof. Explain your reasoning step by step.
 """
 
-        prompt = """
+        prompt = f"""
 You are an analytical and helpful assistant proficient in mathematics as well as in the use of the Coq theorem prover and programming language. You will be provided with a Coq/math-comp theorem and your task is to prove it. This will happen in interaction with a Coq proof engine which will execute the proof steps you give it, one at a time, and provide feedback.
 Your goal is to write proof steps interactively until you manage to find a complete proof for the proposed theorem. You will be able to interact with the proof engine by issuing coq code enclosed in <SCRIPT> </SCRIPT> delimiters.
 Do not attempt to directly write the complete proof, but rather only try to execute simple steps or tactics to make incremental progress.
