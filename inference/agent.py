@@ -85,7 +85,7 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "RESULT"
 
-    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 8) -> str:
+    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 4) -> str:
         """
         Process LLM generation with tool support.
 
@@ -124,10 +124,12 @@ class ToolHandler:
                         tool_input = "intros n."
                         tool_call = (tool_name, tool_input, 0, len(tool_input))
                         first = False
+                        print("first", tool_call)
                     else:
                         tool_name = "coq-prover"
                         tool_input = "lia."
                         tool_call = (tool_name, tool_input, 0, len(tool_input))
+                        print("second", tool_call)
 
                 if not tool_call:
                     # No tool call found, we're done
