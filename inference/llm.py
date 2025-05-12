@@ -104,7 +104,7 @@ class VLLM(LLM):
             raise Exception(
                 f"LLM API returned error: {responses.status_code} - {responses.text}"
             )
-
+        print("json ", responses.json())
         llm_responses = [
             r["text"] for (r, l) in zip(responses.json()["choices"], len_prompts)
         ]
