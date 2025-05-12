@@ -147,7 +147,7 @@ class ToolHandler:
                                     result_text = f"Goals: {tool_result['goal']}"
                             else:
                                 result_text = f"Error: {tool_result['message']}"
-                                stop[i] = True
+                                stops[i] = True
                         else:
                             result_text = (
                                 f"Tool result: {json.dumps(tool_result, indent=2)}"
