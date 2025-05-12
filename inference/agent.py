@@ -115,46 +115,45 @@ class ToolHandler:
                 if not tool_call:
                     # No tool call found, we're done
                     stops[i] = True
-
-                tool_name, tool_input, start_pos, end_pos = tool_call
-
-                if tool_name in self.tools:
-                    if tool_name == "coq-prover":
-                        current_tool = coq_tools[i]
-                    else:
-                        current_tool = self.tools[tool_name]
-
-                    # Execute the tool
-                    tool_result = current_tool.run(tool_input)
-
-                    # Format the tool result
-                    if tool_name == "search":
-                        result_text = (
-                            f"Search results: {json.dumps(tool_result, indent=2)}"
-                        )
-                    elif tool_name == "coq-prover":
-                        if tool_result["status"] == "success":
-                            if tool_result["is_complete"]:
-                                result_text = "No more goals."
-                                stop[i] = True
-                            else:
-                                result_text = f"Goals: {tool_result['goal']}"
-                        else:
-                            result_text = f"Error: {tool_result['message']}"
-                            stop[i] = True
-                    else:
-                        result_text = (
-                            f"Tool result: {json.dumps(tool_result, indent=2)}"
-                        )
-
-                    tool_response = (
-                        f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
-                    )
-
-                    # Update prompts with tool response
-                    new_prompts[i] = new_prompts[i] + tool_response
                 else:
-                    stops[i] = True
+                    tool_name, tool_input, start_pos, end_pos = tool_call
+
+                    if tool_name in self.tools:
+                        if tool_name == "coq-prover":
+                            current_tool = coq_tools[i]
+                        else:
+                            current_tool = self.tools[tool_name]
+
+                        # Execute the tool
+                        tool_result = current_tool.run(tool_input)
+
+                        # Format the tool result
+                        if tool_name == "search":
+                            result_text = (
+                                f"Search results: {json.dumps(tool_result, indent=2)}"
+                            )
+                        elif tool_name == "coq-prover":
+                            if tool_result["status"] == "success":
+                                if tool_result["is_complete"]:
+                                    result_text = "No more goals."
+                                    stop[i] = True
+                                else:
+                                    result_text = f"Goals: {tool_result['goal']}"
+                            else:
+                                result_text = f"Error: {tool_result['message']}"
+                                stop[i] = True
+                        else:
+                            result_text = (
+                                f"Tool result: {json.dumps(tool_result, indent=2)}"
+                            )
+
+                        tool_response = (
+                            f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
+                        )
+
+                        # Update prompts with tool response
+                        if stops[i]:
+                            new_prompts[i] = new_prompts[i] + tool_response
 
                 current_prompts = [
                     p for (p, i) in enumerate(new_prompts) if not stops[i]

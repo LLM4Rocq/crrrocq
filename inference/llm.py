@@ -76,7 +76,7 @@ class VLLM(LLM):
 
         return llm_response
 
-    def generate_bacth(
+    def generate_batch(
         self, prompts: List[str], stop_sequences: Optional[List[str]] = None
     ) -> List[str]:
         payload = {
