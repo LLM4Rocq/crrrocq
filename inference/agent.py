@@ -96,7 +96,7 @@ class ToolHandler:
         # full_responses = [prompt] * passk
         current_prompts = [prompt] * passk
         stops = [False] * passk
-        first_proof = -1
+        index_proof = -1
 
         if "coq-prover" in self.tools:
             coq_tools = [self.tools["coq-prover"].deepcopy() for _ in range(passk)]
