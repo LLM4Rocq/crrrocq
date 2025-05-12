@@ -85,7 +85,7 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "RESULT"
 
-    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 1) -> str:
+    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 2) -> str:
         """
         Process LLM generation with tool support.
 
@@ -98,7 +98,7 @@ class ToolHandler:
         stops = [False] * passk
 
         if "coq-prover" in self.tools:
-            coq_tools = [self.tools["coq-prover"].deepcopy() for _ in rage(passk)]
+            coq_tools = [self.tools["coq-prover"].deepcopy() for _ in range(passk)]
 
         # Create a list of stop sequences from tool tags
         stop_sequences = [f"</{tool.tag}>" for tool in self.tools.values()]
