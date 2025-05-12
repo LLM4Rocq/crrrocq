@@ -74,6 +74,14 @@ class Env(ABC):
         except PetanqueError:
             return False
 
+    def deepcopy(self):
+        new = self.__class__(
+            self.pet, self.workspace, self.file, self.thm, self.verbose
+        )
+        new.proof = copy.deepcopy(self.proof)
+        new.n_interactions = copy.deepcopy(self.n_interactions)
+        return new
+
 
 class ScriptEnv(Env):
     def __init__(self, pet: Pytanque, workspace: str, file: str, thm: str):
@@ -109,3 +117,8 @@ class ScriptEnv(Env):
             return True
         except PetanqueError:
             return False
+
+    def deepcopy(self):
+        new = super().deepcopy()
+        new.state = copy.deepcopy(self.state)
+        return new
