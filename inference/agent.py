@@ -85,7 +85,7 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "RESULT"
 
-    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 2) -> str:
+    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 8) -> str:
         """
         Process LLM generation with tool support.
 
@@ -290,4 +290,4 @@ Here are the current goals.
         if response:
             return Status(success=True, proof=response)
         else:
-            return Status(success=False, proof="No proof found.")
+            return Status(success=False, proof="KO")
