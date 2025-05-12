@@ -279,6 +279,7 @@ Here are the current goals.
     def run_proof(self, verbose: bool = False) -> Status:
         # Build prompt
         prompt = self.build_prompt()
+        print("prompt:", prompt)
 
         # Generate response with tool support
         response = self.tool_handler.process_with_tools(self.llm, prompt)
