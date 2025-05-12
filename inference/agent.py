@@ -107,12 +107,13 @@ class ToolHandler:
         while not all(stops):
             # Generate text until a potential tool call
             responses = llm.generate_batch(current_prompts, stop_sequences)
+            print(responses)
             new_prompts = [f + r for (f, r) in zip(current_prompts, responses)]
 
             for i, response in enumerate(responses):
                 # Check if there's a tool call
                 tool_call = self.parser.extract_next_tool_call(response)
-                print(response)
+                print(f"response {i}", response)
 
                 if not tool_call:
                     # No tool call found, we're done
