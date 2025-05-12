@@ -2,6 +2,7 @@ import os
 from functools import partial
 import json
 import argparse
+import re
 
 from transformers import AutoTokenizer
 import torch
@@ -26,7 +27,7 @@ def list_of_dict_to_dict(lst):
             result[key].append(dct[key])
     return result
 
-def merge_and_pad_entries(pad_value, pad_first, entries):
+def merge_and_pad_entries(entries, pad_value, pad_first=False):
     merge_entries = list_of_dict_to_dict(entries)
     keys = ['input_ids', 'attention_mask', 'labels']
     result = {key: pad_sequences(merge_entries[key], pad_value, pad_first=pad_first) for key in keys}
@@ -40,7 +41,7 @@ def only_keep_columns(dataset, columns):
 
 def preprocess_dataset(tokenizer, entry):
     input_ids_list_before = tokenizer(entry['before'], add_special_tokens=False)
-    input_ids_list_after = tokenizer(entry['after'], add_special_tokens=False)
+    input_ids_list_end = tokenizer(entry['end'], add_special_tokens=False)
     input_ids_list_sep = tokenizer(entry['sep'], add_special_tokens=False)
 
     num_example = len(input_ids_list_before['input_ids'])
@@ -50,13 +51,30 @@ def preprocess_dataset(tokenizer, entry):
     for i in range(num_example):
         before_ids = input_ids_list_before['input_ids'][i]
         sep_ids = input_ids_list_sep['input_ids'][i]
-        after_ids = input_ids_list_after['input_ids'][i]
+        end_ids = input_ids_list_end['input_ids'][i]
 
-        input_ids_list.append(before_ids + sep_ids + after_ids)
-        labels_list.append([-100] * (len(before_ids) + len(sep_ids)) +after_ids)
-        attn_mask_list.append([1]*len(input_ids_list[-1]))
+        input_ids = before_ids + sep_ids
+        labels_id = [-100] * (len(before_ids) + len(sep_ids))
 
-        # assert len(input_ids_list[-1]) == len(labels_list[-1]) and len(labels_list[-1])== len(attn_mask_list[-1])
+        tag_ids_list = tokenizer(entry['tags'][i])
+        content_ids_list = tokenizer(entry['contents'][i])
+
+        for k, tag in enumerate(entry['tags'][i]):
+            tag_ids = tag_ids_list['input_ids'][k]
+            content_ids = content_ids_list['input_ids'][k]
+            input_ids += tag_ids + content_ids
+            if 'result' in tag:
+                labels_id += tag_ids + [-100]*len(content_ids)
+            else:
+                labels_id += tag_ids + content_ids
+        
+        input_ids += end_ids
+        labels_id += end_ids
+
+        attn_mask_list.append([1]*len(input_ids))
+        input_ids_list.append(input_ids)
+        labels_list.append(labels_id)
+
     batch = {
         "input_ids": input_ids_list,
         "labels": labels_list,
@@ -82,47 +100,58 @@ def load_and_process(tokenizer, data_path, prompt_path):
 
     dataset = load_dataset("json", data_files={
         'train': os.path.join(data_path, 'train.json'),
-        'validation': os.path.join(data_path, 'validation.json'),
-        'benchmark': os.path.join(data_path, 'benchmark.json'),
-        'test': os.path.join(data_path, 'test.json')
+        # 'validation': os.path.join(data_path, 'validation.json'),
+        # 'test': os.path.join(data_path, 'test.json')
     })
 
     dataset = dataset.map(lambda x: {
         "constants": "\n".join(x['constants']),
-        "notations": "\n".join(x['notations']),
-        "proof": "\n".join(x['steps'])
+        "notations": "\n".join(x['notations'])
     })
-    dataset['train'] = dataset['train'].map(lambda x: {"sep": prompt["sep"], "before": prompt['text_before'].format(**x), "after": prompt['text_after'].format(**x) + prompt['end']})
 
-    for entry in ['validation', 'benchmark', 'test']:
-        dataset[entry] = dataset[entry].map(lambda x: {"sep": prompt["sep"], "before": prompt['text_before'].format(**x), "after": ""})
+    dataset['train'] = dataset['train'].map(lambda x: 
+                                            {"tags": [f"\n\n<{block['tag']}>\n" for block in x['blocks']],
+                                             "contents": [f"{block['content']}\n</{block['tag']}>" for block in x['blocks']],
+                                             "sep": prompt["sep"],
+                                             "before": prompt['text_before'].format(**x),
+                                             "end": prompt['end']})
+
+    # for entry in ['validation', 'test']:
+    #     dataset[entry] = dataset[entry].map(lambda x: {"sep": prompt["sep"], "before": prompt['text_before'].format(**x), "after": ""})
 
     dataset = dataset.map(partial(preprocess_dataset, tokenizer), batched=True, batch_size=100)
     only_keep_columns(dataset, ['attention_mask', 'labels', 'input_ids', 'name', 'category'])
     return dataset
 
-def collate_train(tokenizer):
-    collate_fn = partial(merge_and_pad_entries, tokenizer.pad_token_id, False)
-    return collate_fn
 
-def collate_eval(tokenizer):
-    collate_fn = partial(merge_and_pad_entries, tokenizer.pad_token_id, True)
-    return collate_fn
+def extract_blocks(output):
+    # Regular expression to match the tags and their content
+    pattern = re.compile(r"<(result|think|search|script)>(.*?)</\1>", re.DOTALL)
 
+    # Find all matches in order
+    matches = pattern.findall(output)
+
+    # Convert matches to a list of dictionaries or tuples if you want
+    blocks = [{'tag': tag, 'content': content.strip()} for tag, content in matches]
+    return blocks
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-path", type=str, default='export/')
-    parser.add_argument("--prompt-path", type=str, default='src/training/prompts/prompt.json')
+    parser.add_argument("--data-path", type=str, default='dataset/')
+    parser.add_argument("--prompt-path", type=str, default='training/prompts/prompt.json')
     parser.add_argument("--model-name", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name
     )
-    dataset = load_and_process(tokenizer, args.data_path, args.prompt_path)
 
+    dataset = load_and_process(tokenizer, args.data_path, args.prompt_path)
     
     for entry in dataset['train']:
+        input_ids = entry['input_ids']
+        for k, label in enumerate(entry['labels']):
+            if label == -100:
+                input_ids[k] = 0
         print(tokenizer.decode(entry["input_ids"]))
-        input()
+        input("continue?")

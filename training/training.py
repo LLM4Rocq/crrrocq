@@ -11,13 +11,13 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from torch.utils.tensorboard import SummaryWriter
 from transformers.optimization import get_cosine_schedule_with_warmup
 
-from src.training.dataset import load_and_process, merge_and_pad_entries
+from training.dataset import load_and_process, merge_and_pad_entries
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-path", type=str, default='export/')
+    parser.add_argument("--data-path", type=str, default='dataset/')
     parser.add_argument("--export", type=str, default='ckpt/')
-    parser.add_argument("--prompt-path", type=str, default='src/training/prompts/prompt.json')
+    parser.add_argument("--prompt-path", type=str, default='training/prompts/prompt.json')
     parser.add_argument("--model-name", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--lr", type=float, default=1e-05, help="Learning rate")
     parser.add_argument("--batch-size", type=int, default=1)
@@ -44,7 +44,7 @@ torch.manual_seed(53)
 torch.cuda.manual_seed(53)
 
 
-def train_loop(model, tokenizer, train_dataloader, eval_dataloader, optimizer, scheduler, args):
+def train_loop(model, tokenizer, train_dataloader, optimizer, scheduler, args):
     model.train()
     loop = tqdm(total=int(len(train_dataloader)*args.num_epochs/args.gradient_accumulation_steps), disable=not accelerator.is_main_process)
     global_step = 0
@@ -86,11 +86,10 @@ def train_loop(model, tokenizer, train_dataloader, eval_dataloader, optimizer, s
                         save_function=accelerator.save,
                         state_dict=accelerator.get_state_dict(model),
                     )
-        # to avoid issue for the last epoch, since children will exit before main process finish retrieving shards
-        accelerator.wait_for_everyone()
         if accelerator.is_main_process:
             tokenizer.save_pretrained(folder_path)
-        
+        # to avoid issue for the last epoch, since children will exit before main process finish retrieving shards
+        accelerator.wait_for_everyone()
     return model
 
 def eval_loop(model, tokenizer, eval_dataloader, filename):
@@ -122,16 +121,8 @@ def main(args):
         collate_fn=lambda x:merge_and_pad_entries(x, tokenizer.pad_token_id, pad_first=False)
     )
 
-    eval_dataloader = torch.utils.data.DataLoader(
-        dataset["validation"],
-        batch_size=args.batch_size,
-        num_workers=4,
-        pin_memory=True,
-        prefetch_factor=2,
-        collate_fn=lambda x:merge_and_pad_entries(x, tokenizer.pad_token_id, pad_first=True)
-    )
-    
-    model = AutoModelForCausalLM.from_pretrained(args.model_name)
+    torch.set_default_device(accelerator.device)
+    model = AutoModelForCausalLM.from_pretrained(args.model_name, attn_implementation="flash_attention_2", torch_dtype=torch.bfloat16, trust_remote_code=True)
     if not model.config.pad_token_id:
         model.config.pad_token_id = model.config.eos_token_id
     model.gradient_checkpointing_enable({"use_reentrant": False})
@@ -141,11 +132,11 @@ def main(args):
     lr_warmup_iters = int(num_training_steps * args.lr_warmup_ratio)
     lr_scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=lr_warmup_iters, num_training_steps=num_training_steps)
 
-    model, optimizer, train_dataloader, eval_dataloader, lr_scheduler = accelerator.prepare(
-        model, optimizer, train_dataloader, eval_dataloader, lr_scheduler
+    model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+        model, optimizer, train_dataloader, lr_scheduler
     )
     
-    model = train_loop(model, tokenizer, train_dataloader, eval_dataloader, optimizer, lr_scheduler, args)
+    model = train_loop(model, tokenizer, train_dataloader, optimizer, lr_scheduler, args)
 
 
 if __name__ == "__main__":
