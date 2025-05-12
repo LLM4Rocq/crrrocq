@@ -11,26 +11,10 @@ import tactics
 #
 # ================================================================================
 
-def lemma_from_goal(init_hyps, goal):
-    """Provided base hypotheses and a goal, returns a lemma corresponding to the goal. The base hypotheses are supposed to be variables already in the context at the beginning of the proof."""
+# TODO: correct the function !!!!!!!
 
-    lemma = "Lemma goal "
-    for hyp in goal.hyps:
-        hyp_names = [n for n in hyp.names if not n in init_hyps]
-        if len(hyp_names) > 0:
-            lemma += "(" + " ".join(hyp_names)
-            lemma += (" := " + hyp.def_ if hyp.def_ else "")
-            lemma += " : " + hyp.ty + ") "
-    lemma += ": " + goal.ty + "."
-
-    return lemma
-
-def separate_haves(pet, theorem_name, theorem_path, tactic_list):
+def enclose_haves(pet, name, path, tactic_list):
     init = False
-
-    # A list of special case:
-    #     homGrp_trans
-    special_case = [False]
 
     new_tactic_list = []
     new_chain = []
@@ -40,196 +24,170 @@ def separate_haves(pet, theorem_name, theorem_path, tactic_list):
         tactic = tactic_list[i]
 
         # Iter through the tactics of the chain
-        for tac in tactic.tactics:
+        for j, tac in enumerate(tactic.tactics):
 
-            # We look if we are proving a have or not
+            # Check if we are in a have proof or not
             if not in_have:
-
-                # If we have a tactic, we scan it using some regex
                 if isinstance(tac, tactics.Tactic):
 
-                    # We check if tac is possibly a `have` or not
+                    # Check if the tactic has to be treated as a have
                     match = re.search(r"(|-|\+|gen|by|\*)(\s|\\n)*have", str(tac))
                     if match and match.start() == 0:
 
-                        # We remove the `let ... in` inside of tac because they hinder us from reading tac properly
+                        # Remove all the let ... in
                         str_tac = str(tac)
                         match = re.search(r"let[\s\S]*?in", str_tac)
                         while match:
                             str_tac = str_tac[:match.start()] + str_tac[match.end():]
                             match = re.search(r"let[\s\S]*?in", str_tac)
 
-                        # We check if tac is a `have` introducing an expression or not
+                        # Remove all the :=:
+                        idx = str_tac.find(":=:")
+                        while idx >= 0:
+                            str_tac = str_tac[:idx] + str_tac[idx+3:]
+                            idx = str_tac.find(":=:")
+
+                        # Check if the have use := or :, if it use :, there is a proof for the have statement
                         if not re.search(r"have[\s\S]*?:=", str_tac):
 
-                            # We check if there is a by after the have
+                            # Check if there is a by in the tactic, if there is not, the proof of the have is done in the following tactics
                             if not re.search(r"have[\s\S]*?by", str(tac)):
 
-                                # If we have not yet initialized the states, we do it now
+                                # Start the proof checking if it had not been initialized yet
+                                # (made to avoid using the pet-server if it is not necessary)
                                 if not init:
-
-                                    init_state = pet.start(theorem_path, theorem_name) # State at the beginning of the proof
-                                    dummy_state = pet.run_tac(init_state, "admit. Lemma dummy : true = true. ") # Dummy state to retrieve a goal with only variables and parameters as hypotheses
-                                    dummy_goals = pet.goals(dummy_state) # The dummy goals
-                                    if len(dummy_goals) != 1:
-                                        raise Exception("Error: there should be only one goal at the beginning.")
-                                    dummy_goal = dummy_goals[0]
-
-                                    # Get the variables and parameters
-                                    init_hyps = []
-                                    for hyp in dummy_goal.hyps:
-                                        for n in hyp.names:
-                                            init_hyps.append(n)
-
-                                    base_state = pet.run_tac(init_state, tactics.tactic_list_to_str(new_tactic_list))
+                                    base_state = pet.start(path, name)
+                                    base_state_checkpoint = 0
                                     init = True
 
-                                # Compute the goals before applying tac
-                                current_proof = str(tactics.Chain(new_chain)) if len(new_chain) > 0 else ""
-                                state = pet.run_tac(base_state, current_proof)
-                                goals_before = pet.goals(state)
+                                # Update the base state so it represents the state of the proof at the chain before the one we are checking
+                                base_state = pet.run_tac(base_state, tactics.tactic_list_to_str(new_tactic_list[base_state_checkpoint:]))
+                                base_state_checkpoint = len(new_tactic_list)
+                                # Compute the number of goals at this point
+                                nbr_previous_goals = len(pet.goals(base_state))
 
-                                # Compute the goals after applying tac
-                                current_proof = str(tactics.Chain(new_chain + [tac]))
-                                state = pet.run_tac(base_state, current_proof)
-                                goals_after = pet.goals(state)
+                                # Look at the number of goals introduced between the start of the chain and the have tactic
+                                if len(new_chain) > 0:
+                                    state = pet.run_tac(base_state, str(tactics.Chain(new_chain)))
+                                    nbr_inter_goals = len(pet.goals(state)) - nbr_previous_goals
+                                else:
+                                    nbr_inter_goals = 0
 
-                                # Retrieve the new goals
-                                new_goals = goals_after[:len(goals_after) - len(goals_before)]
+                                # If there is no new goals introduced, it means the previous part of the chain is focusing on the top goal
+                                # We can split the current chain in two: first the previous part of the chain, then the part after the have
+                                if nbr_inter_goals == 0:
+                                    # We compute the number of goals introduced by the have tactic (it should always be one)
+                                    state = pet.run_tac(base_state, str(tactics.Chain(new_chain + [tac])))
+                                    nbr_new_goals = len(pet.goals(state)) - nbr_previous_goals
 
-                                # If there is no new goals, tac is considered as a simple tactic
-                                if len(new_goals) == []:
+                                    # If for some reason there is no new goals introduced by the have tactic,
+                                    # we continue as if the have tactic was a normal tactic
+                                    if nbr_new_goals > 0:
+
+                                        # If there is a previous part to the chain, we add it to the new tactic-list and compute the new base state
+                                        if len(new_chain) > 0:
+                                            new_tactic_list.append(tactics.Chain(new_chain))
+                                            base_state = pet.run_tac(base_state, str(tactics.Chain(new_chain)))
+                                            base_state_checkpoint += 1
+                                            new_chain = []
+
+                                        # We start the have proof
+                                        tac.lblank = tac.lblank + "(*<have>*) "
+                                        in_have = True
+
                                     new_chain.append(tac)
 
-                                # Otherwise, we can start looking for the proof of the new goals introduced by tac
+                                # If there is new goals introduced by the first part of the chain,
+                                # we consider the set up to be too complicated to handle
+                                # and we proceed as if the have tactic was a normal tactic
+                                elif nbr_inter_goals > 0:
+                                    new_chain.append(tactics.Tactic(tac.lblank + "(*<have2complex>*) ", tac.tactic, " (*</have2complex>*)" + tac.rblank))
+
                                 else:
-                                    in_have = True
-                                    tac.lblank = tac.lblank + "(*<have>*) "
-                                    goals = { "have": tac, "tactic_list": [], "prev": goals_before, "prev_tactic_list": [], "new": new_goals, "new_tactic_list": [] }
+                                    raise Exception("Error: the have tactic is applied on a closed goal.")
 
-                            # If there is a by after the have, the proof of the have is included in tac
+                            # If there is a by in the tactic, the proof of the have is necessarily made of the remaining part of the chain
                             else:
-                                new_chain.append(tactics.Tactic(tac.lblank + "(*<have>*) ", tac.tactic, " (*</have>*)" + tac.rblank))
+                                tac.lblank = tac.lblank + "(*<have>*) "
+                                tactic.tactic_list[-1].rblank = " (*</have>*)" + tactic.tactic_list[-1].rblank
+                                new_chain += tactic.tactic_list[j:]
+                                break
 
-                        # If it is a have introducing an expression, tac is considered as a simple tactic
+                        # If it is a have followed by :=, there is no proof and it should be considered a normal tactic
                         else:
                             new_chain.append(tac)
 
-                    # If there is no have, tac is a simple tactic
+                    # If the tactic does not contain have, we continue iterating through the tactics
                     else:
                         new_chain.append(tac)
 
+                # If the tactic is a bracket, we continue iterating through the tactics
                 elif isinstance(tac, tactics.Bracket):
                     new_chain.append(tac)
 
                 else:
-                    raise Exception("Error: inside of a chain, there is only tactics and brackets")
+                    raise Exception("Error: a chain contains something else than tactics and brackets.")
 
-            # If we are proving a have
+            # If we are in the proof of a have, we have to look if the proof ends within the current chain
             else:
-                goals["tactic_list"].append(tac)
 
-                # If tac is a tactic, we try to apply it to previous and new goals
-                if isinstance(tac, tactics.Tactic):
-                    ntacs = [tac] * len(goals["new"])
-                    ntac = tac
-                    ptacs = [tac] * len(goals["prev"])
-                    ptac = tac
+                # If we encounter a bracket, the first sub-goal should target the top goal before the have, and the rest of the sub-goal should target the goals introduced after the have tactic
+                if isinstance(tac, tactics.Bracket):
+                    if len(tac.subtactics) != 1 + nbr_new_goals:
+                        raise Exception("Error: a bracket does not contain the right amount of sub-goals.")
+                    # The first sub-goal can be put before the have and removed from the bracket
+                    new_tactic_list.append(tactics.Chain(tac.subtactics[0].tactics))
+                    tac.subtactics = tac.subtactics[1:]
 
-                # If tac is a bracket, we apply each sub-bracket to the goal it corresponds
-                elif isinstance(tac, tactics.Bracket):
-                    if len(tac.subtactics) != len(goals["new"]) + len(goals["prev"]):
-                        raise Exception("Error: the number of proof in a proof branching structure should always match the number of goals.")
-                    ntacs = tac.subtactics[:len(goals["new"])]
-                    ntac = tactics.Bracket(tac.lblank, ntacs, tac.rblank)
-                    ptacs = tac.subtactics[len(goals["new"]):]
-                    ptac = tactics.Bracket(tac.lblank, ptacs, tac.rblank)
+                state = pet.run_tac(base_state, str(tactics.Chain(new_chain + [tac])))
+                nbr_new_goals = len(pet.goals(state)) - nbr_previous_goals
 
-                # Update the previous goals by applying the corresponding tactics to them
-                pgoals = []
-                for pgoal, tac in zip(pgoals, ptacs):
-                    state = pet.run_tac(init_state, lemma_from_goal(init_hyps, pgoal) + str(tac) + ".")
-                    pgoals += pet.goals(state)
-                goals["prev_tactic_list"].append(ptac)
-                goals["prev"] = pgoals
-
-                # Update the new goals by applying the corresponding tactics to them
-                ngoals = []
-                for ngoal, tac in zip(ngoals, ntacs):
-                    state = pet.run_tac(init_state, lemma_from_goal(init_hyps, ngoal) + str(tac) + ".")
-                    ngoals += pet.goals(state)
-                goals["new_tactic_list"].append(ntac)
-                goals["new"] = ngoals
-
-                # We check if the proof of have is finished
-                if len(goals["new"]) == 0:
+                # If we have finished the proof, just add the proof to the new tactic-list, update the base state and reset the new chain
+                if nbr_new_goals == 0:
+                    new_chain.append(tac)
+                    new_chain.appendix = " (*</have>*)"
+                    new_tactic_list.append(tactics.Chain(new_chain))
+                    base_state = state
+                    base_state_checkpoint += 1
+                    new_chain = []
                     in_have = False
 
-                    # Create a `have ... by` tactic
-                    have_by = goals["have"]
-                    have_by.tactic += " by "
-                    have_by.tactic += ";".join(map(str, goals["new_tactic_list"]))
-                    have_by.rblanck = " (*</have>*)" + have_by.rblank
+                # Otherwise, continue searching for the proof
+                elif nbr_new_goals > 0:
+                    new_chain.append(tac)
 
-                    # Add the tactics for previous goals to the current chain
-                    new_chain += goals["prev_tactic_list"]
+                else:
+                    raise Exception("Error: some tactic closed the have goal and the following goal.")
 
-                    # Add the `have ... by` tactic to the current chain
-                    new_chain.append(have_by)
-
-        # At the end of a chain, we check if we are in a proof of a have or not
-        nnew_tactic_list = []
+        # If we are still searching for the proof of the have at the end of the chain, we look for the proof in the following chains
         if in_have:
 
-            # To end the proof of have, we apply chains until there is no new goals left
+            # Update the new tactic-list and the base state
+            new_tactic_list.append(tactics.Chain(new_chain))
+            base_state = pet.run_tac(base_state, str(tactics.Chain(new_chain)))
+            base_state_checkpoint += 1
+            new_chain = []
+
+            # While we have not finished the have proof, we look at following chains, updating the new tactic-list and the base state at each chain
             i += 1
-            while i < len(tactic_list) and len(goals["new"]) > 0:
-                goal = goals["new"][0]
-                goals["new"] = goals["new"][1:]
-
-                # We handle special cases
-                if goal.ty.find("and_rel x1 x2 r = (x1 == x2) && r") >= 0 or special_case[0]:
-                    special_case[0] = True
-                    for hyp in goal.hyps:
-                        hyp.ty = hyp.ty.replace("and_rel x1 x2 r = (x1 == x2) && r", "and_rel x1 x2 r = (x1 == x2) && r :> bool")
-                        hyp.ty = hyp.ty.replace("and_rel x0 x3 r0 = (x0 == x3) && r0", "and_rel x0 x3 r0 = (x0 == x3) && r0 :> bool")
-                    goal.ty = goal.ty.replace("and_rel x1 x2 r = (x1 == x2) && r", "and_rel x1 x2 r = (x1 == x2) && r :> bool")
-                    goal.ty = goal.ty.replace("and_rel x0 x3 r0 = (x0 == x3) && r0", "and_rel x0 x3 r0 = (x0 == x3) && r0 :> bool")
-
-                # Compute the new goals
-                state = pet.run_tac(init_state, lemma_from_goal(init_hyps, goal) + str(tactic_list[i]))
-                new_goals = pet.goals(state)
-                nnew_tactic_list.append(tactic_list[i])
-                goals["new"] = new_goals + goals["new"]
+            while i < len(tactics) and nbr_new_goals > 0:
+                base_state = pet.run_tac(base_state, str(tactics[i]))
+                base_state_checkpoint += 1
+                new_goals = pet.goals(base_state)
+                nbr_new_goals = len(new_goals)-nbr_previous_goals
+                new_tactic_list.append(tactics[i])
 
                 i += 1
 
-            # The proof of the have is finished
             in_have = False
 
-            # Add the tactics for previous goals to the current chain
-            new_chain += goals["prev_tactic_list"]
+            # We add the tag at the end of the proof
+            new_tactic_list[-1].appendix = " (*</have>*)"
 
-            # Add the have to the current chain
-            new_chain.append(goals["have"])
-
-            # Add the tactics for new goals to the current chain
-            new_chain += goals["new_tactic_list"]
-
-            # Add the tag at the end of the proof of have
-            nnew_tactic_list[-1].appendix = " (*</have>*)"
-
+        # If we are not in a have proof at the end of a chain, we simply go on to the next chain
         else:
+            new_tactic_list.append(tactics.Chain(new_chain))
+            new_chain = []
             i += 1
-
-        # Update the new tactic-list with the new tactics
-        tactic_list_increment = [tactics.Chain(new_chain)] + nnew_tactic_list
-        new_tactic_list += tactic_list_increment
-        new_chain = []
-
-        # If we have a base state, update it
-        if init:
-            proof_increment = tactics.tactic_list_to_str(tactic_list_increment)
-            base_state = pet.run_tac(base_state, proof_increment)
 
     return new_tactic_list
