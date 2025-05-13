@@ -34,7 +34,7 @@ $ vllm serve --tensor-parallel-size 4 --max-num-seqs 512 --gpu-memory-utilizatio
 python inference-cli.py --theorem foo --file foo.v --workspace examples --model $DSDIR/HuggingFace_Models/Qwen/Qwen3-32B
 
 # To use the mock LLM for interactive testing:
-python mock_inference.py --theorem foo --file foo.v --workspace examples
+python mock_inference.py --theorem foo --file foo.v --workspace examples --beam-size 2
 ```
 
 ### Running Tests
