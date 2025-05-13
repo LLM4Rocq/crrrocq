@@ -7,6 +7,12 @@ from tools import Tool
 from llm import LLM
 
 
+@dataclass
+class Status:
+    success: bool
+    proof: List[str]
+
+
 # ===============================================
 # Parser Class
 # ===============================================
@@ -85,117 +91,108 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "RESULT"
 
-    def process_with_tools(self, llm: LLM, prompt: str, passk: int = 2) -> str:
+    def process_with_tools(self, llm: LLM, prompt: str, beam_size: int = 1) -> Status:
         """
-        Process LLM generation with tool support.
+        Process LLM generation with tool support using beam search.
 
-        This method handles the sequential interaction between the LLM and tools.
-        It generates text until a tool call is detected, executes the tool,
-        and then continues generation with the tool's response.
+        This method handles the sequential interaction between the LLM and tools,
+        exploring multiple possible paths (beam_size) and returning the first successful one.
+
+        Args:
+            llm: The language model to use
+            prompt: The initial prompt
+            beam_size: Number of parallel paths to explore (default: 1)
+
+        Returns:
+            Status object with success flag and proof steps
         """
-        # full_responses = [prompt] * passk
-        current_prompts = [prompt] * passk
-        stops = [False] * passk
-        index_proof = -1
+        # Initialize fixed-size arrays for all beams
+        all_prompts = [prompt] * beam_size
 
+        # Create deep copies of the Coq prover tool for each beam
         if "coq-prover" in self.tools:
-            coq_tools = [self.tools["coq-prover"].deepcopy() for _ in range(passk)]
+            all_coq_tools = [
+                self.tools["coq-prover"].deepcopy() for _ in range(beam_size)
+            ]
+        else:
+            all_coq_tools = [None] * beam_size
+
+        # Track which beams are active
+        active_indices = list(range(beam_size))
 
         # Create a list of stop sequences from tool tags
         stop_sequences = [f"</{tool.tag}>" for tool in self.tools.values()]
 
-        first = True
+        # Continue as long as there are active beams
+        while active_indices:
+            # Collect only the active prompts for the LLM
+            active_prompts = [all_prompts[i] for i in active_indices]
 
-        while not all(stops):
-            # Generate text until a potential tool call
-            responses = llm.generate_batch(current_prompts, stop_sequences)
+            # Generate responses only for active beams
+            responses = llm.generate_batch(active_prompts, stop_sequences)
 
-            new_prompts = [f + r for (f, r) in zip(current_prompts, responses)]
-            print("new_prompts", new_prompts)
+            # New set of active indices for the next iteration
+            new_active_indices = []
 
-            for i, response in enumerate(responses):
-                # Check if there's a tool call
+            # Process each response for active beams
+            for idx_pos, idx in enumerate(active_indices):
+                response = responses[idx_pos]
+
+                # Update the full prompt for this beam
+                all_prompts[idx] += response
+
+                # Check if there's a tool call in the new response only
                 tool_call = self.parser.extract_next_tool_call(response)
-                print(f"response {i}", tool_call)
-
-                if i == 0:
-                    if first:
-                        tool_name = "coq-prover"
-                        tool_input = "intros n."
-                        tool_call = (tool_name, tool_input, 0, len(tool_input))
-                        first = False
-                        print("first", tool_call)
-                    else:
-                        tool_name = "coq-prover"
-                        tool_input = "lia."
-                        tool_call = (tool_name, tool_input, 0, len(tool_input))
-                        print("second", tool_call)
 
                 if not tool_call:
-                    # No tool call found, we're done
-                    stops[i] = True
+                    # No tool call found, this beam is done
+                    continue
+
+                tool_name, tool_input, start_pos, end_pos = tool_call
+
+                # Use the corresponding tool instance for this beam
+                if tool_name == "coq-prover":
+                    current_tool = all_coq_tools[idx]
                 else:
-                    tool_name, tool_input, start_pos, end_pos = tool_call
+                    current_tool = self.tools[tool_name]
 
-                    if tool_name in self.tools:
-                        if tool_name == "coq-prover":
-                            current_tool = coq_tools[i]
+                # Execute the tool
+                tool_result = current_tool.run(tool_input)
+
+                # Format the tool result
+                if tool_name == "search":
+                    result_text = f"Search results: {json.dumps(tool_result, indent=2)}"
+                    # Keep this beam active
+                    all_prompts[
+                        idx
+                    ] += f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
+                    new_active_indices.append(idx)
+                elif tool_name == "coq-prover":
+                    if tool_result["status"] == "success":
+                        if tool_result["is_complete"]:
+                            # Proof is complete, return success immediately
+                            return Status(success=True, proof=current_tool.env.proof)
                         else:
-                            current_tool = self.tools[tool_name]
+                            # Proof is progressing, keep this beam active
+                            result_text = f"Goals: {tool_result['goal']}"
+                            all_prompts[
+                                idx
+                            ] += f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
+                            new_active_indices.append(idx)
+                    else:
+                        # Proof failed, discard this beam (don't add to new_active_indices)
+                        continue
 
-                        # Execute the tool
-                        tool_result = current_tool.run(tool_input)
+            # Update active indices for next iteration
+            active_indices = new_active_indices
 
-                        # Format the tool result
-                        if tool_name == "search":
-                            result_text = (
-                                f"Search results: {json.dumps(tool_result, indent=2)}"
-                            )
-                        elif tool_name == "coq-prover":
-                            if tool_result["status"] == "success":
-                                if tool_result["is_complete"]:
-                                    result_text = "No more goals."
-                                    index_proof = i
-                                    first_proof = current_tool.env.proof
-                                    stops = [True]
-                                    break
-                                else:
-                                    result_text = f"Goals: {tool_result['goal']}"
-                            else:
-                                result_text = f"Error: {tool_result['message']}"
-                                stops[i] = True
-                        else:
-                            result_text = (
-                                f"Tool result: {json.dumps(tool_result, indent=2)}"
-                            )
-
-                        tool_response = (
-                            f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
-                        )
-                        print(f"tool_response {i}: ", tool_input, tool_response)
-
-                        # Update prompts with tool response
-                        if stops[i]:
-                            new_prompts[i] = new_prompts[i] + tool_response
-
-                current_prompts = [
-                    p for (i, p) in enumerate(new_prompts) if not stops[i]
-                ]
-        if index_proof > -1:
-            return first_proof
-        else:
-            return None
+        # If we've reached here, no beam succeeded
+        return Status(success=False, proof=[])
 
 
 # ===============================================
 # Main Agent Class
 # ===============================================
-
-
-@dataclass
-class Status:
-    success: bool
-    proof: List[str]
 
 
 class MathProofAgent:
@@ -211,37 +208,7 @@ class MathProofAgent:
 
     def build_prompt(self) -> str:
         """Build the prompt for the LLM."""
-
-        # Get available tools with their descriptions
-        tool_descriptions = "\n".join(
-            [
-                f"{i+1}. {tool.name}: {tool.description}"
-                for i, tool in enumerate(self.tools.values())
-            ]
-        )
-
-        # Build instructions for tool usage with proper tags
-        tool_instructions = "\n".join(
-            [
-                f"- To use the {tool.name} tool, use: <{tool.tag}>your input</{tool.tag}>"
-                for tool in self.tools.values()
-            ]
-        )
-
         # Build the prompt
-        prompt = f"""You are a formal mathematics proving assistant.
-
-Available tools:
-{tool_descriptions}
-
-How to use tools:
-{tool_instructions}
-
-Here is the theorem I am trying to prove:
-{self.current_proof}
-Please help me progress with this proof. Explain your reasoning step by step.
-"""
-
         prompt = f"""
 You are an analytical and helpful assistant proficient in mathematics as well as in the use of the Coq theorem prover and programming language. You will be provided with a Coq/math-comp theorem and your task is to prove it. This will happen in interaction with a Coq proof engine which will execute the proof steps you give it, one at a time, and provide feedback.
 Your goal is to write proof steps interactively until you manage to find a complete proof for the proposed theorem. You will be able to interact with the proof engine by issuing coq code enclosed in <SCRIPT> </SCRIPT> delimiters.
@@ -294,17 +261,21 @@ Here are the current goals.
 
         return prompt
 
-    def run_proof(self, verbose: bool = False) -> Status:
+    def run_proof(self, beam_size: int = 1, verbose: bool = False) -> Status:
+        """
+        Run the proof using beam search.
+
+        Args:
+            beam_size: Number of parallel paths to explore (default: 1)
+            verbose: Whether to print verbose output (default: False)
+
+        Returns:
+            Status object with success flag and proof steps
+        """
         # Build prompt
         prompt = self.build_prompt()
 
-        # Generate response with tool support
-        response = self.tool_handler.process_with_tools(self.llm, prompt)
+        # Generate response with tool support using beam search
+        response = self.tool_handler.process_with_tools(self.llm, prompt, beam_size)
 
-        if verbose:
-            print("LLM final response:", response)
-
-        if response:
-            return Status(success=True, proof=response)
-        else:
-            return Status(success=False, proof="KO")
+        return response

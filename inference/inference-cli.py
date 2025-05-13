@@ -34,6 +34,18 @@ def main():
         default="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
         help="LLM model name",
     )
+    parser.add_argument(
+        "--beam-size",
+        type=int,
+        default=1,
+        help="Number of parallel paths to explore (beam search width)",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.1,
+        help="Temperature for the LLM generation",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
@@ -56,13 +68,13 @@ def main():
     llm = VLLM(
         api_url=args.llm_url,
         model=args.model,
-        temperature=0.1,
+        temperature=args.temperature,
         verbose=args.verbose,
     )
 
-    # Create agent and run proof
+    # Create agent and run proof with specified beam size
     agent = MathProofAgent(llm, search_tool, coq_tool)
-    status = agent.run_proof(verbose=args.verbose)
+    status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
 
     # Print results
     if status.success:

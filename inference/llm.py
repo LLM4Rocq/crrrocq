@@ -17,6 +17,13 @@ class LLM(ABC):
         """Generate a completion using the LLM."""
         pass
 
+    @abstractmethod
+    def generate_batch(
+        self, prompts: List[str], stop_sequences: Optional[List[str]] = None
+    ) -> List[str]:
+        """Generate completions for multiple prompts."""
+        pass
+
 
 class VLLM(LLM):
     """Implementation of LLM using VLLM's OpenAI-compatible API."""
@@ -24,7 +31,7 @@ class VLLM(LLM):
     def __init__(
         self,
         api_url: str,
-        model: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",  # not used!
+        model: str,
         temperature: float = 1.0,
         top_p: float = 0.9,
         top_k: int = 40,
@@ -41,44 +48,25 @@ class VLLM(LLM):
 
     def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:
         """Generate a completion using VLLM's OpenAI-compatible API."""
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "temperature": self.temperature,
-            # "top_p": self.top_p,
-            # "top_k": self.top_k,
-            "max_tokens": self.max_tokens,
-            "skip_special_tokens": False,
-            "stream": False,
-        }
-        len_prompt = len(prompt)
-
-        if stop_sequences:
-            payload["stop"] = stop_sequences
-
-        response = requests.post(
-            f"{self.api_url}/v1/completions",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(payload),
-        )
-
-        if response.status_code != 200:
-            raise Exception(
-                f"LLM API returned error: {response.status_code} - {response.text}"
-            )
-
-        # llm_responses = [r["text"][len_prompt:] + "</SCRIPT>" for r in response.json()["choices"]]
-        llm_response = response.json()["choices"][0]["text"][
-            len_prompt:
-        ]  # + "</SCRIPT>"
-        if self.verbose:
-            print(f"LLM API response: {llm_response}")
-
-        return llm_response
+        responses = self.generate_batch([prompt], stop_sequences)
+        return responses[0] if responses else ""
 
     def generate_batch(
         self, prompts: List[str], stop_sequences: Optional[List[str]] = None
     ) -> List[str]:
+        """
+        Generate completions for multiple prompts.
+
+        Args:
+            prompts: List of prompts to generate completions for
+            stop_sequences: Optional list of stop sequences
+
+        Returns:
+            List of generated completions corresponding to each prompt
+        """
+        if not prompts:
+            return []
+
         payload = {
             "model": self.model,
             "prompt": prompts,
@@ -89,22 +77,34 @@ class VLLM(LLM):
             "include_stop_str_in_output": True,
             "stream": False,
         }
-        len_prompts = [len(p) for p in prompts]
 
+        # Add optional parameters if specified
         if stop_sequences:
             payload["stop"] = stop_sequences
 
-        responses = requests.post(
-            f"{self.api_url}/v1/completions",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(payload),
-        )
-
-        if responses.status_code != 200:
-            raise Exception(
-                f"LLM API returned error: {responses.status_code} - {responses.text}"
+        try:
+            response = requests.post(
+                f"{self.api_url}/v1/completions",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(payload),
             )
-        # print("json ", responses.json())
-        llm_responses = [r["text"] for r in responses.json()["choices"]]
 
-        return llm_responses
+            if response.status_code != 200:
+                raise Exception(
+                    f"LLM API returned error: {response.status_code} - {response.text}"
+                )
+
+            data = response.json()
+
+            if self.verbose:
+                print(f"LLM API response: {data}")
+
+            # Extract the completions from the response
+            llm_responses = [choice["text"] for choice in data["choices"]]
+
+            return llm_responses
+
+        except Exception as e:
+            print(f"Error in generate_batch: {e}")
+            # Return empty strings in case of error
+            return [""] * len(prompts)
