@@ -203,8 +203,6 @@ class MathProofAgent:
         self.tools = {search_tool.name: search_tool, coq_tool.name: coq_tool}
         self.tool_handler = ToolHandler(parser=Parser(), tools=self.tools)
         self.current_proof = coq_tool.env.thm_code
-        self.coq_tool = coq_tool
-        self.search_tool = search_tool
 
     def build_prompt(self) -> str:
         """Build the prompt for the LLM."""
