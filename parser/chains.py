@@ -1,10 +1,6 @@
-import re
-import json
 from dataclasses import dataclass
-from tqdm import tqdm
-from pytanque import Pytanque
 
-from segments import Segment, Parentheses, Braces, Brackets, LtLtGtGt, add_to_segment_list, str_to_segment_list
+from segments import Segment, Parentheses, Braces, Brackets, LtLtGtGt, str_to_segment_list
 
 # =============================== Raw-chain-lists ================================
 #
@@ -211,13 +207,18 @@ def chain_list_to_str(chain_list: list[Chain]) -> str:
 # Testing
 # ====================
 
+import json
+from tqdm import tqdm
+
 if __name__ == "__main__":
 
-    with open("../dataset/math-comp.json", "r") as f:
-        data = json.load(f)
+    theorems = []
+    with open("../dataset/math-comp.jsonl", "r") as f:
+        for line in f:
+            theorems.append(json.loads(line))
 
-    for name, info in tqdm(data.items()):
-        proof = info["proof"]
+    for theorem in tqdm(theorems):
+        proof = theorem["proof"]
 
         raw_chain_list = proof_to_raw_chain_list(proof)
         reproof = raw_chain_list_to_str(raw_chain_list)

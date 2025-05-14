@@ -1,8 +1,6 @@
-import json
 from typing import Optional
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from tqdm import tqdm
 
 # ================================ Segment-lists =================================
 #
@@ -311,13 +309,18 @@ def segment_list_to_str(segment_list: list[Segment]) -> str:
 # Testing
 # ====================
 
+import json
+from tqdm import tqdm
+
 if __name__ == "__main__":
 
-    with open("../dataset/math-comp.json", "r") as f:
-        data = json.load(f)
+    theorems = []
+    with open("../dataset/math-comp.jsonl", "r") as f:
+        for line in f:
+            theorems.append(json.loads(line))
 
-    for name, info in tqdm(data.items()):
-        proof = info["proof"]
+    for theorem in tqdm(theorems):
+        proof = theorem["proof"]
         segment_list = str_to_segment_list(proof)
         reproof = segment_list_to_str(segment_list)
         assert (proof == reproof)
