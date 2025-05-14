@@ -3,4 +3,4 @@
 .python-version
 .envrc
 __pycache__/
-dataset
+dataset/math-comp
