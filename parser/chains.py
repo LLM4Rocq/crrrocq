@@ -203,6 +203,22 @@ def proof_to_chain_list(proof: str) -> list[Chain]:
 def chain_list_to_str(chain_list: list[Chain]) -> str:
     return "".join(map(str, chain_list))
 
+def copy_str(s: str) -> str:
+    return (s + ' ')[:-1]
+
+def copy_chain(chain: Chain) -> Chain:
+    new_tactics = []
+    for tactic in chain.tactics:
+        if isinstance(tactic, Tactic):
+            new_tactics.append(Tactic(copy_str(tactic.tactic)))
+        elif isinstance(tactic, BranchTactic):
+            new_branch_chain = list(map(copy_chain, tactic.chains))
+            new_tactics.append(BranchTactic(copy_str(tactic.prefix), new_branch_chain, copy_str(tactic.suffix)))
+    return Chain(new_tactics, copy_str(chain.suffix))
+
+def copy_chain_list(chain_list: list[Chain]) -> list[Chain]:
+    return list(map(copy_chain, chain_list))
+
 # ====================
 # Testing
 # ====================
