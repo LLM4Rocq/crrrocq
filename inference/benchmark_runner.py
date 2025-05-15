@@ -139,23 +139,21 @@ class BenchmarkRunner:
         )
 
         try:
-            # Set timeout using signal (Unix only)
-            if sys.platform != "win32":
-                import signal
+            # Set timeout using signal
+            import signal
 
-                def timeout_handler(signum, frame):
-                    raise TimeoutError(f"Timeout after {self.timeout} seconds")
+            def timeout_handler(signum, frame):
+                raise TimeoutError(f"Timeout after {self.timeout} seconds")
 
-                # Set timeout
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(self.timeout)
+            # Set timeout
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(self.timeout)
 
             # Run the prover
             success, proof = prover.run_pass_at_k()
 
             # Cancel timeout
-            if sys.platform != "win32":
-                signal.alarm(0)
+            signal.alarm(0)
 
             end_time = time.time()
             duration = end_time - start_time
