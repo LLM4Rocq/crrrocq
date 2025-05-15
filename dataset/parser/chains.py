@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from segments import Segment, Parentheses, Braces, Brackets, LtLtGtGt, str_to_segment_list
+from .segments import Segment, Parentheses, Braces, Brackets, LtLtGtGt, str_to_segment_list
 
 # =============================== Raw-chain-lists ================================
 #
@@ -218,6 +218,15 @@ def copy_chain(chain: Chain) -> Chain:
 
 def copy_chain_list(chain_list: list[Chain]) -> list[Chain]:
     return list(map(copy_chain, chain_list))
+
+def number_of_tactics_chain(chain: Chain) -> Chain:
+    res = 0
+    for tactic in chain.tactics:
+        if isinstance(tactic, Tactic):
+            res += 1
+        elif isinstance(tactic, BranchTactic):
+            res += sum(map(number_of_tactics_chain, tactic.chains))
+    return res
 
 # ====================
 # Testing

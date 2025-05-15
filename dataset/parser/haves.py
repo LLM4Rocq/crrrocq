@@ -2,7 +2,7 @@ import re
 from typing import Tuple
 from pytanque import Pytanque, State, PetanqueError
 
-from chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_str, proof_to_chain_list
+from .chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_str, proof_to_chain_list
 
 # ==================================== haves =====================================
 #
@@ -327,7 +327,7 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enclose all have with a proof in a dataset of theorems.")
-    parser.add_argument("--dataset", type=str, default="../dataset/math-comp_bm25.jsonl", help="The name or path to the dataset, default is '../dataset/math-comp_bm25.jsonl'")
+    parser.add_argument("--dataset", type=str, default="../math-comp_bm25.jsonl", help="The name or path to the dataset, default is '../math-comp_bm25.jsonl'")
     parser.add_argument("--addrress", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
     parser.add_argument("--port", type=int, default=8765, help="Port of the petanque server, default is 8765")
     args = parser.parse_args()
