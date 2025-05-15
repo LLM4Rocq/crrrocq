@@ -238,82 +238,71 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
     return init, new_chain_list
 
 # ====================
-# Testing
+# Construction
 # ====================
 
 import json
+import argparse
 from tqdm import tqdm
+from pathlib import Path
 
-error_theorems = [
-    "nz2",              # Some notation is unknown in the scope
-    "leqif_mul",        # A have with a trivial proof appears in a by chain
-    "redivp_eq",        # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "rdivpp",           # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "edivpP",           # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "edivp_eq",         # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "dvdpP",            # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "coprimepP",        # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "modpZl",           # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "divpZl",           # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "modpD",            # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "divpD",            # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "divp_pmul2l",      # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "divp_divl",        # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "divpZr",           # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "normN1",           # Two theorems are defined with the same name in the same file, only one of the two is taken into account
-    "exprNn_pchar",     # A definition overshadow this theorem
-    "exprDn_pchar",     # A definition overshadow this theorem
-    "invrM",            # A definition overshadow this theorem
-    "invrZ",            # A definition overshadow this theorem
-    "eq_holds",         # A definition overshadow this theorem
-    "prim_order_exists" # A definition overshadow this theorem
-]
+# Theorems from math-comp raising an error:
+#
+# nz2                    Some notation is unknown in the scope
+# leqif_mul              A have with a trivial proof appears in a by chain
+# redivp_eq              Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# rdivpp                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# edivpP                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# edivp_eq               Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# dvdpP                  Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# coprimepP              Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# modpZl                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# divpZl                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# modpD                  Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# divpD                  Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# divp_pmul2l            Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# divp_divl              Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# divpZr                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# normN1                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
+# exprNn_pchar           A definition overshadow this theorem
+# exprDn_pchar           A definition overshadow this theorem
+# invrM                  A definition overshadow this theorem
+# invrZ                  A definition overshadow this theorem
+# eq_holds               A definition overshadow this theorem
+# prim_order_exists      A definition overshadow this theorem
 
-if __name__ == "__main__":
+def make(dataset: str, petanque_address: str, petanque_port: int):
+    """Enclose all the have with a proof of a dataset."""
+
+    datafile = Path(dataset)
+    if not datafile.exists():
+        raise Exception(f"Error: {datafile} doesn't exist.")
+    savefile = Path(dataset.parent, dataset.stem + "_have.jsonl")
+    if not savefile.exists():
+        savefile.touch()
+
+    pet = Pytanque(petanque_address, petanque_port)
+    pet.connect()
 
     theorems = []
-    with open("../dataset/math-comp.jsonl", "r") as f:
+    with open(datafile, "r") as f:
         for line in f:
             theorems.append(json.loads(line))
 
     theorems_with_have = []
-    with open("../dataset/math-comp_have.jsonl", "r") as f:
+    with open(savefile, "r") as f:
         for line in f:
             theorems_with_have.append(json.loads(line))
 
     _theorems_with_have = [(t["name"], t["filepath"], t["statement"]) for t in theorems_with_have]
     theorems_without_have = [t for t in theorems if not (t["name"], t["filepath"], t["statement"]) in _theorems_with_have]
 
-    pet = Pytanque("127.0.0.1", 8765)
-    pet.connect()
+    f = open(savefile, "a")
 
-    # theorem = [t for t in theorems_without_have if t["name"] == "leqif_mul"][0]
-    # path = "../dataset/" + theorem["filepath"]
-    # proof = theorem["proof"]
-    # print(proof)
-    # chain_list = proof_to_chain_list(proof)
-    # modified, chain_list = enclose_haves(pet, theorem["name"], path, chain_list)
-    # reproof = chain_list_to_str(chain_list)
-    # print("MODIFIED:", modified)
-    # print(reproof)
-
-    # if modified:
-    #     state = pet.start(path, theorem)
-    #     pet.run_tac(state, reproof)
-    # else:
-    #     assert (proof == reproof)
-
-    # TODO: handle nz2, leqif_mul
-    # TODO: handle redivp_eq, rdivpp, edivpP, edivp_eq, dvdpP, coprimepP, modpZl, divpZl, modpD, divpD, divp_pmul2l, divp_divl, divpZr, normN1: several lemmas of the same name in the same file
-    # TODO: handle lemmas overshadowed by later definitions
-        # ssralg.v: exprNn_pchar, exprDn_pchar, invrM, invrZ, eq_holds
-        # poly.v: prim_order_exists
-
-    f = open("../dataset/math-comp_have.jsonl", "a")
-
+    error_theorems = []
     for theorem in tqdm(theorems_without_have):
         name = theorem["name"]
-        path = "../dataset/" + theorem["filepath"]
+        path = Path(dataset, theorem["filepath"])
         proof = theorem["proof"]
         chain_list = proof_to_chain_list(proof)
 
@@ -330,8 +319,16 @@ if __name__ == "__main__":
             theorem["proof"] = reproof
             f.write(json.dumps(theorem) + '\n')
         except PetanqueError as err:
-            print("PetanqueError:", name)
+            error_theorems.append(name + " -> " + err.message)
         except Exception as err:
-            print("Error:", name)
+            error_theorems.append(name + " -> " + err.args[0])
 
     f.close()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Enclose all have with a proof in a dataset of theorems.")
+    parser.add_argument("--dataset", type=str, default="../dataset/math-comp_bm25.jsonl", help="The name or path to the dataset, default is '../dataset/math-comp_bm25.jsonl'")
+    parser.add_argument("--addrress", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
+    parser.add_argument("--port", type=int, default=8765, help="Port of the petanque server, default is 8765")
+    args = parser.parse_args()
+    make(args.dataset, args.address, args.port)
