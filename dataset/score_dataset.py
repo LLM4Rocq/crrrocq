@@ -43,7 +43,7 @@ def make(dataset, scorer):
     datafile = Path(dataset)
     if not datafile.exists():
         raise Exception(f"Error: {datafile} doesn't exist.")
-    savefile = Path(dataset.parent, dataset.stem + "_" + scorer + ".jsonl")
+    savefile = Path(datafile.parent, datafile.stem + "_" + scorer + ".jsonl")
 
     if savefile.exists():
         print("Scored dataset already here.")
@@ -72,6 +72,6 @@ def make(dataset, scorer):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Score a dataset of Rocq theorems according to some metric.")
     parser.add_argument("--dataset", type=str, default="math-comp.jsonl", help="The path of the dataset, default is 'math-comp.jsonl'")
-    parser.add_argument("--scorer", type=str, default="bm25", help="The scoring algorithm to use, it can be chosen among: " + ",".join(scorers.keys()))
+    parser.add_argument("--scorer", type=str, default="bm25", help="The scoring algorithm to use, it can be chosen among: " + ", ".join(scorers.keys()))
     args = parser.parse_args()
     make(args.dataset, args.scorer)
