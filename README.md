@@ -179,14 +179,14 @@ No more goals. The proof is finished.
 ## Training
 
 To train the model, we first follow the ["s1: simple test-time scaling"](https://arxiv.org/pdf/2501.19393) paper.
-We select 1000 high quality examples from the math-comp library and finetune an openweight model on these examples. 
+We select 1000 high quality examples from the math-comp library and finetune an openweight model on these examples.
 
 
 ## Benchmarks
 
-- [] split of the math-comp dataset (selected for difficulty and diversity)
-- [] [MiniF2F-Rocq](https://arxiv.org/pdf/2501.19393) a translation of the MiniF2F dataset (highschool exercices) in Rocq
-- [] [BB4 / BB5](https://github.com/ccz181078/Coq-BB5) recent proofs for the Busy Beaver problem.
+- [ ] split of the math-comp dataset (selected for difficulty and diversity)
+- [ ] [MiniF2F-Rocq](https://arxiv.org/pdf/2501.19393) a translation of the MiniF2F dataset (highschool exercices) in Rocq
+- [ ] [BB4 / BB5](https://github.com/ccz181078/Coq-BB5) recent proofs for the Busy Beaver problem.
 
 ## Getting started
 
