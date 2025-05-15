@@ -51,7 +51,7 @@ def proof_to_raw_chain_list(proof: str) -> list[str]:
         p = find_point(proof)
 
     if len(proof) > 0:
-        raise Exception("Error: a proof should always end with a point.")
+        raw_chain_list.append(proof)
     return raw_chain_list
 
 def raw_chain_list_to_str(raw_chain_list: list[str]) -> str:
