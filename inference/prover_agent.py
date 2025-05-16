@@ -79,7 +79,7 @@ class CoqProofManager:
         result = coq_tool.run(script)
 
         if verbose:
-            print("Script result:", result)
+            print("Script:", script, "Result:", result)
 
         # Check if the proof is complete
         if result["status"] == "success":
