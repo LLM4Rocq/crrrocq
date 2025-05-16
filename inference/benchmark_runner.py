@@ -36,6 +36,7 @@ class BenchmarkRunner:
         timeout: int = 300,  # 5 minutes per theorem
         parallel: bool = False,
         verbose: bool = False,
+        context: bool = False,
     ):
         """
         Initialize the benchmark runner.
@@ -72,6 +73,7 @@ class BenchmarkRunner:
         self.timeout = timeout
         self.parallel = parallel
         self.verbose = verbose
+        self.context = context
 
         # Connect to Pytanque
         self.pet = Pytanque(host, port)
@@ -125,6 +127,7 @@ class BenchmarkRunner:
             workspace=self.workspace_dir,
             file=filename,
             theorem=theorem_name,
+            context=self.context,
         )
 
         # Create prover
@@ -426,6 +429,9 @@ def main():
         action="store_true",
         help="Enable verbose output",
     )
+    parser.add_argument(
+        "--context", action="store_true", help="Include context in prompts"
+    )
 
     args = parser.parse_args()
 
@@ -444,6 +450,7 @@ def main():
         port=args.port,
         timeout=args.timeout,
         verbose=args.verbose,
+        context=args.context,
     )
 
     # Run benchmark
