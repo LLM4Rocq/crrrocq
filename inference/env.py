@@ -31,9 +31,9 @@ def pp_goals(gs: list[Goal]) -> str:
 
 
 """ def get_context(doc: str, thm: str) -> str:
-    """
+    
     Remove all proof to get context
-    """
+    
     pattern = r"Proof\.(.*?)(Qed|Admitted|Abort)\."
     cleaned_text = re.sub(pattern, "", doc, flags=re.DOTALL)
     # Replace multiple newlines with a single newline
@@ -43,6 +43,7 @@ def pp_goals(gs: list[Goal]) -> str:
         if thm in l:
             return "\n".join(lines[:i])
     return cleaned_text """
+
 
 def get_context(doc: str, thm: str) -> str:
     """
@@ -56,13 +57,14 @@ def get_context(doc: str, thm: str) -> str:
     for i, l in enumerate(lines):
         if thm in l:
             # Find the end of the theorem statement by looking for the next empty line or "Proof."
-            for j in range(i+1, len(lines)):
+            for j in range(i + 1, len(lines)):
                 if lines[j].strip() == "" or lines[j].strip().startswith("Proof."):
                     # Return everything up to and including the theorem statement
                     return "\n".join(lines[:j])
             # If we don't find a clear end, just return up to and including this line
-            return "\n".join(lines[:i+1])
+            return "\n".join(lines[: i + 1])
     return cleaned_text
+
 
 class Env(ABC):
     """
