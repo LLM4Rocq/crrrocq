@@ -69,7 +69,7 @@ class SearchTool(Tool):
 class CoqProverTool(Tool):
     """Tool for interacting with the Coq theorem prover."""
 
-    def __init__(self, pet, workspace, file, theorem):
+    def __init__(self, pet, workspace, file, theorem, context=False):
         """
         Initialize the Coq prover tool.
 
@@ -84,7 +84,8 @@ class CoqProverTool(Tool):
         self.workspace = workspace
         self.file = file
         self.theorem = theorem
-        self.env = ScriptEnv(pet, workspace, file, theorem)
+        self.env = ScriptEnv(pet, workspace, file, theorem, context=context)
+        self.context = self.env.context
 
     @property
     def name(self) -> str:

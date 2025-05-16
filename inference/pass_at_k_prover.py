@@ -43,6 +43,7 @@ class PassAtKProver:
         self.verbose = verbose
         self.goals_tag = goals_tag
         self.result_tag = result_tag
+        self.context = coq_tool.env.context
 
     def run_pass_at_k(self) -> Tuple[bool, List[str]]:
         """
@@ -62,7 +63,9 @@ class PassAtKProver:
 
         # Create initial prompts for each path
         prompts = [
-            self.llm.build_prompt(tool.env.thm_code, tool.tag, self.goals_tag)
+            self.llm.build_prompt(
+                tool.env.thm_code, tool.tag, self.goals_tag, self.context
+            )
             for tool in coq_tools
         ]
 
@@ -162,6 +165,9 @@ def main():
         "--result-tag", type=str, default="r", help="Tag to use for result output"
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--context", action="store_true", help="Include context in prompts"
+    )
 
     args = parser.parse_args()
 
@@ -176,6 +182,7 @@ def main():
         workspace=args.workspace,
         file=args.file,
         theorem=args.theorem,
+        context=args.context,
     )
 
     # Setup LLM

@@ -46,7 +46,9 @@ class VLLM(LLM):
         self.max_tokens = max_tokens
         self.verbose = verbose
 
-    def build_prompt(self, goals: str, coq_tag: str, goals_tag: str = "GOALS") -> str:
+    def build_prompt(
+        self, goals: str, coq_tag: str, context: str = "", goals_tag: str = "GOALS"
+    ) -> str:
         """
         Build the initial prompt for the LLM.
 
@@ -100,6 +102,8 @@ rewrite (I n1).
 
 
 Ready?
+
+{context}
 
 Here are the current goals.
 <{goals_tag}>
