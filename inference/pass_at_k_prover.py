@@ -64,7 +64,7 @@ class PassAtKProver:
         # Create initial prompts for each path
         prompts = [
             self.llm.build_prompt(
-                tool.env.thm_code, tool.tag, self.goals_tag, self.context
+                tool.env.thm_code, tool.tag, self.context, self.goals_tag
             )
             for tool in coq_tools
         ]
