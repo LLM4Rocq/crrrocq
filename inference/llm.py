@@ -36,7 +36,7 @@ class VLLM(LLM):
         temperature: float = 1.0,
         top_p: float = 0.9,
         top_k: int = 40,
-        max_tokens: int = 2048,
+        max_tokens: int = 16384,
         verbose: bool = False,
         log_dir: str = "llm_logs",
         log_to_console: bool = False,
