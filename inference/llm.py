@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Union, Tuple
 import requests
 from dataclasses import dataclass
+from llm_logger import LLMLogger
 
 # ===============================================
 # LLM Interface and Implementations
@@ -37,6 +38,8 @@ class VLLM(LLM):
         top_k: int = 40,
         max_tokens: int = 2048,
         verbose: bool = False,
+        log_dir: str = "llm_logs",
+        log_to_console: bool = False,
     ):
         self.api_url = api_url
         self.model = model
@@ -45,6 +48,11 @@ class VLLM(LLM):
         self.top_k = top_k
         self.max_tokens = max_tokens
         self.verbose = verbose
+
+        # Initialize the LLM logger
+        self.logger = LLMLogger(
+            log_dir=log_dir, enabled=True, log_to_console=log_to_console or verbose
+        )
 
     def build_prompt(
         self, goals: str, coq_tag: str, context: str = "", goals_tag: str = "GOALS"
@@ -166,6 +174,22 @@ Here are the current goals.
 
             # Extract the completions from the response
             llm_responses = [choice["text"] for choice in data["choices"]]
+
+            # Log the interaction
+            metadata = {
+                "model": self.model,
+                "temperature": self.temperature,
+                "max_tokens": self.max_tokens,
+                "stop_sequences": stop_sequences,
+            }
+
+            # Log the batch interaction
+            self.logger.log_batch_interaction(
+                prompts=prompts,
+                responses=llm_responses,
+                metadata=metadata,
+                prefix=self.model.split("/")[-1],  # Use model name as prefix
+            )
 
             return llm_responses
 

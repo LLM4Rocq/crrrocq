@@ -37,6 +37,7 @@ class BenchmarkRunner:
         parallel: bool = False,
         verbose: bool = False,
         context: bool = False,
+        llm_log_dir: str = "llm_logs",
     ):
         """
         Initialize the benchmark runner.
@@ -90,6 +91,16 @@ class BenchmarkRunner:
 
         # Results storage
         self.results = {}
+
+        # Setup LLM
+        self.llm = VLLM(
+            api_url=llm_url,
+            model=model,
+            temperature=temperature,
+            verbose=verbose,
+            log_dir=llm_log_dir,
+            log_to_console=verbose,
+        )
 
     def discover_theorems(self) -> List[Tuple[str, str]]:
         """
@@ -433,6 +444,14 @@ def main():
         "--context", action="store_true", help="Include context in prompts"
     )
 
+    # Add logging argument
+    parser.add_argument(
+        "--llm-log-dir",
+        type=str,
+        default="llm_logs",
+        help="Directory to store LLM interaction logs",
+    )
+
     args = parser.parse_args()
 
     # Create and run benchmark
@@ -451,6 +470,7 @@ def main():
         timeout=args.timeout,
         verbose=args.verbose,
         context=args.context,
+        llm_log_dir=args.llm_log_dir,
     )
 
     # Run benchmark

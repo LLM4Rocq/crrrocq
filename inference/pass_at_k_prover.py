@@ -169,6 +169,14 @@ def main():
         "--context", action="store_true", help="Include context in prompts"
     )
 
+    # Add logging argument
+    parser.add_argument(
+        "--llm-log-dir",
+        type=str,
+        default="llm_logs",
+        help="Directory to store LLM interaction logs",
+    )
+
     args = parser.parse_args()
 
     # Setup Pytanque
@@ -191,6 +199,8 @@ def main():
         model=args.model,
         temperature=args.temperature,
         verbose=args.verbose,
+        log_dir=args.llm_log_dir,
+        log_to_console=args.verbose,
     )
 
     # Create and run the pass@k prover
