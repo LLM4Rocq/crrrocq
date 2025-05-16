@@ -103,8 +103,16 @@ class Env(ABC):
 
 
 class ScriptEnv(Env):
-    def __init__(self, pet: Pytanque, workspace: str, file: str, thm: str):
-        super().__init__(pet, workspace, file, thm)
+    def __init__(
+        self,
+        pet: Pytanque,
+        workspace: str,
+        file: str,
+        thm: str,
+        context=False,
+        verbose=False,
+    ):
+        super().__init__(pet, workspace, file, thm, context, verbose)
         self.state: State = self.initial_state
         self.thm_code = pp_goals(self.pet.goals(self.state))
 
