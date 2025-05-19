@@ -97,7 +97,7 @@ class PassAtKProver:
                 if result.success and not result.is_complete:
                     # Add the response and new goals to the conversation
                     prompts[i] += (
-                        result.proof  # responses[i]
+                        f"\n<{self.result_tag}>\n{result.proof}\n</{self.result_tag}>\n"  # responses[i]
                         + f"\n<{self.goals_tag}>\n{result.new_goals}\n</{self.goals_tag}>\n"
                     )
                     if self.verbose:
@@ -162,7 +162,7 @@ def main():
         "--goals-tag", type=str, default="GOALS", help="XML tag to use for goals"
     )
     parser.add_argument(
-        "--result-tag", type=str, default="r", help="Tag to use for result output"
+        "--result-tag", type=str, default="SCRIPT", help="Tag to use for result output"
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument(
