@@ -1,5 +1,6 @@
 import re
-from typing import Tuple
+from typing import Optional, Tuple
+from dataclasses import dataclass
 from pytanque import Pytanque, State, PetanqueError
 
 from .chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_str, proof_to_chain_list
@@ -238,6 +239,49 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
     return init, new_chain_list
 
 # ====================
+# Parsing
+# ====================
+
+@dataclass
+class HaveTactic:
+    prefix: str
+    intro: str
+    statement: str
+    infix: str
+    proof: str
+    suffix: str
+
+    def __str__(self):
+        return self.prefix + self.intro + self.statement + self.infix + self.proof + self.suffix
+
+    def no_proof(self):
+        return self.prefix + self.intro + self.statement + " [...] " + self.suffix
+
+def parse_have_tags(text: str) -> Optional[re.Match]:
+    """Search for have tags in a text."""
+    pattern = re.compile(f"(?<prefix>)\\s*{open_tag}\\s*)(?<body>[\\s\\S]*?)(?<suffix>\\s*{close_tag}\\s*)")
+    return pattern.search(text)
+
+def parse_have_tactics(text: str) -> list:
+    """Parse all have tactics in some text."""
+    parsed_text = []
+    pattern = re.compile(r"(?<intro>[\s\S]*?:\s*)(?<statement>[\s\S]*?)(?<infix>\s*(\.\s|;|by)\s*)(?<proof>[\s\S]*)")
+
+    match = parse_have_tags(text)
+    while match:
+        if match.start() > 0:
+            parsed_text.append(text[:match.start()])
+        prefix, body, suffix = match.group("prefix"), match.group("body"), match.group("suffix")
+        bmatch = pattern.match(body)
+        have_tactic = HaveTactic(prefix, bmatch.group("intro"), bmatch.group("statement"), bmatch.group("infix"), bmatch.group("proof"), suffix)
+        text = text[match.end():]
+        match = parse_have_tags(text)
+
+    if len(text) > 0:
+        parsed_text.append(text)
+    return parsed_text
+
+# ====================
 # Construction
 # ====================
 
@@ -275,9 +319,10 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
     """Enclose all the have with a proof of a dataset."""
 
     datafile = Path(dataset)
+    dataset = dataset.split("_", maxsplit=1)[0]
     if not datafile.exists():
         raise Exception(f"Error: {datafile} doesn't exist.")
-    savefile = Path(dataset.parent, dataset.stem + "_have.jsonl")
+    savefile = Path(datafile.parent, datafile.stem + "_have.jsonl")
     if not savefile.exists():
         savefile.touch()
 
@@ -328,7 +373,7 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enclose all have with a proof in a dataset of theorems.")
     parser.add_argument("--dataset", type=str, default="../math-comp_bm25.jsonl", help="The name or path to the dataset, default is '../math-comp_bm25.jsonl'")
-    parser.add_argument("--addrress", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
+    parser.add_argument("--address", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
     parser.add_argument("--port", type=int, default=8765, help="Port of the petanque server, default is 8765")
     args = parser.parse_args()
     make(args.dataset, args.address, args.port)
