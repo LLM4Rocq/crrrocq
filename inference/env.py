@@ -139,6 +139,7 @@ class ScriptEnv(Env):
         self.added_tac = False
 
     def exec(self, tactics):
+        self.added_tac = False
         self.n_interactions += 1
         for tac in tactics:
             if self.verbose:
