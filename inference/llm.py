@@ -68,7 +68,7 @@ class VLLM(LLM):
         Returns:
             The constructed prompt
         """
-        return tactic_prompts.basisc_prompts.format(
+        return tactic_prompts.basic_prompt.format(
             coq_tag=coq_tag, goals_tag=goals_tag, goals=goals, context=context
         )
 
