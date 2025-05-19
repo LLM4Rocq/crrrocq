@@ -96,11 +96,17 @@ class PassAtKProver:
             for i, result in enumerate(results):
                 if result.success and not result.is_complete:
                     # Add the response and new goals to the conversation
-                    prompts[i] += (
-                        f"\n<{self.result_tag}>\n{result.proof}\n</{self.result_tag}>\n"
-                        + responses[i]
-                        + f"\n<{self.goals_tag}>\n{result.new_goals}\n</{self.goals_tag}>\n"
+                    prompts[i] = self.llm.build_prompt(
+                        goals=result.new_goals,
+                        coq_tag=tool.tag,
+                        context=self.context,
+                        goals_tag=self.goals_tag,
                     )
+                    # += (
+                    #    f"\n<{self.result_tag}>\n{result.proof}\n</{self.result_tag}>\n"
+                    #    + responses[i]
+                    #    + f"\n<{self.goals_tag}>\n{result.new_goals}\n</{self.goals_tag}>\n"
+                    # )
                     if self.verbose:
                         print(f"Path {i} made progress, updating prompt.")
                 # Otherwise, keep the same prompt for this path (retry)

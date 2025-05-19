@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional, Union, Tuple
 import requests
 from dataclasses import dataclass
 from llm_logger import LLMLogger
+from prompts import tactic_prompts
 
 # ===============================================
 # LLM Interface and Implementations
@@ -67,57 +68,9 @@ class VLLM(LLM):
         Returns:
             The constructed prompt
         """
-        return f"""
-You are an analytical and helpful assistant proficient in mathematics as well as in the use of the Coq theorem prover and programming language. You will be provided with a Coq/math-comp theorem and your task is to prove it. This will happen in interaction with a Coq proof engine which will execute the proof steps you give it, one at a time, and provide feedback.
-Your goal is to write proof steps interactively until you manage to find a complete proof for the proposed theorem. You will be able to interact with the proof engine by issuing coq code enclosed in <{coq_tag}> </{coq_tag}> delimiters.
-Do not attempt to directly write the complete proof, but rather only try to execute simple steps or tactics to make incremental progress.
-
-At each step you will be provided with the current list of goals inside <{goals_tag}> </{goals_tag}> delimiters.
-Please explain your reasoning before proposing a Coq proof inside <{coq_tag}> </{coq_tag}> delimiters.
-Remember to close all your delimiters, for instance with a </{coq_tag}>.
-DO NOT RESTATE THE THEOREM OR THE CURRENT GOAL.
-
-Example 1.
-
-Here are the current goals.
-<{goals_tag}>
-n, m, p : nat
-|- nat, n + (m + p) = m + (n + p)
-</{goals_tag}> 
-
-and here is one possible proof step.
-
-<{coq_tag}>
-rewrite Nat.add_assoc.
-</{coq_tag}>
-
-Example 2.
-Here are the current goals.
-
-<{goals_tag}>
-f nat -> nat 
-I forall n : nat, n = f (f n) 
-n1n2 nat 
-H f n1 = f n2 
-|- n1 = n2
-</{goals_tag}>
-
-and here is one possible proof step.
-
-<{coq_tag}>
-rewrite (I n1).
-</{coq_tag}>
-
-
-Ready?
-
-{context}
-
-Here are the current goals.
-<{goals_tag}>
-{goals}
-</{goals_tag}>
-"""
+        return tactic_prompts.basisc_prompt.format(
+            coq_tag=coq_tag, goals_tag=goals_tag, goals=goals, context=context
+        )
 
     def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:
         """Generate a completion using VLLM's OpenAI-compatible API."""
