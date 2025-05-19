@@ -169,4 +169,4 @@ class CoqProofManager:
         # Track which beams are active
         active_indices = list(range(beam_size))
 
-        return coq_tools, active_indices
+        return coq_tools, self.coq_tool.tag  # active_indices

@@ -56,7 +56,7 @@ class PassAtKProver:
             print(f"Starting pass@k with k={self.k}")
 
         # Get initial state from the proof manager
-        coq_tools, _ = self.proof_manager.get_initial_state(self.k)
+        coq_tools, tool_tag = self.proof_manager.get_initial_state(self.k)
 
         # Get stop sequences for the LLM
         stop_sequences = self.proof_manager.get_stop_sequences()
@@ -98,7 +98,7 @@ class PassAtKProver:
                     # Add the response and new goals to the conversation
                     prompts[i] = self.llm.build_prompt(
                         goals=result.new_goals,
-                        coq_tag=tool.tag,
+                        coq_tag=tool_tag,
                         context=self.context,
                         goals_tag=self.goals_tag,
                     )
