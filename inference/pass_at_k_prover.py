@@ -97,7 +97,8 @@ class PassAtKProver:
                 if result.success and not result.is_complete:
                     # Add the response and new goals to the conversation
                     prompts[i] += (
-                        f"\n<{self.result_tag}>\n{result.proof}\n</{self.result_tag}>\n"  # responses[i]
+                        f"\n<{self.result_tag}>\n{result.proof}\n</{self.result_tag}>\n"
+                        + responses[i]
                         + f"\n<{self.goals_tag}>\n{result.new_goals}\n</{self.goals_tag}>\n"
                     )
                     if self.verbose:
