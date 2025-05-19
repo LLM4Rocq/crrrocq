@@ -30,19 +30,19 @@ def pp_goals(gs: list[Goal]) -> str:
     return "\n".join(pp_goal(g) for g in gs)
 
 
-""" def get_context(doc: str, thm: str) -> str:
-    
-    Remove all proof to get context
-    
-    pattern = r"Proof\.(.*?)(Qed|Admitted|Abort)\."
-    cleaned_text = re.sub(pattern, "", doc, flags=re.DOTALL)
-    # Replace multiple newlines with a single newline
-    cleaned_text = re.sub(r"\n+", "\n", cleaned_text)
-    lines = cleaned_text.split("\n")
-    for i, l in enumerate(lines):
-        if thm in l:
-            return "\n".join(lines[:i])
-    return cleaned_text """
+# def get_context(doc: str, thm: str) -> str:
+#    """
+#    Remove all proof to get context
+#    """
+#    pattern = r"Proof\.(.*?)(Qed|Admitted|Abort)\."
+#    cleaned_text = re.sub(pattern, "", doc, flags=re.DOTALL)
+#    # Replace multiple newlines with a single newline
+#    cleaned_text = re.sub(r"\n+", "\n", cleaned_text)
+#    lines = cleaned_text.split("\n")
+#    for i, l in enumerate(lines):
+#        if thm in l:
+#            return "\n".join(lines[:i])
+#    return cleaned_text
 
 
 def get_context(doc: str, thm: str) -> str:
@@ -136,6 +136,7 @@ class ScriptEnv(Env):
         super().__init__(pet, workspace, file, thm, context, verbose)
         self.state: State = self.initial_state
         self.thm_code = pp_goals(self.pet.goals(self.state))
+        self.added_tac = False
 
     def exec(self, tactics):
         self.n_interactions += 1
@@ -145,6 +146,7 @@ class ScriptEnv(Env):
             try:
                 self.state = self.pet.run_tac(self.state, tac, timeout=10)
                 self.proof.append(tac)
+                self.added_tac = True
                 if self.verbose:
                     print("success")
             except PetanqueError as err:

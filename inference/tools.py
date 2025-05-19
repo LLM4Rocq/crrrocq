@@ -116,7 +116,7 @@ class CoqProverTool(Tool):
             # Execute the tactics
             self.env.exec(tactics)
 
-            if self.env.failed:
+            if self.env.failed and not self.env.added_tac:
                 return {"status": "error", "message": "Tactic execution failed"}
 
             # Check if the proof is finished
