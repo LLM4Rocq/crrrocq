@@ -15,6 +15,8 @@
 
 # clean out the modules loaded in interactive and inherited by default
 module purge
+pkill pet-server
+pkill vllm
 
 # load the nsight module
 module load nvidia-nsight-systems/2024.7.1.84
@@ -58,3 +60,6 @@ pet-server &
 # launch inference
 
 python pass_at_k_prover.py --theorem $THM --file $THM.v --workspace $WORKSPACE --model $MODEL --k 8 --max-iterations 2 --verbose --context --llm-log-dir $LOGDIR
+
+pkill vllm
+pkill pet-server
