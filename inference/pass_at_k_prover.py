@@ -94,7 +94,7 @@ class PassAtKProver:
 
             # Update prompts for paths that made progress
             for i, result in enumerate(results):
-                if result.success and not result.is_complete:
+                if not result.is_complete:  # and result.success:
                     # Add the response and new goals to the conversation
                     prompts[i] = self.llm.build_prompt_with_feedback(
                         goals=result.new_goals,

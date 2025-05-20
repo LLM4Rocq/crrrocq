@@ -100,7 +100,10 @@ class CoqProofManager:
                 )
         else:
             # Script execution failed
-            return ProverResult(proof=coq_tool.env.proof)
+            return ProverResult(
+                proof=coq_tool.env.proof,
+                previous_unsuccessful=coq_tool.env.previous_unsuccessful,
+            )
 
     def process_batch_responses(
         self,
