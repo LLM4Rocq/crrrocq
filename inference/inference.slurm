@@ -45,10 +45,10 @@ source .venv/bin/activate
 cd inference
 
 # launch vllm
-nsys profile -o report.nsys-rep --trace-fork-before-exec=true --cuda-graph-trace=node --delay 300 --duration 120  vllm serve --tensor-parallel-size 4 --max-num-seqs 512 --gpu-memory-utilization 0.90 $DSDIR/HuggingFace_Models/Qwen/Qwen2.5-1.5B &
+nsys profile -f -o report.nsys-rep --trace-fork-before-exec=true --cuda-graph-trace=node --delay 450 --duration 120  vllm serve --tensor-parallel-size 4 --max-num-seqs 512 --gpu-memory-utilization 0.90 $DSDIR/HuggingFace_Models/Qwen/Qwen2.5-1.5B &
 
 # poll the server until it's ready
-sleep 30
+sleep 300
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/v1/models | grep -q "200"; do
     echo "Waiting for server to respond..."
     sleep 5
