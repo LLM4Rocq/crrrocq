@@ -32,8 +32,12 @@ def remove_comments_in_file(dataset, path):
 def get_theorems_in_file(path, uncommented_file):
     """Find all theorems in a file."""
     pattern = re.compile(r"(?<!\S)(?P<theorem>(Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property)\s[\s\S]*?(Defined|Qed).)")
-    theorems = pattern.finditer(uncommented_file)
-    theorems = [(path, match.group("theorem")) for match in theorems]
+    matches = pattern.finditer(uncommented_file)
+    theorems = [match.group("theorem") for match in matches]
+    pattern = re.compile(r"(Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property)\s*(?P<name>[_a-zA-Z0-9']*)\s")
+    matches = [(pattern.match(theorem), theorem) for theorem in theorems]
+    named_theorems = {match.group("name"): theorem for match, theorem in matches}
+    theorems = [(path, theorem) for theorem in named_theorems.values()]
 
     return theorems
 
@@ -45,43 +49,6 @@ def format_theorem(thm):
     name = match.group("name")
     proof = match.group("proof")
     return name, statement, proof
-
-rocq_keywords = [
-    "Lemma",
-    "Theorem",
-    "Fact",
-    "Remark",
-    "Corollary",
-    "Proposition",
-    "Property",
-    "Proof",
-    "Defined",
-    "Qed",
-    "have",
-    "move",
-    "intro",
-    "intros",
-    "induction",
-    "rewrite",
-    "by",
-    "at",
-    "apply"
-]
-
-def find_dependencies(name, code, valid_names):
-    pattern = re.compile(r"(?P<name>[_a-zA-Z0-9]*)")
-    all_names = [match.group("name") for match in pattern.finditer(code)]
-    all_names_except_thm_name = [n for n in all_names if n != name]
-    all_names_except_thm_name_keywords = [n for n in all_names_except_thm_name if not n in rocq_keywords]
-    all_valid_names = [n for n in all_names_except_thm_name_keywords if n in valid_names]
-    return all_valid_names
-
-def find_theorem_dependencies(thm, names):
-    name, thm = thm
-    statement, proof = thm["statement"], thm["proof"]
-    statement_deps = find_dependencies(name, statement, names)
-    proof_deps = find_dependencies(name, proof, names)
-    return name, thm | {"statement_deps": statement_deps, "proof_deps": proof_deps}
 
 def make(dataset):
     """

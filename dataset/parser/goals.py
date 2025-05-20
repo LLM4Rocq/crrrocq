@@ -79,14 +79,14 @@ from .chains import proof_to_raw_chain_list
 
 if __name__ == "__main__":
 
-    with open("../dataset/math-comp.json", "r") as f:
+    with open("math-comp.json", "r") as f:
         data = json.load(f)
 
     pet = Pytanque("127.0.0.1", 8765)
     pet.connect()
 
     theorem = "mx_faithful_inj"
-    path = "../dataset/" + data[theorem]["filepath"]
+    path = "math-comp/" + data[theorem]["filepath"]
     proof = data[theorem]["proof"]
     raw_chain_list = proof_to_raw_chain_list(proof)
 

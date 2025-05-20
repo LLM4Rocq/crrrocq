@@ -315,7 +315,7 @@ from tqdm import tqdm
 if __name__ == "__main__":
 
     theorems = []
-    with open("../dataset/math-comp.jsonl", "r") as f:
+    with open("math-comp.jsonl", "r") as f:
         for line in f:
             theorems.append(json.loads(line))
 

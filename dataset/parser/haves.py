@@ -92,7 +92,9 @@ def flexible_run_tac(pet: Pytanque, state: State, code: str, is_have_by: bool) -
     return success, state
 
 open_tag = "(*<have>*) "
+ropen_tag = "\\(\\*<have>\\*\\)"
 close_tag = " (*</have>*)"
+rclose_tag = "\\(\\*<\\/have>\\*\\)"
 
 def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) -> Tuple[bool, list[Chain]]:
     chain_list = copy_chain_list(chain_list)
@@ -255,17 +257,17 @@ class HaveTactic:
         return self.prefix + self.intro + self.statement + self.infix + self.proof + self.suffix
 
     def no_proof(self):
-        return self.prefix + self.intro + self.statement + " [...] " + self.suffix
+        return self.prefix + self.intro + self.statement + self.infix + "[...] " + self.suffix
 
 def parse_have_tags(text: str) -> Optional[re.Match]:
     """Search for have tags in a text."""
-    pattern = re.compile(f"(?<prefix>)\\s*{open_tag}\\s*)(?<body>[\\s\\S]*?)(?<suffix>\\s*{close_tag}\\s*)")
+    pattern = re.compile(f"(?P<prefix>\\s*{ropen_tag}\\s*)(?P<body>[\\s\\S]*?)(?P<suffix>\\s*{rclose_tag}\\s*)")
     return pattern.search(text)
 
 def parse_have_tactics(text: str) -> list:
     """Parse all have tactics in some text."""
     parsed_text = []
-    pattern = re.compile(r"(?<intro>[\s\S]*?:\s*)(?<statement>[\s\S]*?)(?<infix>\s*(\.\s|;|by)\s*)(?<proof>[\s\S]*)")
+    pattern = re.compile(r"(?P<intro>[\s\S]*?:\s*)(?P<statement>[\s\S]*?)(?P<infix>\s*(\.\s|;|by)\s*)(?P<proof>[\s\S]*)")
 
     match = parse_have_tags(text)
     while match:
@@ -274,6 +276,7 @@ def parse_have_tactics(text: str) -> list:
         prefix, body, suffix = match.group("prefix"), match.group("body"), match.group("suffix")
         bmatch = pattern.match(body)
         have_tactic = HaveTactic(prefix, bmatch.group("intro"), bmatch.group("statement"), bmatch.group("infix"), bmatch.group("proof"), suffix)
+        parsed_text.append(have_tactic)
         text = text[match.end():]
         match = parse_have_tags(text)
 
@@ -372,7 +375,7 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enclose all have with a proof in a dataset of theorems.")
-    parser.add_argument("--dataset", type=str, default="../math-comp_bm25.jsonl", help="The name or path to the dataset, default is '../math-comp_bm25.jsonl'")
+    parser.add_argument("--dataset", type=str, default="math-comp_bm25.jsonl", help="The name or path to the dataset, default is 'math-comp_bm25.jsonl'")
     parser.add_argument("--address", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
     parser.add_argument("--port", type=int, default=8765, help="Port of the petanque server, default is 8765")
     args = parser.parse_args()
