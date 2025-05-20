@@ -28,6 +28,9 @@ cd $WORK/crrrocq
 # load uv env
 source .venv/bin/activate
 
+# go to the inference directory
+cd inference
+
 # launch vllm
 vllm serve --tensor-parallel-size 4 --max-num-seqs 512 --gpu-memory-utilization 0.90 $DSDIR/HuggingFace_Models/Qwen/Qwen2.5-1.5B &
 
