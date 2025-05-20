@@ -53,8 +53,6 @@ def find_global_variables(pet: Pytanque, state: State) -> list[str]:
 def evaluate_theorem(dataset: str, pet: Pytanque, theorem: dict[str, Any], valid_names: list[str]) -> dict[str, Any]:
     """Evaluate a theorem's proof."""
 
-    # print("NAME:", theorem["name"])
-
     # Preprocess the proof
     parsed_proof = parse_have_tactics(theorem["proof"])
 
@@ -99,9 +97,6 @@ def evaluate_theorem(dataset: str, pet: Pytanque, theorem: dict[str, Any], valid
         str_raw_chain += raw_chain
         run_raw_chain += raw_chain
 
-        # print("STR RAW CHAIN:", str_raw_chain)
-        # print("RUN RAW CHAIN:", run_raw_chain)
-
         evaluation.append({"tactic": str_raw_chain, "dependencies": dependencies})
 
         state = pet.run_tac(state, run_raw_chain)
@@ -115,7 +110,8 @@ def evaluate_theorem(dataset: str, pet: Pytanque, theorem: dict[str, Any], valid
         "statement_dependencies": find_dependencies(theorem["statement"], [theorem["name"]], valid_names),
         "proof": theorem["proof"],
         "global_variables": global_variables,
-        "evaluation": evaluation
+        "evaluation": evaluation,
+        "have_tactics": have_tactics
     }
 
 def make(dataset: str, complet_dataset: str, petanque_address: str, petanque_port: int):
