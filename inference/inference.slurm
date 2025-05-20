@@ -13,14 +13,25 @@
 #SBATCH --account=isf@a100            # account
 
 
+# clean out the modules loaded in interactive and inherited by default
+module purge
+
+# load the nsight module
+module load nvidia-nsight-systems/2024.7.1.84
+
+# echo commands
+set -x
+
+# do not store tmp files in /tmp!
+export TMPDIR=$JOBSCRATCH
+
+# nsight bug
+ln -s $JOBSCRATCH /tmp/nvidia
+
 MODEL=$DSDIR/HuggingFace_Models/Qwen/Qwen2.5-1.5B
 WORKSPACE=examples
 THM=amc12_2000_p20
 LOGDIR=$WORK/logs
-
-
-# clean out the modules loaded in interactive and inherited by default
-module purge
 
 # go into the submission directory 
 cd $WORK/crrrocq 
@@ -46,4 +57,4 @@ pet-server &
 
 # launch inference
 
-python pass_at_k_prover.py --theorem $THM --file $THM.v --workspace $WORKSPACE --model $MODEL --k 32 --verbose --context --llm-log-dir $LOGDIR
+nsys profile python pass_at_k_prover.py --theorem $THM --file $THM.v --workspace $WORKSPACE --model $MODEL --k 32 --verbose --context --llm-log-dir $LOGDIR
