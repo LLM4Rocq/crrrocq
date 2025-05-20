@@ -1,0 +1,25 @@
+{
+  "bf16": { "enabled": true },
+
+  "zero_optimization": {
+    "stage": 3,
+    "offload_param": {
+      "device": "cpu",
+      "pin_memory": true
+    },
+    "offload_optimizer": {
+      "device": "cpu",
+      "pin_memory": true
+    },
+    "allgather_bucket_size": 5e8,
+    "reduce_bucket_size": 5e8
+  },
+
+  "activation_checkpointing": {
+    "partition_activations": true,
+    "contiguous_memory_optimization": true,
+    "cpu_checkpointing": true
+  },
+  "gradient_accumulation_steps": 1,
+  "train_micro_batch_size_per_gpu": 1
+}
