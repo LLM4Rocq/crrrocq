@@ -57,4 +57,4 @@ pet-server &
 
 # launch inference
 
-nsys profile python pass_at_k_prover.py --theorem $THM --file $THM.v --workspace $WORKSPACE --model $MODEL --k 32 --verbose --context --llm-log-dir $LOGDIR
+nsys profile --trace=cuda,nvtx -d 60 python pass_at_k_prover.py --theorem $THM --file $THM.v --workspace $WORKSPACE --model $MODEL --k 8 --max-iterations 2 --verbose --context --llm-log-dir $LOGDIR
