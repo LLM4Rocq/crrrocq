@@ -99,6 +99,7 @@ class PassAtKProver:
                     prompts[i] = self.llm.build_prompt_with_feedback(
                         goals=result.new_goals,
                         coq_tag=tool_tag,
+                        current_proof=result.proof,
                         previous_attempts=result.previous_unsuccessful,
                         context=self.context,
                         goals_tag=self.goals_tag,

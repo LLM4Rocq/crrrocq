@@ -76,6 +76,7 @@ class VLLM(LLM):
         self,
         goals: str,
         coq_tag: str,
+        cuurent_proof: str = "",
         previous_attempts: List[str] = None,
         context: str = "",
         goals_tag: str = "GOALS",
@@ -105,6 +106,7 @@ class VLLM(LLM):
             return prompt
 
         # Add a section about previous attempts
+        prompt += f"\n\nHere are the steps of the current proof:\n {cuurent_proof}"
         prompt += f"\n\nHere are some previous attempts to solve this problem:\n {previous_attempts}"
 
         # Add a reminder about the current goals
