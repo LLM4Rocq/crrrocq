@@ -111,9 +111,7 @@ class VLLM(LLM):
 
         # Add a reminder about the current goals
         prompt += f"\nNow, let's try again. Here are the current goals:\n<{goals_tag}>\n{goals}\n</{goals_tag}>\n"
-        prompt += (
-            "Please analyze the previous attempts and propose a new proof strategy."
-        )
+        prompt += "OK, let's try to make progress in this proof."
 
         return prompt
 
