@@ -137,6 +137,7 @@ class ScriptEnv(Env):
         self.state: State = self.initial_state
         self.thm_code = pp_goals(self.pet.goals(self.state))
         self.added_tac = False
+        self.previous_unsuccessful = []
 
     def exec(self, tactics):
         self.added_tac = False
@@ -148,10 +149,12 @@ class ScriptEnv(Env):
                 self.state = self.pet.run_tac(self.state, tac, timeout=10)
                 self.proof.append(tac)
                 self.added_tac = True
+                self.previous_unsuccessful = []
                 if self.verbose:
                     print("success")
             except PetanqueError as err:
                 self.failed = True
+                self.previous_unsuccessful.append(str(tac) + str(err.message))
                 if self.verbose:
                     print("error:", err.message)
                 break
@@ -172,4 +175,5 @@ class ScriptEnv(Env):
     def deepcopy(self):
         new = super().deepcopy()
         new.state = copy.deepcopy(self.state)
+        new.previous_unsuccessful = copy.deepcopy(self.previous_unsuccessful)
         return new

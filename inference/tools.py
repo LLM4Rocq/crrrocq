@@ -128,9 +128,9 @@ class CoqProverTool(Tool):
                 }
 
             # Get the new proof state
-            new_goal = self.env.new_goal_pp
+            # new_goal = self.env.new_goal_pp
 
-            return {"status": "success", "goal": new_goal, "is_complete": False}
+            return {"status": "success", "is_complete": False}  # "goal": new_goal,
 
         except Exception as e:
             return {"status": "error", "message": str(e)}

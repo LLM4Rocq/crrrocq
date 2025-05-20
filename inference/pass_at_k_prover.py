@@ -96,9 +96,10 @@ class PassAtKProver:
             for i, result in enumerate(results):
                 if result.success and not result.is_complete:
                     # Add the response and new goals to the conversation
-                    prompts[i] = self.llm.build_prompt(
+                    prompts[i] = self.llm.build_prompt_with_feedback(
                         goals=result.new_goals,
                         coq_tag=tool_tag,
+                        previous_attempts=result.previous_unsuccessful,
                         context=self.context,
                         goals_tag=self.goals_tag,
                     )

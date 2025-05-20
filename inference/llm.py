@@ -72,6 +72,49 @@ class VLLM(LLM):
             coq_tag=coq_tag, goals_tag=goals_tag, goals=goals, context=context
         )
 
+    def build_prompt_with_feedback(
+        self,
+        goals: str,
+        coq_tag: str,
+        previous_attempts: List[str] = None,
+        context: str = "",
+        goals_tag: str = "GOALS",
+    ) -> str:
+        """
+        Build a prompt that includes feedback from previous proof attempts.
+
+        Args:
+            goals: The current Coq goals to prove
+            coq_tag: The XML tag to use for Coq code
+            previous_attempts: List of dictionaries containing previous attempts and results
+                            Each dict should have 'script', 'response', 'success' keys
+            context: Additional context to include in the prompt
+            goals_tag: The XML tag to use for goals
+            max_attempts: Maximum number of previous attempts to include in the prompt
+
+        Returns:
+            The constructed prompt with feedback from previous attempts
+        """
+        # Start with the basic prompt
+        prompt = self.build_prompt(
+            goals=goals, coq_tag=coq_tag, context=context, goals_tag=goals_tag
+        )
+
+        # If there are no previous attempts, return the basic prompt
+        if not previous_attempts or len(previous_attempts) == 0:
+            return prompt
+
+        # Add a section about previous attempts
+        prompt += f"\n\nHere are some previous attempts to solve this problem:\n {previous_attempts}"
+
+        # Add a reminder about the current goals
+        prompt += f"\nNow, let's try again. Here are the current goals:\n<{goals_tag}>\n{goals}\n</{goals_tag}>\n"
+        prompt += (
+            "Please analyze the previous attempts and propose a new proof strategy."
+        )
+
+        return prompt
+
     def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:
         """Generate a completion using VLLM's OpenAI-compatible API."""
         responses = self.generate_batch([prompt], stop_sequences)

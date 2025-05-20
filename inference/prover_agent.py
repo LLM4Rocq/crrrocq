@@ -15,6 +15,7 @@ class ProverResult:
     is_complete: bool = False
     new_goals: Optional[str] = None
     proof: List[str] = None
+    previous_unsuccessful: List[str] = None
 
 
 class CoqProofManager:
@@ -93,8 +94,9 @@ class CoqProofManager:
                 return ProverResult(
                     success=True,
                     is_complete=False,
-                    new_goals=result["goal"],
+                    new_goals=coq_tool.env.new_goal_pp,
                     proof=coq_tool.env.proof,
+                    previous_unsuccessful=coq_tool.env.previous_unsuccessful,
                 )
         else:
             # Script execution failed
