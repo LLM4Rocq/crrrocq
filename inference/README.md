@@ -39,7 +39,7 @@ python mock_inference.py --theorem foo --file foo.v --workspace examples --beam-
 
 ### Running the pass@k
 ```bash
-python pass_at_k_prover.py --theorem amc12_2000_p20 --file amc12_2000_p20.v --workspace /lustre/fswork/projects/rech/tdm/uuz44ie/GitHub/miniF2F-rocq/small_require --model /lustre/fsmisc/dataset/HuggingFace_Models/Qwen/Qwen3-32B --k 4 --verbose --context --llm-log-dir /lustre/fswork/projects/rech/tdm/uuz44ie/experiment-nlir/miniF2F/logs
+python pass_at_k_prover.py --theorem amc12_2000_p20 --file amc12_2000_p20.v --workspace examples --model /lustre/fsmisc/dataset/HuggingFace_Models/Qwen/Qwen3-32B --k 4 --verbose --context --llm-log-dir /lustre/fswork/projects/rech/tdm/uuz44ie/experiment-nlir/miniF2F/logs
 ```
 
 ### Running Tests
