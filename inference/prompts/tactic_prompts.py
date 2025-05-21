@@ -77,11 +77,14 @@ So the current goals did not change:
 I should avoid repeating the same mistakes.
 """
 
-prompt_failed = """
+prompt_failed_ = """
 The steps of the proof I proposed so far are not valid:
 {previous_attempts}
 
 I should avoid repeating the same mistakes.
+"""
+
+prompt_failed = """
 """
 
 prompt_success = """
