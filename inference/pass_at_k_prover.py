@@ -115,6 +115,7 @@ class PassAtKProver:
                     if self.verbose:
                         print(f"Path {i} made progress, updating prompt.")
                         print(f"current proof: {result.proof}")
+                        print(f"previous attempts: {result.previous_unsuccessful}")
                 # Otherwise, keep the same prompt for this path (retry)
 
             if self.verbose:
