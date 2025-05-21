@@ -64,7 +64,7 @@ So the current goals are now:
 </{goals_tag}>
 """
 
-prompt_failed = """
+prompt_failed_old = """
 {response}
 
 The steps of the proof I proposed so far are not valid:
@@ -74,6 +74,13 @@ So the current goals did not change:
 <{goals_tag}>
 {goals}
 </{goals_tag}>
+I should avoid repeating the same mistakes.
+"""
+
+prompt_failed = """
+The steps of the proof I proposed so far are not valid:
+{previous_attempts}
+
 I should avoid repeating the same mistakes.
 """
 
