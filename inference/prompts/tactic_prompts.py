@@ -74,6 +74,7 @@ So the current goals did not change:
 <{goals_tag}>
 {goals}
 </{goals_tag}>
+I should avoid repeating the same mistakes.
 """
 
 prompt_success = """

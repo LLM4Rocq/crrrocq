@@ -102,10 +102,12 @@ class CoqProofManager:
                 )
         else:
             # Script execution failed
+            previous_unsuccessful = coq_tool.env.previous_unsuccessful
+            coq_tool.env.previous_unsuccessful = []
             return ProverResult(
                 proof=coq_tool.env.proof,
                 new_goals=coq_tool.env.new_goal_pp,
-                previous_unsuccessful=coq_tool.env.previous_unsuccessful,
+                previous_unsuccessful=,previous_unsuccessful,
             )
 
     def process_batch_responses(
