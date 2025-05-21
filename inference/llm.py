@@ -77,6 +77,8 @@ class VLLM(LLM):
         goals: str,
         coq_tag: str,
         response: str = "",
+        # added_tactic: bool = False,
+        success: bool = False,
         current_proof: str = "",
         previous_attempts: List[str] = None,
         context: str = "",
@@ -97,23 +99,22 @@ class VLLM(LLM):
         Returns:
             The constructed prompt with feedback from previous attempts
         """
-        # Start with the basic prompt
-        prompt = self.build_prompt(
-            goals=goals, coq_tag=coq_tag, context=context, goals_tag=goals_tag
-        )
 
-        # If there are no previous attempts, return the basic prompt
-        if not previous_attempts or len(previous_attempts) == 0:
-            return prompt
-
-        # Add a section about previous attempts
-        prompt += response
-        prompt += f"\n\nHere are the steps of the current proof:\n {current_proof}"
-        prompt += f"\n\nHere are some previous attempts to solve this problem:\n {previous_attempts}"
-
-        # Add a reminder about the current goals
-        prompt += f"\nNow, let's try again. Here are the current goals:\n<{goals_tag}>\n{goals}\n</{goals_tag}>\n"
-        prompt += "OK, let's try to make progress in this proof."
+        if success:
+            prompt = tactic_prompts.prompt_progress.format(
+                response=response,
+                current_proof=current_proof,
+                previous_attempts=previous_attempts,
+                goals_tag=goals_tag,
+                goals=goals,
+            )
+        else:
+            prompt = tactic_prompts.prompt_failed.format(
+                response=response,
+                previous_attempts=previous_attempts,
+                goals_tag=goals_tag,
+                goals=goals,
+            )
 
         return prompt
 

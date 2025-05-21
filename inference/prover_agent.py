@@ -12,6 +12,7 @@ class ProverResult:
     """Result of processing an LLM response with the Coq prover."""
 
     success: bool = False
+    # added_tac: bool = False
     is_complete: bool = False
     new_goals: Optional[str] = None
     proof: List[str] = None
@@ -93,6 +94,7 @@ class CoqProofManager:
                 # Proof is progressing, include the new goals
                 return ProverResult(
                     success=True,
+                    # added_tac=coq_tool.env.added_tac,
                     is_complete=False,
                     new_goals=coq_tool.env.new_goal_pp,
                     proof=coq_tool.env.proof,

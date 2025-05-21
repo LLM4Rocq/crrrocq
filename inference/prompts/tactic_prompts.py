@@ -4,7 +4,7 @@ Your goal is to write proof steps interactively until you manage to find a compl
 Do not attempt to directly write the complete proof, but rather only try to execute simple steps or tactics to make incremental progress.
 
 At each step you will be provided with the current list of goals inside <{goals_tag}> </{goals_tag}> delimiters.
-Please explain your reasoning before proposing a Coq proof inside <{coq_tag}> </{coq_tag}> delimiters.
+Please explain your reasoning before proposing some steps in a Coq proof inside <{coq_tag}> </{coq_tag}> delimiters.
 Remember to close all your delimiters, for instance with a </{coq_tag}>.
 DO NOT RESTATE THE THEOREM OR THE CURRENT GOAL.
 
@@ -39,11 +39,47 @@ and here is one possible proof step.
 ring.
 </{coq_tag}>
 
-Ready?
+Ready? Here is the theorem to prove:
 
 {context}
 
 Here are the current goals.
+<{goals_tag}>
+{goals}
+</{goals_tag}>
+"""
+
+prompt_progress = """
+{response}
+
+The valid steps of the proof I proposed so far are:
+{current_proof}
+
+The following step is not valid:
+{previous_attempts}
+
+So the current goals are now:
+<{goals_tag}>
+{goals}
+</{goals_tag}>
+"""
+
+prompt_failed = """
+{response}
+
+The steps of the proof I proposed so far are not valid:
+{previous_attempts}
+
+So the current goals did not change:
+<{goals_tag}>
+{goals}
+</{goals_tag}>
+"""
+
+prompt_success = """
+{response}
+
+The steps of the proof I proposed so far are valid and the current goals are now:
 <{goals_tag}>
 {goals}
 </{goals_tag}>
