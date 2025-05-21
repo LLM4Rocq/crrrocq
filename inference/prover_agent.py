@@ -14,7 +14,7 @@ class ProverResult:
     success: bool = False
     # added_tac: bool = False
     is_complete: bool = False
-    new_goals: Optional[str] = None
+    new_goals: str = None
     proof: List[str] = None
     previous_unsuccessful: List[str] = None
 
@@ -73,7 +73,11 @@ class CoqProofManager:
 
         if not script_info:
             # No script found in the response
-            return ProverResult()
+            return ProverResult(
+                proof=coq_tool.env.proof,
+                new_goals=coq_tool.env.new_goal_pp,
+                previous_unsuccessful=["Bad script format"],
+            )
 
         script, _, _ = script_info
 
