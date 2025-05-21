@@ -104,6 +104,7 @@ class CoqProofManager:
             # Script execution failed
             return ProverResult(
                 proof=coq_tool.env.proof,
+                new_goals=coq_tool.env.new_goal_pp,
                 previous_unsuccessful=coq_tool.env.previous_unsuccessful,
             )
 
