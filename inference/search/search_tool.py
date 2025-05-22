@@ -24,7 +24,7 @@ class SearchTool(Tool):
     def tag(self) -> str:
         return "SEARCH"
 
-    def run(self, query:str, top_k:int=10) -> List[str]:
+    def run(self, query:str, top_k:int=5) -> List[str]:
         """
         Execute a search and return results.
 

@@ -33,16 +33,17 @@ class EmbeddingModel(ABC):
 
 class MxbaiEmbedding(EmbeddingModel):
 
-    def __init__(self):
+    def __init__(self, device):
         super().__init__()
+        self.device = device
         model_id = 'mixedbread-ai/mxbai-embed-large-v1'
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
-        self.model = AutoModel.from_pretrained(model_id)
+        self.model = AutoModel.from_pretrained(model_id).to(device)
 
     def generate(self, sentence:str, query=False) -> Tensor:
         if query:
             sentence = transform_query(sentence)
-        inputs = self.tokenizer(sentence, padding=True, return_tensors='pt', truncation=True)
+        inputs = self.tokenizer(sentence, padding=True, return_tensors='pt', truncation=True).to(self.device)
         outputs = self.model(**inputs).last_hidden_state
         embeddings = pooling(outputs, inputs, 'cls')
         return embeddings
@@ -62,11 +63,12 @@ def get_detailed_instruct(task_description: str, query: str) -> str:
     return f'Instruct: {task_description}\nQuery: {query}'
 
 class GteQwenEmbedding(EmbeddingModel):
-    def __init__(self):
+    def __init__(self, device:str):
         super().__init__()
         model_id = 'Alibaba-NLP/gte-Qwen2-7B-instruct'
+        self.device = device
         self.tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-        self.model = AutoModel.from_pretrained(model_id, trust_remote_code=True)
+        self.model = AutoModel.from_pretrained(model_id, trust_remote_code=True).to(device)
         self.prompt_query = 'Given a natural language query, retrieve formal Coq statements whose docstrings best match the intent of the query.'
     
     def generate(self, sentence:str, query=False) -> Tensor:
@@ -75,7 +77,7 @@ class GteQwenEmbedding(EmbeddingModel):
         else:
             input_text = sentence
         
-        batch_dict = self.tokenizer(input_text, padding=True, truncation=True, return_tensors='pt')
+        batch_dict = self.tokenizer(input_text, padding=True, truncation=True, return_tensors='pt').to(self.device)
         outputs = self.model(**batch_dict)
         embeddings = last_token_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
         embeddings = F.normalize(embeddings, p=2, dim=1) 
