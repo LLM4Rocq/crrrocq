@@ -204,7 +204,7 @@ How to use tools:
 
 Here is the theorem I am trying to prove:
 {self.current_proof}
-Please help me progress with this proof. Explain your reasoning step by step.
+Please help me progress with this proof. Explain your reasoning step by step. And start with a search for theorems that might help.
 """
         return prompt
 
