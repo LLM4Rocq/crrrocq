@@ -202,12 +202,12 @@ Available tools:
 How to use tools:
 {tool_instructions}
 
-DO NOT RESTATE THE THEOREM OR THE CURRENT GOAL.
+
 
 Here is the theorem I am trying to prove:
 {self.current_proof}
+I do not need to restate the theorem and will start the proof directly after the `Proof.` statement.
 I need to make progress with this proof and explain my reasoning step by step. Let's start with a search for theorems that might help.
-<SEARCH>sum of natural numbers equals to one</SEARCH>
 """
         return prompt
 
