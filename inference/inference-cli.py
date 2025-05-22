@@ -2,7 +2,8 @@ import os
 import sys
 import argparse
 from pytanque import Pytanque
-from tools import SearchTool, CoqProverTool
+from tools import CoqProverTool
+from search.search_tool import SearchTool
 from llm import VLLM
 from agent import MathProofAgent
 
@@ -18,6 +19,7 @@ def main():
         help="Path to the workspace directory",
     )
     parser.add_argument("--file", type=str, default="foo.v", help="Coq file name")
+    parser.add_argument("--embedding-path", type=str, default="/lustre/fswork/projects/rech/tdm/commun/dataset/embedding/pt", help="Embedding path")
     parser.add_argument(
         "--theorem", type=str, required=True, help="Name of the theorem to prove"
     )
@@ -44,7 +46,7 @@ def main():
     pet.set_workspace(False, str(args.workspace))
 
     # Setup tools
-    search_tool = SearchTool()
+    search_tool = SearchTool(embedding_path=args.embedding_path)
     coq_tool = CoqProverTool(
         pet=pet,
         workspace=args.workspace,
