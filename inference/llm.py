@@ -49,6 +49,7 @@ class VLLM(LLM):
             # "top_k": self.top_k,
             "max_tokens": self.max_tokens,
             "stream": False,
+            "include_stop_str_in_output": True,
         }
         len_prompt = len(prompt)
 
