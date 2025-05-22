@@ -205,6 +205,7 @@ How to use tools:
 Here is the theorem I am trying to prove:
 {self.current_proof}
 I need to make progress with this proof and explain my reasoning step by step. Let's start with a search for theorems that might help.
+<SEARCH>sum of natural numbers equals to one</SEARCH>
 """
         return prompt
 
