@@ -25,7 +25,7 @@ class SearchTool(Tool):
     def tag(self) -> str:
         return "SEARCH"
 
-    def run(self, query: str, top_k: int = 5) -> List[str]:
+    def run(self, query: str, top_k: int = 5) -> str:
         """
         Execute a search and return results.
 
@@ -34,4 +34,4 @@ class SearchTool(Tool):
         result = self.index.query(query, top_k=top_k)
         result = [fullname for _, _, fullname in result]
         # This would be replaced with actual search functionality
-        return result
+        return "\n".join(result)
