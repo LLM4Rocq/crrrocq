@@ -31,5 +31,6 @@ class SearchTool(Tool):
         Note: This is a placeholder. Implement actual search functionality here.
         """
         result = self.index.query(query, top_k=top_k)
+        result = [fullname for _,_, fullname in result]
         # This would be replaced with actual search functionality
         return result

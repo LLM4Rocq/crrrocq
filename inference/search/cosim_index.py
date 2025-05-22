@@ -25,6 +25,7 @@ class FaissIndex(CosimIndex):
         self.all_keys = []
         self.all_labels = []
         self.all_embeddings = []
+        self.all_fullnames = []
 
         if text_path:
             self._compute_embedding(text_path, embedding_path)
@@ -36,9 +37,11 @@ class FaissIndex(CosimIndex):
             for key, entry in embeddings.items():
                 label = entry['docstring']
                 embedding = entry['embedding']
+                fullname = entry['fullname']
                 self.all_keys.append(key)
                 self.all_labels.append(label)
                 self.all_embeddings.append(embedding)
+                self.all_fullnames.append(fullname)
 
         self.all_embeddings = torch.cat(self.all_embeddings, dim=0)
         d = self.all_embeddings.shape[1]
@@ -64,6 +67,6 @@ class FaissIndex(CosimIndex):
 
         result = []
         for i, idx in enumerate(indices[0]):
-            result.append((distances[0][i], self.all_keys[idx], self.all_labels[idx]))
+            result.append((distances[0][i], self.all_keys[idx], self.all_fullnames[idx]))
         
         return result
