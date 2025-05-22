@@ -116,7 +116,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
     def _create_dataset(self, is_test=False, pack_metadata_file_path = None, **kwargs):
         # pylint: disable=C0115,C0116
         return GPTSFTDatasetInterleaved(
-            file_path=self.output_jsonl['training'],
+            file_path=self.dataset_root / "training.jsonl", #self.output_jsonl['training'],
             prompt_path=self.prompt_filepath,
             tokenizer=self.tokenizer,
             max_seq_length=self.seq_length,
@@ -125,8 +125,9 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
             memmap_workers=self.memmap_workers,
         )
 
-def crrrocq(**kwargs) -> run.Config[pl.LightningDataModule]:
-    return run.Config(CrrrocqDataModule, seq_length=32768, micro_batch_size=1, global_batch_size=32, num_workers=1)
+def crrrocq(model_name, **kwargs) -> run.Config[pl.LightningDataModule]:
+    tokenizer = AutoTokenizer(model_name)
+    return run.Config(CrrrocqDataModule, tokenizer=tokenizer, **kwargs)
 
 
 if __name__ == '__main__':
