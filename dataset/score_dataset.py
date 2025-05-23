@@ -9,8 +9,8 @@ def bm25_get_scores(theorems):
     stemmer = lambda l: [word for word in l]
 
     tokenized_theorems = []
-    for theorem in theorems:
-        tokenized_theorems.append((theorem, bm25s.tokenize(theorem["statement"] + "\n" + theorem["proof"], return_ids=False, stemmer=stemmer)[0]))
+    for qualid_name, theorem in theorems.items():
+        tokenized_theorems.append((qualid_name, bm25s.tokenize(theorem["statement"] + "\n" + theorem["proof"], return_ids=False, stemmer=stemmer)[0]))
 
     bm25 = bm25s.BM25()
 
@@ -22,12 +22,9 @@ def bm25_get_scores(theorems):
 
         return score
 
-    scored_theorems = []
-    for theorem, theorem_code in tqdm(tokenized_theorems):
+    for qualid_name, theorem_code in tqdm(tokenized_theorems):
         score = get_score(theorem_code, tokenized_theorems)
-        scored_theorems.append(theorem | {"score": float(score)})
-
-    return scored_theorems
+        theorems[qualid_name]["score"] = float(score)
 
 scorers = {
     "bm25": bm25_get_scores
@@ -43,7 +40,7 @@ def make(dataset, scorer):
     datafile = Path(dataset)
     if not datafile.exists():
         raise Exception(f"Error: {datafile} doesn't exist.")
-    savefile = Path(datafile.parent, datafile.stem + "_" + scorer + ".jsonl")
+    savefile = Path(datafile.parent, datafile.stem + "_" + scorer + ".json")
 
     if savefile.exists():
         print("Scored dataset already here.")
@@ -52,26 +49,22 @@ def make(dataset, scorer):
         print("Making the scored dataset.")
 
         print("  Download all theorems ...")
-        theorems = []
         with open(datafile, "r") as f:
-            for line in f:
-                theorems.append(json.loads(line))
+            theorems = json.load(f)
 
         print("  Computing the scores ...")
         score_function = scorers[scorer]
-        theorems = score_function(theorems)
+        score_function(theorems)
 
         print("  Save the dataset ...")
         with open(savefile, "w") as f:
-            for theorem in theorems:
-                theorem = json.dumps(theorem)
-                f.write(theorem + '\n')
+            json.dump(theorems, f, indent=2)
 
         print("  DONE!")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Score a dataset of Rocq theorems according to some metric.")
-    parser.add_argument("--dataset", type=str, default="math-comp.jsonl", help="The path of the dataset, default is 'math-comp.jsonl'")
+    parser.add_argument("--dataset", type=str, default="mathcomp.json", help="The path of the dataset, default is 'mathcomp.json'")
     parser.add_argument("--scorer", type=str, default="bm25", help="The scoring algorithm to use, it can be chosen among: " + ", ".join(scorers.keys()))
     args = parser.parse_args()
     make(args.dataset, args.scorer)
