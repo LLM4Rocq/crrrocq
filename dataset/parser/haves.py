@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 from dataclasses import dataclass
 from pytanque import Pytanque, State, PetanqueError
 
@@ -77,12 +77,12 @@ def is_have_by_tactic(tactic: str) -> bool:
     """Check if the given tactic contains `have ... by`."""
     return re.search(r"have[\s\S]*?by", tactic)
 
-def flexible_run_tac(pet: Pytanque, state: State, code: str, is_have_by: bool) -> Tuple[bool, State]:
+def flexible_run(pet: Pytanque, state: State, code: str, is_have_by: bool) -> Tuple[bool, State]:
     """Run the code on some state with a pet instance.
     If `is_have_by` is true, then Petanque errors are allowed."""
 
     try:
-        state = pet.run_tac(state, code)
+        state = pet.run(state, code)
         success = True
     except PetanqueError as err:
         success = False
@@ -112,6 +112,7 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
 
             # Check if we are in a have proof or not
             if not in_have_proof:
+                added = False
                 if isinstance(tactic, Tactic) and is_have_tactic(str(tactic)):
                     is_have_by = is_have_by_tactic(str(tactic))
 
@@ -123,14 +124,14 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                         init = True
 
                     # Update the base state so it represents the state of the proof at the chain before the one we are checking
-                    base_state = pet.run_tac(base_state, chain_list_to_str(new_chain_list[base_state_checkpoint:]))
+                    base_state = pet.run(base_state, chain_list_to_str(new_chain_list[base_state_checkpoint:]))
                     base_state_checkpoint = len(new_chain_list)
                     # Compute the number of goals at this point
                     nbr_previous_goals = len(pet.goals(base_state))
 
                     # Look at the number of goals introduced between the start of the chain and the have tactic
                     if len(new_chain) > 0:
-                        state = pet.run_tac(base_state, str(Chain(new_chain, '.')))
+                        state = pet.run(base_state, str(Chain(new_chain, '.')))
                         nbr_inter_goals = len(pet.goals(state)) - nbr_previous_goals
                     else:
                         nbr_inter_goals = 0
@@ -139,11 +140,11 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                     # We can split the current chain in two: first the previous part of the chain, then the part after the have
                     if nbr_inter_goals == 0:
                         # We compute the number of goals introduced by the have tactic (it should always be one)
-                        success, state = flexible_run_tac(pet, base_state, str(Chain(new_chain + [tactic], '.')), is_have_by)
+                        success, state = flexible_run(pet, base_state, str(Chain(new_chain + [tactic], '.')), is_have_by)
                         nbr_new_goals = len(pet.goals(state)) - nbr_previous_goals
 
                         # Because a [have ... by] can fail and return the previous state, we must check thouroughly if the tactic is proven on the spot or not
-                        # If the run_tac ended with a success, the proof of the [have ... by] tactic is contained in it
+                        # If the run ended with a success, the proof of the [have ... by] tactic is contained in it
                         if is_have_by and success:
                             # Add the opening tag just before the tactic
                             k = 0
@@ -151,7 +152,15 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                                 k += 1
                             tactic.tactic = tactic.tactic[:k] + open_tag + tactic.tactic[k:] + close_tag
 
-                        # If the run_tac ended without a success, the proof of the [have ... by] needs to be continued
+                            if len(new_chain) > 0:
+                                new_chain_list.append(Chain(new_chain, '.'))
+                                new_chain_list.append(Chain([tactic], '.'))
+                                added = True
+                                base_state = state
+                                base_state_checkpoint += 2
+                                new_chain = []
+
+                        # If the run ended without a success, the proof of the [have ... by] needs to be continued
                         # The proof must also be continued if new goals are introduced
                         elif (is_have_by and not success) or nbr_new_goals > 0:
                             # Add the opening tag just before the tactic
@@ -159,6 +168,12 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                             while tactic.tactic[k].isspace():
                                 k += 1
                             tactic.tactic = tactic.tactic[:k] + open_tag + tactic.tactic[k:]
+
+                            if len(new_chain) > 0:
+                                new_chain_list.append(Chain(new_chain, '.'))
+                                base_state = pet.run(base_state, str(Chain(new_chain, '.')))
+                                base_state_checkpoint += 1
+                                new_chain = []
 
                             # We start the have proof
                             in_have_proof = True
@@ -173,7 +188,8 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                     else:
                         raise Exception("Error: the have tactic is applied on a closed goal.")
 
-                new_chain.append(tactic)
+                if not added:
+                    new_chain.append(tactic)
 
             # If we are in the proof of a have, we have to look if the proof ends within the current chain
             else:
@@ -187,7 +203,7 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                     new_chain_list.append(tactic.chains[0])
                     tactic.chains = tactic.chains[1:]
 
-                success, state = flexible_run_tac(pet, base_state, str(Chain(new_chain + [tactic], '.')), is_have_by)
+                success, state = flexible_run(pet, base_state, str(Chain(new_chain + [tactic], '.')), is_have_by)
                 nbr_new_goals = len(pet.goals(state)) - nbr_previous_goals
 
                 # If we have finished the proof, just add the proof to the new chain-list, update the base state and reset the new chain
@@ -211,14 +227,14 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
 
             # Update the new chain-list and the base state
             new_chain_list.append(Chain(new_chain, '.'))
-            base_state = pet.run_tac(base_state, str(Chain(new_chain, '.')))
+            base_state = pet.run(base_state, str(Chain(new_chain, '.')))
             base_state_checkpoint += 1
             new_chain = []
 
             # While we have not finished the have proof, we look at following chains, updating the new chain-list and the base state at each chain
             i += 1
             while i < len(chain_list) and nbr_new_goals > 0:
-                base_state = pet.run_tac(base_state, str(chain_list[i]))
+                base_state = pet.run(base_state, str(chain_list[i]))
                 base_state_checkpoint += 1
                 new_goals = pet.goals(base_state)
                 nbr_new_goals = len(new_goals) - nbr_previous_goals
@@ -256,8 +272,25 @@ class HaveTactic:
     def __str__(self):
         return self.prefix + self.intro + self.statement + self.infix + self.proof + self.suffix
 
+    def to_dict(self):
+        return {
+            "prefix":    self.prefix,
+            "intro":     self.intro,
+            "statement": self.statement,
+            "infix":     self.infix,
+            "proof":     self.proof,
+            "suffix":    self.suffix
+        }
+
     def no_proof(self):
-        return self.prefix + self.intro + self.statement + self.infix + "[...] " + self.suffix
+        return self.prefix + self.intro + self.statement + " (*proof*) " + self.suffix
+
+def have_tactic_of_dict(d: dict[str, Any]) -> HaveTactic:
+    if "prefix" not in d or "intro" not in d or "statement" not in d or \
+       "infix" not in d or "proof" not in d or "suffix" not in d:
+        raise Exception("Error: the dictionary is missing keys.")
+    else:
+        return HaveTactic(d["prefix"], d["intro"], d["statement"], d["infix"], d["proof"], d["suffix"])
 
 def parse_have_tags(text: str) -> Optional[re.Match]:
     """Search for have tags in a text."""
@@ -293,30 +326,8 @@ import argparse
 from tqdm import tqdm
 from pathlib import Path
 
-# Theorems from math-comp raising an error:
-#
-# nz2                    Some notation is unknown in the scope
-# leqif_mul              A have with a trivial proof appears in a by chain
-# redivp_eq              Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# rdivpp                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# edivpP                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# edivp_eq               Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# dvdpP                  Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# coprimepP              Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# modpZl                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# divpZl                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# modpD                  Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# divpD                  Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# divp_pmul2l            Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# divp_divl              Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# divpZr                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# normN1                 Two theorems are defined with the same name in the same file, only one of the two is taken into account
-# exprNn_pchar           A definition overshadow this theorem
-# exprDn_pchar           A definition overshadow this theorem
-# invrM                  A definition overshadow this theorem
-# invrZ                  A definition overshadow this theorem
-# eq_holds               A definition overshadow this theorem
-# prim_order_exists      A definition overshadow this theorem
+# Theorems from mathcomp raising an error:
+# leqif_mul              A have appears in a by chain
 
 def make(dataset: str, petanque_address: str, petanque_port: int):
     """Enclose all the have with a proof of a dataset."""
@@ -325,32 +336,32 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
     dataset = dataset.split("_", maxsplit=1)[0]
     if not datafile.exists():
         raise Exception(f"Error: {datafile} doesn't exist.")
-    savefile = Path(datafile.parent, datafile.stem + "_have.jsonl")
+    savefile = Path(datafile.parent, datafile.stem + "_have.json")
     if not savefile.exists():
-        savefile.touch()
+        with open(savefile, "w") as f:
+            f.write("{}")
 
+    print("Enclosing all haves in the dataset.")
+
+    print("  Connecting to the pet-server ...")
     pet = Pytanque(petanque_address, petanque_port)
     pet.connect()
 
-    theorems = []
+    print("  Reading the data ...")
     with open(datafile, "r") as f:
-        for line in f:
-            theorems.append(json.loads(line))
+        theorems = json.load(f)
 
-    theorems_with_have = []
     with open(savefile, "r") as f:
-        for line in f:
-            theorems_with_have.append(json.loads(line))
+        theorems_with_have = json.load(f)
 
-    _theorems_with_have = [(t["name"], t["filepath"], t["statement"]) for t in theorems_with_have]
-    theorems_without_have = [t for t in theorems if not (t["name"], t["filepath"], t["statement"]) in _theorems_with_have]
+    theorems_without_have = {qualid_name: theorem for qualid_name, theorem in theorems.items() if not qualid_name in theorems_with_have}
 
-    f = open(savefile, "a")
-
+    print("  Enclosing the haves ...")
     error_theorems = []
-    for theorem in tqdm(theorems_without_have):
-        name = theorem["name"]
-        path = Path(dataset, theorem["filepath"])
+    count = 0
+    for qualid_name, theorem in tqdm(theorems_without_have.items()):
+        name = qualid_name.rsplit('.', 1)[-1]
+        path = theorem["filepath"]
         proof = theorem["proof"]
         chain_list = proof_to_chain_list(proof)
 
@@ -360,22 +371,33 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
 
             if modified:
                 state = pet.start(path, name)
-                pet.run_tac(state, reproof)
+                pet.run(state, reproof)
             else:
                 assert (proof == reproof)
 
             theorem["proof"] = reproof
-            f.write(json.dumps(theorem) + '\n')
+            theorems_with_have[qualid_name] = theorem
+
+            count += 1
+            if count % 100 == 0:
+                with open(savefile, "w") as f:
+                    json.dump(theorems_with_have, f, indent=2)
+
         except PetanqueError as err:
             error_theorems.append(name + " -> " + err.message)
         except Exception as err:
             error_theorems.append(name + " -> " + err.args[0])
 
-    f.close()
+    with open(savefile, "w") as f:
+        json.dump(theorems_with_have, f, indent=2)
+
+    print("  DONE!")
+
+    print("Error theorems:", "\n".join(error_theorems), sep="\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enclose all have with a proof in a dataset of theorems.")
-    parser.add_argument("--dataset", type=str, default="math-comp_bm25.jsonl", help="The name or path to the dataset, default is 'math-comp_bm25.jsonl'")
+    parser.add_argument("--dataset", type=str, default="mathcomp_bm25.json", help="The name or path to the dataset, default is 'mathcomp_bm25.json'")
     parser.add_argument("--address", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
     parser.add_argument("--port", type=int, default=8765, help="Port of the petanque server, default is 8765")
     args = parser.parse_args()
