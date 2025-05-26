@@ -245,7 +245,7 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
             in_have_proof = False
 
             # We add the tag at the end of the proof
-            new_chain_list[-1].suffix += close_tag
+            new_chain_list[-1].suffix = close_tag + new_chain_list[-1].suffix
 
         # If we are not in a have proof at the end of a chain, we simply go on to the next chain
         else:
