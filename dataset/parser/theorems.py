@@ -31,46 +31,29 @@ def remove_comments(content: str) -> str:
 def read_modules(content: str) -> list:
     """Split some content module by module."""
 
-    result = [("", [""])]
+    match = re.search(r"\sModule\s(?P<name>[_'a-zA-Z0-9]*)\.\s", content)
 
-    open_match = re.search(r"\sModule\s(?P<name>[_'a-zA-Z0-9]*)\.\s", content)
-    while open_match:
-        module_name = open_match.group("name")
-        add_to_module_list(result[-1][1], content[:open_match.start()+1])
-        result.append((module_name, [content[open_match.start()+1:open_match.end()]]))
-        content = content[open_match.end():]
+    if match:
+        result = [content[:match.start()+1]]
 
-        open_match = re.search(r"\sModule\s(?P<name>[_'a-zA-Z0-9]*)\.\s", content)
+        module_name = match.group("name")
         close_module = f"End {module_name}."
+        content = content[match.end()-1:]
         close_idx = content.find(close_module)
         if close_idx < 0:
             raise Exception(f"Error: the module {module_name} is not closed.")
 
-        while close_idx >= 0:
+        module_content = read_modules(content[:close_idx])
+        module_content[0] = f"Module {module_name}." + module_content[0]
+        module_content[-1] += f"End {module_name}."
 
-            if not open_match or (close_idx < open_match.start()):
-                add_to_module_list(result[-1][1], content[:close_idx+len(close_module)])
-                module = result.pop()
-                result[-1][1].append(module)
-                content = content[close_idx+len(close_module):]
+        result.append((module_name, module_content))
+        content = content[close_idx+len(close_module):]
+        result += read_modules(content)
+        return result
 
-                open_match = re.search(r"\sModule\s(?P<name>[_'a-zA-Z0-9]*)\.\s", content)
-                if len(result) == 1:
-                    close_idx = -1
-                else:
-                    module_name = result[-1][0]
-                    close_module = f"End {module_name}."
-                    close_idx = content.find(close_module)
-                    if close_idx < 0:
-                        raise Exception(f"Error: the module {module_name} is not closed.")
-            else:
-                break
-
-    add_to_module_list(result[-1][1], content)
-
-    if len(result) != 1:
-        raise Exception("Error: wrong parsing of modules.")
-    return result[0][1]
+    else:
+        return [content]
 
 def read_theorems_in_content(content: str) -> list:
     """Find all theorems in some content."""
