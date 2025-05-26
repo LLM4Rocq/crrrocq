@@ -16,7 +16,7 @@ def list_all_hypotheses(goal: Goal) -> dict[str, str]:
 def goals_hypotheses_diff(goal_hyps1: dict[str, str], goal_hyps2: dict[str, str]) -> Tuple[list[str], list[str], list[str], list[str]]:
     """Compute the difference between two goals hypotheses."""
     added = [f"{name} {pp}" for name, pp in goal_hyps2.items() if not name in goal_hyps1]
-    modified = [f"{name} {goal_hyps1[name]}\nchanged to\n{name} {pp}" for name, pp in goal_hyps2.items() if name in goal_hyps1 and pp != goal_hyps1[name]]
+    modified = [f"{name} changed to {pp}" for name, pp in goal_hyps2.items() if name in goal_hyps1 and pp != goal_hyps1[name]]
     removed = [f"{name} {pp}" for name, pp in goal_hyps1.items() if not name in goal_hyps2]
     unchanged = [f"{name} {pp}" for name, pp in goal_hyps2.items() if name in goal_hyps1 and pp == goal_hyps1[name]]
     return added, modified, removed, unchanged
@@ -29,13 +29,13 @@ def goals_diff(goal1: Goal, goal2: Goal) -> str:
 
     result = []
     if len(added) > 0:
-        result.append("Hypotheses added:\n\n" + "\n".join(added))
+        result.append("Hypotheses added:\n" + "\n".join(added))
     if len(modified) > 0:
-        result.append("Hypotheses modified:\n\n" + "\n\n".join(modified))
+        result.append("Hypotheses modified:\n" + "\n\n".join(modified))
     if len(removed) > 0:
-        result.append("Hypotheses removed:\n\n" + "\n".join(removed))
+        result.append("Hypotheses removed:\n" + "\n".join(removed))
     if goal1.ty != goal2.ty:
-        result.append(f"The goal\n|-{goal1.ty}\nchanged to\n|-{goal2.ty}")
+        result.append(f"The goal changed to:\n|-{goal2.ty}")
 
     return "\n\n".join(result)
 
@@ -45,29 +45,52 @@ def goal_lists_diff(goal_list1: list[Goal], goal_list2: list[Goal]) -> str:
     added = []
     modified = []
     removed = []
-    if len(goal_list2) > len(goal_list1):
-        added = list(map(lambda g: g.pp, goal_list2[:len(goal_list2)-len(goal_list1)]))
-        goal_list2 = goal_list2[len(goal_list2)-len(goal_list1):] if len(goal_list1) > 0 else []
-    elif len(goal_list2) < len(goal_list1):
-        removed = list(map(lambda g: g.pp, goal_list1[:len(goal_list1)-len(goal_list2)]))
-        goal_list1 = goal_list1[len(goal_list1)-len(goal_list2):] if len(goal_list2) > 0 else []
+    len_diff = len(goal_list2) - len(goal_list1)
+    if len_diff > 0:
+        added = list(map(lambda g: g.pp, goal_list2[:len_diff]))
+        goal_list2 = goal_list2[len_diff:] if len(goal_list1) > 0 else []
+    elif len_diff < 0:
+        removed = -len_diff
+        goal_list1 = goal_list1[-len_diff:] if len(goal_list2) > 0 else []
 
-    for goal1, goal2 in zip(goal_list1, goal_list2):
+    for i, (goal1, goal2) in enumerate(zip(goal_list1, goal_list2)):
         diff = goals_diff(goal1, goal2)
+        old_pos = max(0, -len_diff) + i
+        new_pos = max(0,  len_diff) + i
         if len(diff) > 0:
-            modified.append(diff)
+            if old_pos == new_pos:
+                modified.append(f"The goal {old_pos} is changed:\n{diff}")
+            else:
+                modified.append(f"The goal {old_pos} is changed and is now the goal {new_pos}:\n{diff}")
 
     sep1 = "\n---------------\n"
     sep2 = "\n\n==============================\n\n"
     result = []
-    if len(added) > 0:
-        result.append("Goals added:\n\n" + sep1.join(added))
+    if removed > 0:
+        result.append(f"{removed} goals have been removed.")
+        if len(goal_list2) > 0:
+            result[-1] += f"\nThe new goal to prove is:\n{goal_list2[-1].pp}"
+        else:
+            result[-1] += "\nThere is no goal remaining, the proof is finished."
+    elif len(added) > 0:
+        result.append("Goals added:\n" + sep1.join(added))
     if len(modified) > 0:
-        result.append("Goals modified:\n\n" + sep1.join(modified))
-    if len(removed) > 0:
-        result.append("Goals removed:\n\n" + sep1.join(removed))
+        result.append("Goals modified:\n" + sep1.join(modified))
 
     return sep2.join(result)
+
+# ====================
+# Lemma correspondence
+# ====================
+
+def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> str:
+    """Return a string containing a lemma version of some goal."""
+    rocq_goal = f"Lemma {name}"
+    for hyp in goal.hyps:
+        names = [name for name in hyp.names if not name in global_variables]
+        rocq_goal += " (" + " ".join(names) + (" := " + hyp.def_ if hyp.def_ else "") + " : " + hyp.ty + ")"
+    rocq_goal += " : " + goal.ty + "."
+    return rocq_goal
 
 # ====================
 # Testing
@@ -97,7 +120,7 @@ if __name__ == "__main__":
         print("##############################")
         print(raw_chain)
         print("##############################\n")
-        state = pet.run_tac(state, raw_chain)
+        state = pet.run(state, raw_chain)
         new_goals = pet.goals(state)
         print(goal_lists_diff(goals, new_goals), end="\n\n")
         input()
