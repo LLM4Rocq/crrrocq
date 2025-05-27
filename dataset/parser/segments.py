@@ -143,6 +143,40 @@ class SegmentReader(ABC):
             return c
 
 # ====================
+# Comments
+# ====================
+
+class Comment(Segment):
+    pass
+
+class CommentReader(SegmentReader):
+    def make_segment(self, segment_list):
+        return Comment(segment_list)
+
+    def check_open(self, c):
+        if self.previous == '(':
+            self.previous = ""
+            self.remove = 1
+            return '(' + c if c == '*' else None
+        else:
+            return None
+
+    def check_close(self, c):
+        if self.previous == '*':
+            self.previous = ""
+            return c if c == ')' else None
+        else:
+            return None
+
+    def default_update(self, c):
+        if c == '(':
+            self.previous = '('
+        elif c == '*':
+            self.previous = '*'
+        else:
+            self.previous = ""
+
+# ====================
 # Parentheses
 # ====================
 
@@ -253,14 +287,7 @@ class LtLtGtGtReader(SegmentReader):
 # Main
 # ====================
 
-segment_readers = [
-    ParenthesesReader(),
-    BracesReader(),
-    BracketsReader(),
-    LtLtGtGtReader()
-]
-
-def str_to_segment_list(string: str) -> list[Segment]:
+def base_str_to_segment_list(string: str, segment_readers: list[SegmentReader]) -> list[Segment]:
     """Decompose a string into a segment-list."""
     segment_list_list = [[""]]
 
@@ -301,6 +328,19 @@ def str_to_segment_list(string: str) -> list[Segment]:
     if len(segment_list_list) > 1:
         raise Exception("Error: too many opening segments.")
     return segment_list_list[0]
+
+def str_to_comment_list(string: str) -> list[Comment]:
+    return base_str_to_segment_list(string, [CommentReader()])
+
+segment_readers = [
+    ParenthesesReader(),
+    BracesReader(),
+    BracketsReader(),
+    LtLtGtGtReader()
+]
+
+def str_to_segment_list(string: str) -> list[Segment]:
+    return base_str_to_segment_list(string, segment_readers)
 
 def segment_list_to_str(segment_list: list[Segment]) -> str:
     return "".join(map(str, segment_list))
