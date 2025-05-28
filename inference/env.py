@@ -68,8 +68,8 @@ class Env(ABC):
         try:  # double check the proof
             s = self.initial_state
             for tac in self.proof:
-                s = self.pet.run_tac(s, tac)
-            self.pet.run_tac(s, "Qed.")
+                s = self.pet.run(s, tac)
+            self.pet.run(s, "Qed.")
             return True
         except PetanqueError:
             return False
@@ -86,7 +86,7 @@ class ScriptEnv(Env):
             if self.verbose:
                 print("tactic:", tac)
             try:
-                self.state = self.pet.run_tac(self.state, tac, timeout=10)
+                self.state = self.pet.run(self.state, tac, timeout=10)
                 self.proof.append(tac)
                 if self.verbose:
                     print("success")
@@ -104,7 +104,7 @@ class ScriptEnv(Env):
     def proof_finished(self) -> bool:
         # Hack to bypass Petanque proof_finished flag
         try:
-            self.pet.run_tac(self.state, "Qed.")
+            self.pet.run(self.state, "Qed.")
             return True
         except PetanqueError:
             return False
