@@ -32,13 +32,19 @@ rocq_keywords = [
     "apply"
 ]
 
-def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -> list[str]:
+def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -> Tuple[list[str], list[str]]:
     """Find all occurrences of `valid_names` in `code`, provided `bad_names` to not take into account."""
     bad_names = rocq_keywords + bad_names
-    pattern = re.compile(r"(?P<name>[_'a-zA-Z0-9][_'a-zA-Z0-9\.]*[_'a-zA-Z0-9])")
-    all_names = [match.group("name") for match in pattern.finditer(code)]
-    all_names = [n for n in all_names if not n in bad_names and n in valid_names]
-    return all_names
+    matches = re.finditer(r"(?P<name>[_'a-zA-Z0-9](|[_'a-zA-Z0-9\.]*[_'a-zA-Z0-9]))", code)
+    names = [match.group("name") for match in matches]
+
+    dependencies = []
+    for name in names:
+        if not name in bad_names and name in valid_names:
+            dependencies.append(name)
+            bad_names.append(name)
+
+    return dependencies
 
 def format_dependency(pet: Pytanque, state: State, dependency: str, search_dictionary: dict[str, str], info_dictionary: dict[str, str]) -> dict[str, str]:
     """Format a dependency."""
@@ -162,18 +168,17 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
     # Compute the statement's dependencies
     sttt_dependencies = find_dependencies(theorem["statement"], [name] + hypotheses, valid_names)
     sttt_dependencies = [format_dependency(pet, state, dep, search_dictionary, dictionary) for dep in sttt_dependencies]
+    known_dependencies = [dep for dep in sttt_dependencies]
 
     # Compute the evaluation
     evaluation = []
     have_theorems = []
     previous_goals = initial_goals
-    all_dependencies = [dep for dep in sttt_dependencies]
     for raw_chain in raw_chain_list:
 
-        dependencies = find_dependencies(raw_chain, hypotheses, valid_names)
+        dependencies = find_dependencies(raw_chain, known_dependencies + hypotheses, valid_names)
         dependencies = [format_dependency(pet, state, dep, search_dictionary, dictionary) for dep in dependencies]
-        dependencies = [dep for dep in dependencies if dep not in all_dependencies]
-        all_dependencies += dependencies
+        known_dependencies += dependencies
 
         # If there is some have tactic in the raw chain, expend it
         match = parse_have_tags(raw_chain)
