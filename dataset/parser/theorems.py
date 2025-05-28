@@ -21,12 +21,13 @@ def add_to_module_list(ml, s):
 def read_modules(content: str) -> list:
     """Split some content module by module."""
 
-    match = re.search(r"\sModule\s(?P<name>[_'a-zA-Z0-9]*)\.\s", content)
+    match = re.search(r"\sModule\s(|Export\s|Import\s)(?P<name>[_'a-zA-Z0-9]*)\.\s", content)
 
     if match:
         result = [content[:match.start()+1]]
 
         module_name = match.group("name")
+        module_start = content[match.start()+1:match.end()]
         close_module = f"End {module_name}."
         content = content[match.end()-1:]
         close_idx = content.find(close_module)
@@ -34,7 +35,7 @@ def read_modules(content: str) -> list:
             raise Exception(f"Error: the module {module_name} is not closed.")
 
         module_content = read_modules(content[:close_idx])
-        module_content[0] = f"Module {module_name}." + module_content[0]
+        module_content[0] = module_start + module_content[0]
         module_content[-1] += f"End {module_name}."
 
         result.append((module_name, module_content))
@@ -123,3 +124,14 @@ def format_theorem(prefix: str, theorem: str, file: Path) -> Tuple[str, dict[str
     line, char = get_position(content, index)
 
     return qualid_name, {"position": {"line": line, "character": char}, "statement": match.group("statement"), "proof": match.group("proof")}
+
+# =================
+import json
+
+if __name__ == "__main__":
+    with open("mathcomp/algebra/ssralg.v", "r") as f:
+        content = f.read()
+
+    module_list = read_modules(content)
+    with open("test.json", "w") as f:
+        json.dump({"result": module_list}, f, indent=2)
