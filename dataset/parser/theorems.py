@@ -18,16 +18,6 @@ def add_to_module_list(ml, s):
 # Theorems
 # ====================
 
-def remove_comments(content: str) -> str:
-    """Remove Rocq comments in a file."""
-
-    match = re.search(r"\(\*[\s\S]*?\*\)", content)
-    while match:
-        content = content[:match.start()] + content[match.end():]
-        match = re.search(r"\(\*[\s\S]*?\*\)", content)
-
-    return content
-
 def read_modules(content: str) -> list:
     """Split some content module by module."""
 
@@ -92,14 +82,44 @@ def read_theorems_in_file(path: Path) -> list[Tuple[str, str]]:
         content = f.read()
 
     prefix = path_to_prefix(path)
-    content = remove_comments(content)
     module_list = read_modules(content)
 
     return read_theorems_in_module_list(prefix, module_list)
 
-def format_theorem(prefix: str, theorem: str) -> Tuple[str, dict[str, str]]:
+def get_position(content: str, index: int) -> Tuple[int, int]:
+    """Return the position of some index in a string."""
+    line = 0
+    char = 0
+    reset_char = True
+    for c in content[:index+1]:
+        if c == '\n':
+            line += 1
+            char = 0
+            reset_char = True
+        elif not reset_char:
+            char += 1
+        else:
+            reset_char = False
+    return line, char
+
+def add_positions(line1, char1, line2, char2):
+    """Add the first position to the second."""
+    if line1 == 0:
+        return line2, char1 + char2
+    else:
+        return line1 + line2, char1
+
+def format_theorem(prefix: str, theorem: str, file: Path) -> Tuple[str, dict[str, str]]:
     """Retrieve the statement and the proof of a theorem."""
 
-    match = re.match(r"(?P<statement>(Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property)\s*(?P<name>[_a-zA-Z0-9']*)[\s\S]*?\.)\s+(?P<proof>[\s\S]*(Defined|Qed)\.)", theorem)
+    match = re.match(r"(?P<statement>(Theorem|Lemma|Fact|Remark|Corollary|Proposition|Property)\s*(?P<name>[_a-zA-Z0-9']*)[\s\S]*?\.)(?P<proof>\s+[\s\S]*(Defined|Qed)\.)", theorem)
     qualid_name = prefix + '.' + match.group("name")
-    return qualid_name, {"statement": match.group("statement"), "proof": match.group("proof")}
+
+    with open(file, "r") as f:
+        content = f.read()
+    index = content.find(theorem)
+    if index < 0:
+        raise Exception(f"Error: the theorem {qualid_name} is not found in {str(file)}.")
+    line, char = get_position(content, index)
+
+    return qualid_name, {"position": {"line": line, "character": char}, "statement": match.group("statement"), "proof": match.group("proof")}

@@ -1,14 +1,14 @@
 import re
 import json
 import argparse
-from typing import Any
-from pytanque import Pytanque, State
+from typing import Any, Tuple
+from pytanque import Pytanque, State, Goal
 from pathlib import Path
 from tqdm import tqdm
 
-from parser.haves import HaveTactic, parse_have_tags, parse_have_tactics
-from parser.chains import proof_to_raw_chain_list
-from parser.goals import goal_lists_diff
+from parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
+from parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
+from parser.goals import goal_lists_diff, replace_list, goal_to_lemma
 
 rocq_keywords = [
     "Lemma",
@@ -34,23 +34,84 @@ rocq_keywords = [
 
 def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -> list[str]:
     """Find all occurrences of `valid_names` in `code`, provided `bad_names` to not take into account."""
-    pattern = re.compile(r"(?P<name>[_'a-zA-Z0-9]*)")
-    all_names = [match.group("name") for match in pattern.finditer(code)]
     bad_names = rocq_keywords + bad_names
-    all_names_except_bad = [n for n in all_names if not n in bad_names]
-    all_valid_names = [n for n in all_names_except_bad if n in valid_names]
-    return all_valid_names
+    pattern = re.compile(r"(?P<name>[_'a-zA-Z0-9][_'a-zA-Z0-9\.]*[_'a-zA-Z0-9])")
+    all_names = [match.group("name") for match in pattern.finditer(code)]
+    all_names = [n for n in all_names if not n in bad_names and n in valid_names]
+    return all_names
+
+def format_dependency(pet: Pytanque, state: State, dependency: str, search_dictionary: dict[str, str], info_dictionary: dict[str, str]) -> dict[str, str]:
+    """Format a dependency."""
+    state = pet.run(state, f"Locate {dependency}.")
+    if len(state.feedback) == 0:
+        raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
+    message = state.feedback[0][1]
+    match = re.search(r"(Constant|Inductive|Constructor)\s(?P<qualid_name>[\S]*)(\s|)", message)
+    if not match or match.start() != 0:
+        raise Exception(f"Error: not the right format for {message}.")
+    qualid_name = match.group("qualid_name")
+
+    return {"name": dependency, "type": search_dictionary[dependency]} | \
+          ({"info": info_dictionary[qualid_name]} if qualid_name in info_dictionary else {})
 
 def find_global_variables(pet: Pytanque, state: State) -> list[str]:
     """Retrieve the global variable present at state `state`."""
-    state = pet.run_tac(state, "Goal true = true.")
+    state = pet.run(state, "Goal true = true.")
     goal = pet.goals(state)[0]
     global_variables = []
     for hyp in goal.hyps:
         global_variables += hyp.names
     return global_variables
 
-def evaluate_theorem(dataset: str, pet: Pytanque, theorem: dict[str, Any], valid_names: list[str]) -> dict[str, Any]:
+def split_have_proofs(pet: Pytanque, state: State, previous_goals: list[Goal], have_statement: str, have_proof: str, qualid_name: str, global_variables: list[str]) -> list[Tuple[State, str, str, str, str]]:
+    """Split the proofs of a have tactic."""
+    base_state = state
+    goals = pet.goals(base_state)
+    raw_goals = pet.goals(pet.run(base_state, "Set Printing All."))
+    raw_chain_list = proof_to_raw_chain_list(have_proof)
+
+    have_proofs = []
+    current_proof = ""
+    goal_count = 1
+    i = 0
+    while i < len(raw_chain_list) and len(goals) - len(previous_goals) > 1:
+
+        state = pet.run(state, raw_chain_list[i])
+        current_proof += raw_chain_list[i]
+        current_goals = pet.goals(state)
+
+        # If we solved one goal
+        if len(goals) > len(current_goals):
+            goal = goals.pop(0)
+            raw_goal = raw_goals.pop(0)
+
+            current_qualid_name = qualid_name + '_' + str(goal_count)
+            name = current_qualid_name.rsplit('.', maxsplit=1)[-1]
+            goal_count += 1
+
+            _, lemma = goal_to_lemma(goal, name, global_variables)
+            renamed, raw_lemma = goal_to_lemma(raw_goal, name, global_variables)
+
+            have_proofs.append((pet.run(base_state, raw_lemma), current_qualid_name, lemma, raw_lemma, replace_list(current_proof, renamed)))
+            current_proof = ""
+
+        i += 1
+
+    goal = goals.pop(0)
+    raw_goal = raw_goals.pop(0)
+
+    current_qualid_name = qualid_name + ('_' + str(goal_count) if goal_count > 1 else "")
+    name = current_qualid_name.rsplit('.', maxsplit=1)[-1]
+
+    _, lemma = goal_to_lemma(goal, name, global_variables)
+    renamed, raw_lemma = goal_to_lemma(raw_goal, name, global_variables)
+
+    last_proof = raw_chain_list_to_str(raw_chain_list[i:])
+    have_proofs.append((pet.run(base_state, raw_lemma), current_qualid_name, lemma, raw_lemma, replace_list(last_proof, renamed)))
+
+    return have_proofs
+
+def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dict[str, Any], dictionary: dict[str, Any]) -> dict[str, Any]:
     """Evaluate a theorem's proof."""
 
     # Preprocess the proof
@@ -65,109 +126,154 @@ def evaluate_theorem(dataset: str, pet: Pytanque, theorem: dict[str, Any], valid
             skeleton_proof += segment.prefix + str(have_idx) + segment.suffix
             have_idx += 1
 
-    have_tactics = list(filter(lambda s: isinstance(s, HaveTactic), parsed_proof))
+    # Preprocess have tactics
+    have_tactics = [have_tactic for have_tactic in parsed_proof if isinstance(have_tactic, HaveTactic)]
     assert (len(have_tactics) == have_idx)
 
     raw_chain_list = proof_to_raw_chain_list(skeleton_proof)
 
-    state = pet.start(Path(dataset, theorem["filepath"]), theorem["name"])
-
     # Compute the global variables
     global_variables = find_global_variables(pet, state)
 
-    previous_goals = pet.goals(state)
-    evaluation = [previous_goals[0].pp]
+    # Compute the initial goal and hypotheses
+    initial_goals = pet.goals(state)
+    if len(initial_goals) != 1:
+        raise Exception(f"Error: {qualid_name} starts with a number of goals different from one.")
+    initial_goal = initial_goals[0]
+    hypotheses = []
+    for hyp in initial_goal.hyps:
+        for name in hyp.names:
+            hypotheses.append(name)
+    # /!\ global variables are included in initial hypotheses /!\
+
+    # Compute the valid_names
+    search_state = pet.run(state, "Search _.")
+    search_dictionary = {}
+    for s, info in search_state.feedback:
+        match = re.search(r"(?P<name>[a-zA-Z0-9_'][a-zA-Z0-9_']*[a-zA-Z0-9_']):\s(?P<type>[\s\S]*)", info)
+        if s == 3 and match and match.start() == 0:
+            name = match.group("name").strip()
+            type_ = match.group("type").strip()
+            if not name in hypotheses:
+                search_dictionary[name] = type_
+
+    valid_names = list(search_dictionary.keys())
+
+    # Compute the statement's dependencies
+    sttt_dependencies = find_dependencies(theorem["statement"], [name] + hypotheses, valid_names)
+    sttt_dependencies = [format_dependency(pet, state, dep, search_dictionary, dictionary) for dep in sttt_dependencies]
+
+    # Compute the evaluation
+    evaluation = []
+    have_theorems = []
+    previous_goals = initial_goals
+    all_dependencies = [dep for dep in sttt_dependencies]
     for raw_chain in raw_chain_list:
-        dependencies = find_dependencies(raw_chain, global_variables, valid_names)
+
+        dependencies = find_dependencies(raw_chain, hypotheses, valid_names)
+        dependencies = [format_dependency(pet, state, dep, search_dictionary, dictionary) for dep in dependencies]
+        dependencies = [dep for dep in dependencies if dep not in all_dependencies]
+        all_dependencies += dependencies
 
         # If there is some have tactic in the raw chain, expend it
         match = parse_have_tags(raw_chain)
-        str_raw_chain = ""
-        run_raw_chain = ""
 
-        while match:
-            str_raw_chain += raw_chain[:match.start()]
-            run_raw_chain += raw_chain[:match.start()]
-            have_tactic = have_tactics[int(match.group("body"))]
-            str_raw_chain += have_tactic.no_proof()
-            run_raw_chain += str(have_tactic)
-            raw_chain = raw_chain[match.end():]
-            match = parse_have_tags(raw_chain)
+        if match:
+            if parse_have_tags(raw_chain[match.end():]):
+                raise Exception("Error: there should be only one have tactic by raw chain.")
 
-        str_raw_chain += raw_chain
-        run_raw_chain += raw_chain
+            idx = int(match.group("body"))
+            have_tactic = have_tactics[idx]
+            raw_chain_start = raw_chain[:match.start()]
+            raw_chain_end = raw_chain[match.end():]
+            raw_chain = raw_chain_start + have_tactic.no_proof() + raw_chain_end
 
-        evaluation.append({"tactic": str_raw_chain, "dependencies": dependencies})
+            state = pet.run(state, raw_chain_start + have_tactic.tactic)
 
-        state = pet.run_tac(state, run_raw_chain)
+            proof = enclose_haves_in_proof(pet, state, have_tactic.proof)
+            have_proofs = split_have_proofs(pet, state, previous_goals, have_tactic.get_statement(), proof, qualid_name + '_have_' + str(idx+1), global_variables)
+            for st, qn, lm, rlm, pf in have_proofs:
+                evaluated_theorems = evaluate_theorem(pet, st, qn, {"statement": lm, "raw_statement": rlm, "proof": pf}, dictionary)
+                have_theorems += evaluated_theorems
+
+            state = pet.run(state, have_tactic.proof + raw_chain_end)
+
+        else:
+            state = pet.run(state, raw_chain)
+
         new_goals = pet.goals(state)
-        evaluation.append(goal_lists_diff(previous_goals, new_goals))
+        goal_diff = goal_lists_diff(previous_goals, new_goals)
         previous_goals = new_goals
 
-    return {
-        "name": theorem["name"],
-        "statement": theorem["statement"],
-        "statement_dependencies": find_dependencies(theorem["statement"], [theorem["name"]], valid_names),
-        "proof": theorem["proof"],
-        "global_variables": global_variables,
-        "evaluation": evaluation,
-        "have_tactics": have_tactics
-    }
+        evaluation.append({"chain": raw_chain, "dependencies": dependencies, "goal_diff": goal_diff})
 
-def make(dataset: str, complet_dataset: str, petanque_address: str, petanque_port: int):
-    """Compute the evaluation of all theorems in the dataset."""
+    new_theorem = {
+        "statement": theorem["statement"],
+        "statement_dependencies": sttt_dependencies,
+        "global_variables": global_variables,
+        "initial_goal": initial_goal.pp,
+        "evaluation": evaluation
+    }
+    if "raw_statement" in theorem:
+        new_theorem["raw_statement"] = theorem["raw_statement"]
+
+    return [(qualid_name, new_theorem)] + have_theorems
+
+def make(dataset: str, dictionary: str, petanque_address: str, petanque_port: int):
+    """Compute the evaluation of all theorems in the dataset provided the dictionary."""
 
     datafile = Path(dataset)
     dataset = dataset.split("_", maxsplit=1)[0]
     if not datafile.exists():
         raise Exception(f"Error: {datafile} doesn't exists.")
-    complet_datafile = Path(complet_dataset)
-    if not complet_datafile.exists():
-        raise Exception(f"Error: {complet_dataset} doesn't exists.")
-    savefile = Path(datafile.parent, datafile.stem + "_eval.jsonl")
-
-    if savefile.exists():
-        print("Evaluated dataset already here.")
-    else:
-
-        print("Making the evaluated dataset.")
-
-        print("  Connecting to petanque ...")
-        pet = Pytanque(petanque_address, petanque_port)
-        pet.connect()
-
-        print("  Reading the data ...")
-        theorems = []
-        with open(datafile, "r") as f:
-            for line in f:
-                theorems.append(json.loads(line))
-
-        print("  Retrieving all valid names ...")
-        valid_names = []
-        with open(complet_datafile, "r") as f:
-            for line in f:
-                theorem = json.loads(line)
-                valid_names.append(theorem["name"])
-
-        print("  Computing evaluations ...")
-        evaluated_theorems = []
-        for theorem in tqdm(theorems):
-            evaluated_theorem = evaluate_theorem(dataset, pet, theorem, valid_names)
-            evaluated_theorems.append(evaluated_theorem)
-
-        print("  Saving the data ...")
+    dictfile = Path(dictionary)
+    if not dictfile.exists():
+        raise Exception(f"Error: {dictfile} doesn't exists")
+    savefile = Path(datafile.parent, datafile.stem + "_eval.json")
+    if not savefile.exists():
         with open(savefile, "w") as f:
-            for theorem in evaluated_theorems:
-                theorem = json.dumps(theorem)
-                f.write(theorem + '\n')
+            f.write("{}")
 
-        print("  DONE!")
+    print("Making the evaluated dataset.")
+
+    print("  Connecting to petanque ...")
+    pet = Pytanque(petanque_address, petanque_port)
+    pet.connect()
+
+    print("  Reading the data ...")
+    with open(datafile, "r") as f:
+        theorems = json.load(f)
+
+    with open(dictfile, "r") as f:
+        dictionary = json.load(f)
+
+    with open(savefile, "r") as f:
+        evaluated_theorems = json.load(f)
+
+    non_evaluated_theorems = {qualid_name: theorem for qualid_name, theorem in theorems.items() if not qualid_name in evaluated_theorems}
+
+    print("  Computing evaluations and saving the data ...")
+    count = 0
+    for qualid_name, theorem in tqdm(non_evaluated_theorems.items()):
+        state = pet.get_state_at_pos(theorem["filepath"], theorem["position"]["line"], theorem["position"]["character"], 0)
+        for qualid_name, evaluated_theorem in evaluate_theorem(pet, state, qualid_name, theorem, dictionary):
+            evaluated_theorems[qualid_name] = evaluated_theorem
+
+        count += 1
+        if count % 10 == 0:
+            with open(savefile, "w") as f:
+                json.dump(evaluated_theorems, f, indent=2)
+
+    with open(savefile, "w") as f:
+        json.dump(evaluated_theorems, f, indent=2)
+
+    print("  DONE!")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate a dataset of Rocq theorems by replaying the proof chain by chain.")
-    parser.add_argument("--dataset", type=str, default="math-comp_bm25_have_1000_0.5_first_19-20th.jsonl", help="The path of the dataset, default is 'math-comp_bm25_have_1000_0.5_first_19-20th.jsonl'")
-    parser.add_argument("--complet_dataset", type=str, default="math-comp.jsonl", help="The path of the complet dataset, default is 'math-comp.jsonl'")
+    parser.add_argument("--dataset", type=str, default="mathcomp_bm25_have_1000_0.5_first_19-20th.json", help="The path of the dataset, default is 'mathcomp_bm25_have_1000_0.5_first_19-20th.json'")
+    parser.add_argument("--dictionary", type=str, default="dictionary.json", help="The path of the dictionary to be used, default is 'dictionary.json'.")
     parser.add_argument("--address", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
     parser.add_argument("--port", type=int, default=8765, help="Port of the petanque server, default is 8765")
     args = parser.parse_args()
-    make(args.dataset, args.complet_dataset, args.address, args.port)
+    make(args.dataset, args.dictionary, args.address, args.port)

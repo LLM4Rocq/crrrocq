@@ -1,9 +1,10 @@
 import re
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple, Callable
 from dataclasses import dataclass
 from pytanque import Pytanque, State, PetanqueError
 
 from .chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_str, proof_to_chain_list
+from .segments import str_to_segment_list, segment_list_to_str
 
 # ==================================== haves =====================================
 #
@@ -47,13 +48,8 @@ from .chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_
 #
 # ================================================================================
 
-def is_have_tactic(tactic: str) -> bool:
-    """Check if the given tactic is an interesting have."""
-
-    # Check if there is a valid [have] in the tactic
-    match = re.search(r"(|-|\+|gen|by|\*)\s*have", tactic)
-    if not match or match.start() != 0:
-        return False
+def remove_parasite(tactic: str) -> str:
+    """Remove content that hinders the reading of a have tactic."""
 
     # Remove all [let ... in] from the tactic
     match = re.search(r"let[\s\S]*?in", tactic)
@@ -67,6 +63,18 @@ def is_have_tactic(tactic: str) -> bool:
         tactic = tactic[:i] + tactic[i+3:]
         i = tactic.find(":=:")
 
+    return tactic
+
+def is_have_tactic(tactic: str) -> bool:
+    """Check if the given tactic is an interesting have."""
+
+    # Check if there is a valid [have] in the tactic
+    match = re.search(r"(|-|\+|gen|by|\*)\s*have", tactic)
+    if not match or match.start() != 0:
+        return False
+
+    tactic = remove_parasite(tactic)
+
     # Check if we have [have ... := ...] or [have ... : ...]
     if re.search(r"have[\s\S]*?:=", tactic):
         return False
@@ -75,7 +83,7 @@ def is_have_tactic(tactic: str) -> bool:
 
 def is_have_by_tactic(tactic: str) -> bool:
     """Check if the given tactic contains `have ... by`."""
-    return re.search(r"have[\s\S]*?by", tactic)
+    return re.search(r"have[\s\S]*?\s+by", tactic)
 
 def flexible_run(pet: Pytanque, state: State, code: str, is_have_by: bool) -> Tuple[bool, State]:
     """Run the code on some state with a pet instance.
@@ -96,7 +104,7 @@ ropen_tag = "\\(\\*<have>\\*\\)"
 close_tag = " (*</have>*)"
 rclose_tag = "\\(\\*<\\/have>\\*\\)"
 
-def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) -> Tuple[bool, list[Chain]]:
+def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: list[Chain]) -> Tuple[bool, list[Chain]]:
     chain_list = copy_chain_list(chain_list)
     init = False
 
@@ -119,7 +127,7 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                     # Start the proof checking if it had not been initialized yet
                     # (made to avoid using the pet-server if it is not necessary)
                     if not init:
-                        base_state = pet.start(path, name)
+                        base_state = init_state()
                         base_state_checkpoint = 0
                         init = True
 
@@ -146,23 +154,57 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                         # Because a [have ... by] can fail and return the previous state, we must check thouroughly if the tactic is proven on the spot or not
                         # If the run ended with a success, the proof of the [have ... by] tactic is contained in it
                         if is_have_by and success:
+                            # Split the parts before and after the by
+                            match = re.search(r"\s+by", tactic.tactic)
+                            have_statement = tactic.tactic[:match.start()]
+                            have_proof = tactic.tactic[match.start():]
+
                             # Add the opening tag just before the tactic
                             k = 0
-                            while tactic.tactic[k].isspace():
+                            while have_statement[k].isspace():
                                 k += 1
-                            tactic.tactic = tactic.tactic[:k] + open_tag + tactic.tactic[k:] + close_tag
+                            have_statement = have_statement[:k] + open_tag + have_statement[k:]
 
                             if len(new_chain) > 0:
                                 new_chain_list.append(Chain(new_chain, '.'))
-                                new_chain_list.append(Chain([tactic], '.'))
-                                added = True
-                                base_state = state
-                                base_state_checkpoint += 2
-                                new_chain = []
+                                base_state_checkpoint += 1
+
+                            new_chain_list.append(Chain([Tactic(have_statement)], '.'))
+                            new_chain_list.append(Chain([Tactic(have_proof)], close_tag + '.'))
+                            added = True
+                            base_state = state
+                            base_state_checkpoint += 2
+                            new_chain = []
 
                         # If the run ended without a success, the proof of the [have ... by] needs to be continued
+                        elif is_have_by and not success:
+                            # Split the parts before and after the by
+                            match = re.search(r"\s+by", tactic.tactic)
+                            have_statement = tactic.tactic[:match.start()]
+                            have_proof = tactic.tactic[match.start():]
+
+                            # Add the opening tag just before the tactic
+                            k = 0
+                            while have_statement[k].isspace():
+                                k += 1
+                            have_statement = have_statement[:k] + open_tag + have_statement[k:]
+
+                            if len(new_chain) > 0:
+                                new_chain_list.append(Chain(new_chain, '.'))
+                                base_state = pet.run(base_state, str(Chain(new_chain, '.')))
+                                base_state_checkpoint += 1
+
+                            new_chain_list.append(Chain([Tactic(have_statement)], '.'))
+                            added = True
+                            base_state = pet.run(base_state, str(Chain([Tactic(have_statement)], '.')))
+                            base_state_checkpoint += 1
+                            new_chain = [Tactic(have_proof)]
+
+                            # We start the have proof
+                            in_have_proof = True
+
                         # The proof must also be continued if new goals are introduced
-                        elif (is_have_by and not success) or nbr_new_goals > 0:
+                        elif nbr_new_goals > 0:
                             # Add the opening tag just before the tactic
                             k = 0
                             while tactic.tactic[k].isspace():
@@ -173,7 +215,12 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                                 new_chain_list.append(Chain(new_chain, '.'))
                                 base_state = pet.run(base_state, str(Chain(new_chain, '.')))
                                 base_state_checkpoint += 1
-                                new_chain = []
+
+                            new_chain_list.append(Chain([tactic], '.'))
+                            added = True
+                            base_state = pet.run(base_state, str(Chain([tactic], '.')))
+                            base_state_checkpoint += 1
+                            new_chain = []
 
                             # We start the have proof
                             in_have_proof = True
@@ -209,7 +256,7 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
                 # If we have finished the proof, just add the proof to the new chain-list, update the base state and reset the new chain
                 if (not is_have_by or success) and nbr_new_goals == 0:
                     new_chain.append(tactic)
-                    new_chain_list.append(Chain(new_chain, '.' + close_tag))
+                    new_chain_list.append(Chain(new_chain, close_tag + '.'))
                     base_state = state
                     base_state_checkpoint += 1
                     new_chain = []
@@ -226,10 +273,11 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
         if in_have_proof:
 
             # Update the new chain-list and the base state
-            new_chain_list.append(Chain(new_chain, '.'))
-            base_state = pet.run(base_state, str(Chain(new_chain, '.')))
-            base_state_checkpoint += 1
-            new_chain = []
+            if len(new_chain) > 0:
+                new_chain_list.append(Chain(new_chain, '.'))
+                base_state = pet.run(base_state, str(Chain(new_chain, '.')))
+                base_state_checkpoint += 1
+                new_chain = []
 
             # While we have not finished the have proof, we look at following chains, updating the new chain-list and the base state at each chain
             i += 1
@@ -256,6 +304,11 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
 
     return init, new_chain_list
 
+def enclose_haves_in_proof(pet: Pytanque, state: State, proof: str) -> str:
+    chain_list = proof_to_chain_list(proof)
+    _, chain_list = enclose_haves(pet, lambda : state, chain_list)
+    return chain_list_to_str(chain_list)
+
 # ====================
 # Parsing
 # ====================
@@ -263,34 +316,39 @@ def enclose_haves(pet: Pytanque, name: str, path: str, chain_list: list[Chain]) 
 @dataclass
 class HaveTactic:
     prefix: str
-    intro: str
-    statement: str
-    infix: str
+    tactic: str
     proof: str
     suffix: str
 
     def __str__(self):
-        return self.prefix + self.intro + self.statement + self.infix + self.proof + self.suffix
+        return self.prefix + self.tactic + self.proof + self.suffix
+
+    def no_proof(self):
+        return self.prefix + self.tactic + " (*proof*) " + self.suffix
 
     def to_dict(self):
         return {
-            "prefix":    self.prefix,
-            "intro":     self.intro,
-            "statement": self.statement,
-            "infix":     self.infix,
-            "proof":     self.proof,
-            "suffix":    self.suffix
+            "prefix": self.prefix,
+            "tactic": self.tactic,
+            "proof":  self.proof,
+            "suffix": self.suffix
         }
 
-    def no_proof(self):
-        return self.prefix + self.intro + self.statement + " (*proof*) " + self.suffix
+    def get_statement(self):
+        segment_list = str_to_segment_list(self.tactic)
 
-def have_tactic_of_dict(d: dict[str, Any]) -> HaveTactic:
-    if "prefix" not in d or "intro" not in d or "statement" not in d or \
-       "infix" not in d or "proof" not in d or "suffix" not in d:
-        raise Exception("Error: the dictionary is missing keys.")
-    else:
-        return HaveTactic(d["prefix"], d["intro"], d["statement"], d["infix"], d["proof"], d["suffix"])
+        i = 0
+        while i < len(segment_list):
+            segment = segment_list.pop(0)
+            if isinstance(segment, str):
+                match = re.search(r":\s", segment)
+                if match:
+                    segment = [segment[match.end():]] if len(segment) > match.end() else []
+                    segment_list = segment + segment_list
+                    return segment_list_to_str(segment_list)
+
+        raise Exception("Error: there should be a statement inside of a have tactic.")
+
 
 def parse_have_tags(text: str) -> Optional[re.Match]:
     """Search for have tags in a text."""
@@ -300,15 +358,18 @@ def parse_have_tags(text: str) -> Optional[re.Match]:
 def parse_have_tactics(text: str) -> list:
     """Parse all have tactics in some text."""
     parsed_text = []
-    pattern = re.compile(r"(?P<intro>[\s\S]*?:\s*)(?P<statement>[\s\S]*?)(?P<infix>\s*(\.\s|;|by)\s*)(?P<proof>[\s\S]*)")
+    pattern = re.compile(r"(?P<tactic>[\s\S]*?\.)(?P<proof>\s[\s\S]*)")
 
     match = parse_have_tags(text)
     while match:
-        if match.start() > 0:
-            parsed_text.append(text[:match.start()])
+        # Parse the have tactic
         prefix, body, suffix = match.group("prefix"), match.group("body"), match.group("suffix")
         bmatch = pattern.match(body)
-        have_tactic = HaveTactic(prefix, bmatch.group("intro"), bmatch.group("statement"), bmatch.group("infix"), bmatch.group("proof"), suffix)
+        have_tactic = HaveTactic(prefix, bmatch.group("tactic"), bmatch.group("proof"), suffix)
+
+        # Update the result and the text
+        if match.start() > 0:
+            parsed_text.append(text[:match.start()])
         parsed_text.append(have_tactic)
         text = text[match.end():]
         match = parse_have_tags(text)
@@ -360,17 +421,18 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
     error_theorems = []
     count = 0
     for qualid_name, theorem in tqdm(theorems_without_have.items()):
-        name = qualid_name.rsplit('.', 1)[-1]
         path = theorem["filepath"]
+        position = theorem["position"]
         proof = theorem["proof"]
         chain_list = proof_to_chain_list(proof)
 
         try:
-            modified, chain_list = enclose_haves(pet, name, path, chain_list)
+            init_state = lambda : pet.get_state_at_pos(path, position["line"], position["character"], 0)
+            modified, chain_list = enclose_haves(pet, init_state, chain_list)
             reproof = chain_list_to_str(chain_list)
 
             if modified:
-                state = pet.start(path, name)
+                state = init_state()
                 pet.run(state, reproof)
             else:
                 assert (proof == reproof)
@@ -384,9 +446,9 @@ def make(dataset: str, petanque_address: str, petanque_port: int):
                     json.dump(theorems_with_have, f, indent=2)
 
         except PetanqueError as err:
-            error_theorems.append(name + " -> " + err.message)
+            error_theorems.append(qualid_name + " -> " + err.message)
         except Exception as err:
-            error_theorems.append(name + " -> " + err.args[0])
+            error_theorems.append(qualid_name + " -> " + err.args[0])
 
     with open(savefile, "w") as f:
         json.dump(theorems_with_have, f, indent=2)

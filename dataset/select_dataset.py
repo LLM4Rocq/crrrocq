@@ -46,6 +46,7 @@ def select_have(theorems, total, share, select_with, select_without):
     return {qn: theorems[qn] for _, qn in with_have} | {qn:theorems[qn] for _, qn in without_have}
 
 selectors = {
+    "300_0.5_first_9-10th": lambda theorems: select_have(theorems, 300, 0.5, "first", "9-10th"),
     "1000_0.5_first_19-20th": lambda theorems: select_have(theorems, 1_000, 0.5, "first", "19-20th")
 }
 

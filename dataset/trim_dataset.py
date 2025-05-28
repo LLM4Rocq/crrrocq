@@ -2,6 +2,8 @@ import re
 from pathlib import Path
 import argparse
 
+from parser.segments import str_to_comment_list
+
 def get_rocq_files(directory):
     """Retrieve all Rocq files in a directory, and remove non-Rocq and non-Make files."""
 
@@ -22,10 +24,12 @@ def get_rocq_files(directory):
 def remove_comments(content: str) -> str:
     """Remove Rocq comments in a file."""
 
-    match = re.search(r"\(\*[\s\S]*?\*\)", content)
-    while match:
-        content = content[:match.start()] + content[match.end():]
-        match = re.search(r"\(\*[\s\S]*?\*\)", content)
+    comment_list = str_to_comment_list(content)
+
+    content = ""
+    for segment in comment_list:
+        if isinstance(segment, str):
+            content += segment
 
     return content
 

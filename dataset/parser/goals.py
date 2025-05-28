@@ -44,7 +44,7 @@ def goal_lists_diff(goal_list1: list[Goal], goal_list2: list[Goal]) -> str:
     considering the second list is obtained by applying a tactic on the first list."""
     added = []
     modified = []
-    removed = []
+    removed = 0
     len_diff = len(goal_list2) - len(goal_list1)
     if len_diff > 0:
         added = list(map(lambda g: g.pp, goal_list2[:len_diff]))
@@ -63,19 +63,22 @@ def goal_lists_diff(goal_list1: list[Goal], goal_list2: list[Goal]) -> str:
             else:
                 modified.append(f"The goal {old_pos} is changed and is now the goal {new_pos}:\n{diff}")
 
-    sep1 = "\n---------------\n"
-    sep2 = "\n\n==============================\n\n"
+    sep1 = "\n\n"
+    sep2 = "\n\n"
     result = []
     if removed > 0:
-        result.append(f"{removed} goals have been removed.")
+        if removed == 1:
+            result.append(f"1 goal has been removed.")
+        else:
+            result.append(f"{removed} goals have been removed.")
         if len(goal_list2) > 0:
             result[-1] += f"\nThe new goal to prove is:\n{goal_list2[-1].pp}"
         else:
             result[-1] += "\nThere is no goal remaining, the proof is finished."
     elif len(added) > 0:
-        result.append("Goals added:\n" + sep1.join(added))
+        result.append("Goals added:\n\n" + sep1.join(added))
     if len(modified) > 0:
-        result.append("Goals modified:\n" + sep1.join(modified))
+        result.append("Goals modified:\n\n" + sep1.join(modified))
 
     return sep2.join(result)
 
@@ -83,14 +86,32 @@ def goal_lists_diff(goal_list1: list[Goal], goal_list2: list[Goal]) -> str:
 # Lemma correspondence
 # ====================
 
-def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> str:
+def replace_list(text: str, replace_list: list[Tuple[str, str]]) -> str:
+    """Apply replace consecutively on some text with a list of old and new strings provided."""
+    for old, new in replace_list:
+        text = text.replace(old, new)
+    return text
+
+def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> Tuple[list[Tuple[str, str]], str]:
     """Return a string containing a lemma version of some goal."""
-    rocq_goal = f"Lemma {name}"
+    renamed = []
+    lemma = f"Lemma {name}"
+
     for hyp in goal.hyps:
         names = [name for name in hyp.names if not name in global_variables]
-        rocq_goal += " (" + " ".join(names) + (" := " + hyp.def_ if hyp.def_ else "") + " : " + hyp.ty + ")"
-    rocq_goal += " : " + goal.ty + "."
-    return rocq_goal
+
+        # Variables named `_?_` are not possible to write as lemmas arguments
+        for i, name in enumerate(names):
+            if name[0] == '_' and name[-1] == '_':
+                new_name = name[1:]
+                renamed.append((name, new_name))
+                names[i] = new_name
+
+        if len(names) > 0:
+            lemma += " (" + " ".join(names) + (" := (" + replace_list(hyp.def_, renamed) + ")" if hyp.def_ else "") + " : " + replace_list(hyp.ty, renamed) + ")"
+
+    lemma += " : " + replace_list(goal.ty, renamed) + "."
+    return renamed, lemma
 
 # ====================
 # Testing
