@@ -186,7 +186,7 @@ def split_have_proofs(pet: Pytanque, state: State, previous_goals: list[Goal], h
 
     return have_proofs
 
-def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dict[str, Any], dictionary: dict[str, Any]) -> dict[str, Any]:
+def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_name: str, theorem: dict[str, Any], dictionary: dict[str, Any]) -> dict[str, Any]:
     """Evaluate a theorem's proof."""
 
     # Preprocess the proof
@@ -234,9 +234,6 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     valid_names = list(search_dictionary.keys())
 
-    # Compute the sections we are in
-    sections = find_sections(theorem["filepath"], theorem["position"])
-
     # Compute the statement's dependencies
     sttt_dependencies = find_dependencies(theorem["statement"], [name] + hypotheses, valid_names)
     sttt_dependencies = [format_dependency(pet, state, theorem["filepath"], dep, sections, search_dictionary, dictionary) for dep in sttt_dependencies]
@@ -270,9 +267,8 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             proof = enclose_haves_in_proof(pet, state, have_tactic.proof)
             have_proofs = split_have_proofs(pet, state, previous_goals, have_tactic.get_statement(), proof, qualid_name + '_have_' + str(idx+1), global_variables)
             for st, qn, lm, rlm, pf in have_proofs:
-                have_theorem = {"filepath": theorem["filepath"], "position": theorem["position"], "statement": lm, "raw_statement": rlm, "proof": pf}
-                # /!\ for the moment, the position is only used to know if we are inside of some sections, so passing it to the have theorem is ok /!\
-                evaluated_theorems = evaluate_theorem(pet, st, qn, have_theorem, dictionary)
+                have_theorem = {"filepath": theorem["filepath"], "statement": lm, "raw_statement": rlm, "proof": pf}
+                evaluated_theorems = evaluate_theorem(pet, st, sections, qn, have_theorem, dictionary)
                 have_theorems += evaluated_theorems
 
             state = pet.run(state, have_tactic.proof + raw_chain_end)
@@ -335,7 +331,8 @@ def make(dataset: str, dictionary: str, petanque_address: str, petanque_port: in
     count = 0
     for qualid_name, theorem in tqdm(non_evaluated_theorems.items()):
         state = pet.get_state_at_pos(theorem["filepath"], theorem["position"]["line"], theorem["position"]["character"], 0)
-        for qualid_name, evaluated_theorem in evaluate_theorem(pet, state, qualid_name, theorem, dictionary):
+        sections = find_sections(theorem["filepath"], theorem["position"])
+        for qualid_name, evaluated_theorem in evaluate_theorem(pet, state, sections, qualid_name, theorem, dictionary):
             evaluated_theorems[qualid_name] = evaluated_theorem
 
         count += 1
