@@ -48,26 +48,86 @@ def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -
 
     return dependencies
 
-def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: str, search_dictionary: dict[str, str], info_dictionary: dict[str, str]) -> dict[str, str]:
+def find_opened_sections(text: str) -> list[str]:
+    """Return the list of opened sections in some text."""
+    sections = []
+    match = re.search(r"Section\s(?P<name>\S*).", text)
+
+    if match:
+        text = text[match.end():]
+        section_name = match.group("name")
+        section_end = f"End {section_name}."
+        close_idx = text.find(section_end)
+
+        if close_idx >= 0:
+            text = text[close_idx+len(section_end):]
+            return find_opened_sections(text)
+        else:
+            return [section_name] + find_opened_sections(text)
+
+    else:
+        return sections
+
+def find_sections(filepath: str, position: str) -> list[str]:
+    """Return the list of sections we are in at a certain position in a file."""
+
+    content = ""
+    with open(filepath, "r") as f:
+        for i, line in enumerate(f):
+            if i < position["line"]:
+                content += line
+            else:
+                content += line[:position["character"]]
+                break
+
+    return find_opened_sections(content)
+
+def sublist_index(l1: list, l2: list) -> bool:
+    """If the first list is a sublist of the second one, return the last index at which the first list starts in the second list. Else return -1."""
+    res = -1
+    for i in range(len(l2) - len(l1) + 1):
+        if l1 == l2[i:i+len(l1)]:
+            res = i
+    return res
+
+def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: str, sections: list[str], search_dictionary: dict[str, str], info_dictionary: dict[str, str]) -> dict[str, str]:
     """Format a dependency."""
-    state = pet.run(state, f"Locate {dependency}.")
+    state = pet.run(state, f"Locate Term {dependency}.")
     if len(state.feedback) == 0:
         raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
     message = state.feedback[0][1]
-    match = re.search(r"(Constant|Inductive|Constructor)\s(?P<qualid_name>[\S]*)(\s|)", message)
-    if not match or match.start() != 0:
-        raise Exception(f"Error: not the right format for {message}.")
-    qualid_name = match.group("qualid_name")
 
-    # Check if the dependency is declared in the same file that the state is in
+    # Check if it is syntactically equal to another theorem
+    match = re.search(r"(Constant|Inductive|Constructor)\s*(?P<first_qualid_name>\S*)\s*\(syntactically\s*equal\s*to\s*(?P<second_qualid_name>\S*)\s*\)", message)
+    if match and match.start() == 0:
+        qualid_names = [match.group("first_qualid_name"), match.group("second_qualid_name")]
+    else:
+        match = re.search(r"(Constant|Inductive|Constructor)\s(?P<qualid_name>\S*)", message)
+        if not match or match.start() != 0:
+            raise Exception(f"Error: not the right format for {message}.")
+        qualid_names = [match.group("qualid_name")]
+
     filepath = Path(filepath)
     filename = filepath.stem
-    if filename == qualid_name.split('.', maxsplit=1)[0]:
-        qualid_prefix = '.'.join(filepath.parent.parts)
-        qualid_name = qualid_prefix + '.' + qualid_name
+    res = {"name": dependency, "type": search_dictionary[dependency]}
 
-    return {"name": dependency, "type": search_dictionary[dependency]} | \
-          ({"info": info_dictionary[qualid_name]} if qualid_name in info_dictionary else {})
+    for qualid_name in qualid_names:
+        # Check if the dependency is declared in the same file that the state is in
+        if filename == qualid_name.split('.', maxsplit=1)[0]:
+            qualid_prefix = '.'.join(filepath.parent.parts)
+            qualid_name = qualid_prefix + '.' + qualid_name
+
+        # Remove names that corresponds to the sections we are in
+        split_qualid_name = qualid_name.split('.')
+        idx = sublist_index(sections, split_qualid_name)
+        if idx >= 0:
+            qualid_name = '.'.join(split_qualid_name[:idx] + split_qualid_name[idx+len(sections):])
+
+        if qualid_name in info_dictionary:
+            res["info"] = info_dictionary[qualid_name]
+            break
+
+    return res
 
 def find_global_variables(pet: Pytanque, state: State) -> list[str]:
     """Retrieve the global variable present at state `state`."""
@@ -174,9 +234,12 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     valid_names = list(search_dictionary.keys())
 
+    # Compute the sections we are in
+    sections = find_sections(theorem["filepath"], theorem["position"])
+
     # Compute the statement's dependencies
     sttt_dependencies = find_dependencies(theorem["statement"], [name] + hypotheses, valid_names)
-    sttt_dependencies = [format_dependency(pet, state, theorem["filepath"], dep, search_dictionary, dictionary) for dep in sttt_dependencies]
+    sttt_dependencies = [format_dependency(pet, state, theorem["filepath"], dep, sections, search_dictionary, dictionary) for dep in sttt_dependencies]
     known_dependencies = [dep for dep in sttt_dependencies]
 
     # Compute the evaluation
@@ -186,7 +249,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
     for raw_chain in raw_chain_list:
 
         dependencies = find_dependencies(raw_chain, known_dependencies + hypotheses, valid_names)
-        dependencies = [format_dependency(pet, state, theorem["filepath"], dep, search_dictionary, dictionary) for dep in dependencies]
+        dependencies = [format_dependency(pet, state, theorem["filepath"], dep, sections, search_dictionary, dictionary) for dep in dependencies]
         known_dependencies += dependencies
 
         # If there is some have tactic in the raw chain, expend it
@@ -207,7 +270,9 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             proof = enclose_haves_in_proof(pet, state, have_tactic.proof)
             have_proofs = split_have_proofs(pet, state, previous_goals, have_tactic.get_statement(), proof, qualid_name + '_have_' + str(idx+1), global_variables)
             for st, qn, lm, rlm, pf in have_proofs:
-                evaluated_theorems = evaluate_theorem(pet, st, qn, {"filepath": theorem["filepath"], "statement": lm, "raw_statement": rlm, "proof": pf}, dictionary)
+                have_theorem = {"filepath": theorem["filepath"], "position": theorem["position"], "statement": lm, "raw_statement": rlm, "proof": pf}
+                # /!\ for the moment, the position is only used to know if we are inside of some sections, so passing it to the have theorem is ok /!\
+                evaluated_theorems = evaluate_theorem(pet, st, qn, have_theorem, dictionary)
                 have_theorems += evaluated_theorems
 
             state = pet.run(state, have_tactic.proof + raw_chain_end)
