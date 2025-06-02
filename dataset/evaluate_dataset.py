@@ -97,7 +97,7 @@ def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: st
         raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
     message = state.feedback[0][1]
 
-    # Check if it is syntactically equal to another theorem
+    # Check if the dependency is syntactically equal to another theorem
     match = re.search(r"(Constant|Inductive|Constructor)\s*(?P<first_qualid_name>\S*)\s*\(syntactically\s*equal\s*to\s*(?P<second_qualid_name>\S*)\s*\)", message)
     if match and match.start() == 0:
         qualid_names = [match.group("first_qualid_name"), match.group("second_qualid_name")]
@@ -245,10 +245,6 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
     previous_goals = initial_goals
     for raw_chain in raw_chain_list:
 
-        dependencies = find_dependencies(raw_chain, known_dependencies + hypotheses, valid_names)
-        dependencies = [format_dependency(pet, state, theorem["filepath"], dep, sections, search_dictionary, dictionary) for dep in dependencies]
-        known_dependencies += dependencies
-
         # If there is some have tactic in the raw chain, expend it
         match = parse_have_tags(raw_chain)
 
@@ -275,6 +271,10 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
 
         else:
             state = pet.run(state, raw_chain)
+
+        dependencies = find_dependencies(raw_chain, known_dependencies + hypotheses, valid_names)
+        dependencies = [format_dependency(pet, state, theorem["filepath"], dep, sections, search_dictionary, dictionary) for dep in dependencies]
+        known_dependencies += dependencies
 
         new_goals = pet.goals(state)
         goal_diff = goal_lists_diff(previous_goals, new_goals)
