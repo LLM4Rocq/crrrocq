@@ -32,10 +32,12 @@ rocq_keywords = [
     "apply"
 ]
 
+# TODO: better handle `last` case (if at the beginning of a tactic, do not count as a dependency)
+
 def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -> Tuple[list[str], list[str]]:
     """Find all occurrences of `valid_names` in `code`, provided `bad_names` to not take into account."""
     bad_names = rocq_keywords + bad_names
-    matches = re.finditer(r"(?P<name>[_'a-zA-Z0-9](|[_'a-zA-Z0-9\.]*[_'a-zA-Z0-9]))", code)
+    matches = re.finditer(r"(?P<name>[_'a-zA-Z0-9][_'a-zA-Z0-9\.]*[_'a-zA-Z0-9])", code)
     names = [match.group("name") for match in matches]
 
     dependencies = []
@@ -46,7 +48,7 @@ def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -
 
     return dependencies
 
-def format_dependency(pet: Pytanque, state: State, dependency: str, search_dictionary: dict[str, str], info_dictionary: dict[str, str]) -> dict[str, str]:
+def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: str, search_dictionary: dict[str, str], info_dictionary: dict[str, str]) -> dict[str, str]:
     """Format a dependency."""
     state = pet.run(state, f"Locate {dependency}.")
     if len(state.feedback) == 0:
@@ -56,6 +58,13 @@ def format_dependency(pet: Pytanque, state: State, dependency: str, search_dicti
     if not match or match.start() != 0:
         raise Exception(f"Error: not the right format for {message}.")
     qualid_name = match.group("qualid_name")
+
+    # Check if the dependency is declared in the same file that the state is in
+    filepath = Path(filepath)
+    filename = filepath.stem
+    if filename == qualid_name.split('.', maxsplit=1)[0]:
+        qualid_prefix = '.'.join(filepath.parent.parts)
+        qualid_name = qualid_prefix + '.' + qualid_name
 
     return {"name": dependency, "type": search_dictionary[dependency]} | \
           ({"info": info_dictionary[qualid_name]} if qualid_name in info_dictionary else {})
@@ -167,7 +176,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     # Compute the statement's dependencies
     sttt_dependencies = find_dependencies(theorem["statement"], [name] + hypotheses, valid_names)
-    sttt_dependencies = [format_dependency(pet, state, dep, search_dictionary, dictionary) for dep in sttt_dependencies]
+    sttt_dependencies = [format_dependency(pet, state, theorem["filepath"], dep, search_dictionary, dictionary) for dep in sttt_dependencies]
     known_dependencies = [dep for dep in sttt_dependencies]
 
     # Compute the evaluation
@@ -177,7 +186,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
     for raw_chain in raw_chain_list:
 
         dependencies = find_dependencies(raw_chain, known_dependencies + hypotheses, valid_names)
-        dependencies = [format_dependency(pet, state, dep, search_dictionary, dictionary) for dep in dependencies]
+        dependencies = [format_dependency(pet, state, theorem["filepath"], dep, search_dictionary, dictionary) for dep in dependencies]
         known_dependencies += dependencies
 
         # If there is some have tactic in the raw chain, expend it
@@ -198,7 +207,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             proof = enclose_haves_in_proof(pet, state, have_tactic.proof)
             have_proofs = split_have_proofs(pet, state, previous_goals, have_tactic.get_statement(), proof, qualid_name + '_have_' + str(idx+1), global_variables)
             for st, qn, lm, rlm, pf in have_proofs:
-                evaluated_theorems = evaluate_theorem(pet, st, qn, {"statement": lm, "raw_statement": rlm, "proof": pf}, dictionary)
+                evaluated_theorems = evaluate_theorem(pet, st, qn, {"filepath": theorem["filepath"], "statement": lm, "raw_statement": rlm, "proof": pf}, dictionary)
                 have_theorems += evaluated_theorems
 
             state = pet.run(state, have_tactic.proof + raw_chain_end)
