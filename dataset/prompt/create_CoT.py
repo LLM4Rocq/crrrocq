@@ -1,4 +1,4 @@
-prompt = """# Chain of Thought Generation Task
+creation_prompt = """# Chain of Thought Generation Task
 
 ## Introduction
 
