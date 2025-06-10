@@ -33,6 +33,7 @@ rocq_keywords = [
 ]
 
 # TODO: better handle `last` case (if at the beginning of a tactic, do not count as a dependency)
+# TODO: better handle `{poly _}` case to not yield a dependency with lemma poly
 
 def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -> Tuple[list[str], list[str]]:
     """Find all occurrences of `valid_names` in `code`, provided `bad_names` to not take into account."""
@@ -280,7 +281,7 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
         goal_diff = goal_lists_diff(previous_goals, new_goals)
         previous_goals = new_goals
 
-        evaluation.append({"chain": raw_chain, "dependencies": dependencies, "goal_diff": goal_diff})
+        evaluation.append({"chain": raw_chain, "dependencies": dependencies, "goals": list(map(lambda g: g.pp, new_goals)), "goal_diff": goal_diff})
 
     new_theorem = {
         "statement": theorem["statement"],
