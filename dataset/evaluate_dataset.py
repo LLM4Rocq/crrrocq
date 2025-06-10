@@ -256,7 +256,7 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
             idx = int(match.group("body"))
             have_tactic = have_tactics[idx]
             raw_chain_start = raw_chain[:match.start()]
-            raw_chain_end = raw_chain[match.end():]
+            raw_chain_end = raw_chain[match.end()+1:] # The + 1 account for the point that we don't want inside of a have proof
             raw_chain = raw_chain_start + have_tactic.no_proof() + raw_chain_end
 
             state = pet.run(state, raw_chain_start + have_tactic.tactic)
@@ -268,7 +268,7 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
                 evaluated_theorems = evaluate_theorem(pet, st, sections, qn, have_theorem, dictionary)
                 have_theorems += evaluated_theorems
 
-            state = pet.run(state, have_tactic.proof + raw_chain_end)
+            state = pet.run(state, have_tactic.proof + "." + raw_chain_end)
 
         else:
             state = pet.run(state, raw_chain)
