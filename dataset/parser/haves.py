@@ -324,7 +324,7 @@ class HaveTactic:
         return self.prefix + self.tactic + self.proof + self.suffix
 
     def no_proof(self):
-        return self.prefix + self.tactic + " (*proof*) " + self.suffix
+        return self.prefix + self.tactic + " (*proof*)" + self.suffix
 
     def to_dict(self):
         return {

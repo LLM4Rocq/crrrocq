@@ -126,6 +126,9 @@ def format_theorem(prefix: str, theorem: str, file: Path) -> Tuple[str, dict[str
     return qualid_name, {"position": {"line": line, "character": char}, "statement": match.group("statement"), "proof": match.group("proof")}
 
 # =================
+# Testing
+# =================
+
 import json
 
 if __name__ == "__main__":
