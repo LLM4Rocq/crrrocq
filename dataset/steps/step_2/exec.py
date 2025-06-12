@@ -11,6 +11,9 @@ from tqdm import tqdm
 from dataset.parser.haves import proof_to_chain_list, enclose_haves, chain_list_to_str
 from src.training.eval import start_pet_server, stop_pet_server, timeout, TimeoutError
 
+"""
+Step 2: Extract all have, rewrite them if necessary.
+"""
 def chunk_dataset(dataset: str, export_path: str):
     """Chunk dataset to run tasks in parallel."""
 

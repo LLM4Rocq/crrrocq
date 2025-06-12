@@ -15,6 +15,9 @@ from dataset.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics
 from dataset.parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
 from dataset.parser.goals import goal_lists_diff, replace_list, goal_to_lemma
 
+"""
+Step 4: Evaluate all theorems (goals, dependencies, etc.) from step 3.
+"""
 rocq_keywords = [
     "Lemma",
     "Theorem",
@@ -344,8 +347,7 @@ if __name__ == "__main__":
     parser.add_argument("--input", type=str, default="export/output/steps/step_3/result.json", help="Path of the input")
     parser.add_argument("--output", type=str, default="export/output/steps/step_4/", help="Path of the output")
     parser.add_argument("--dictionary", type=str, default="export/docstrings/dictionary.json", help="The path of the dictionary to be used, default is 'dictionary.json'.")
-    parser.add_argument("--address", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
-    parser.add_argument("--max-workers", type=int, default=8)
+    parser.add_argument("--max-workers", type=int, default=4)
     args = parser.parse_args()
     os.makedirs(os.path.join(args.output, 'aux'), exist_ok=True)
     to_do = chunk_dataset(args.input, args.output)

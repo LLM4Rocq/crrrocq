@@ -12,6 +12,10 @@ from tqdm import tqdm
 
 from dataset.parser.chains import proof_to_chain_list, number_of_tactics_chain
 
+"""
+Step 3: Extract a diverse set of theorems using BM25.
+"""
+
 def extract_have_proofs(theorem):
     """Extract all have proofs a theorem has."""
     matches = re.finditer(r"\(\*<have>\*\)[\s\S]*?\(\*<\/have>\*\)", theorem["proof"])

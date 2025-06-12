@@ -5,6 +5,9 @@ import os
 
 from dataset.steps.utils import get_rocq_files
 from dataset.parser.segments import str_to_comment_list
+"""
+Step 0: remove comments, remove all non source file.
+"""
 
 def remove_comments(content: str) -> str:
     """Remove Rocq comments in a file."""
