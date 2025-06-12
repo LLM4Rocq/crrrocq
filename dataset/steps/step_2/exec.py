@@ -35,13 +35,10 @@ def chunk_dataset(dataset: str, export_path: str):
 def make(to_do, export_path: str, petanque_port: int):
     """Enclose all the have with a proof of a dataset."""
 
-    print("Enclosing all haves in the dataset.")
     pet_server = start_pet_server(petanque_port)
-    print("  Connecting to the pet-server ...")
     pet = Pytanque("127.0.0.1", petanque_port)
     pet.connect()
 
-    print("  Enclosing the haves ...")
     error_theorems = []
     count = 0
     for qualid_name, theorem, export_filepath in tqdm(to_do):
