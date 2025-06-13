@@ -63,7 +63,7 @@ def select_diverse_documents(documents: List[str], top_k):
     
     return selected_indices
 
-def make(dataset, k_have=500, k_wo_have=500, max_number_of_tactics=7, min_number_of_tactics=3):
+def make(dataset, k_have=500, k_wo_have=500, max_number_of_tactics=14, min_number_of_tactics=2):
     """Select theorems using bm25"""
 
     datafile = Path(dataset)
@@ -74,8 +74,12 @@ def make(dataset, k_have=500, k_wo_have=500, max_number_of_tactics=7, min_number
 
     with_have = [qn for qn, theorem in theorems.items() if "*<have>*)" in theorem['proof']]
     with_have = [qn for qn in with_have if min_number_of_tactics <= number_of_tactics(theorems[qn]['proof']) <= max_number_of_tactics]
+
     without_have = [qn for qn, theorem in theorems.items() if "*<have>*)" not in theorem['proof']]
     without_have = [qn for qn in without_have if min_number_of_tactics <= number_of_tactics(theorems[qn]['proof']) <= max_number_of_tactics]
+
+    assert len(with_have) >= k_have, f'Not enough theorems with have satisfying conditions {min_number_of_tactics} <= number_of_tactics <= {max_number_of_tactics}'
+    assert len(without_have) >= k_wo_have, f'Not enough theorems satisfying conditions {min_number_of_tactics} <= number_of_tactics <= {max_number_of_tactics}'
 
     documents_with_have = [theorems[qn]['statement'] for qn in with_have]
     documents_without_have = [theorems[qn]['statement'] for qn in without_have]
