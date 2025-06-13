@@ -1,25 +1,13 @@
-import re
 from pathlib import Path
+import shutil
 import argparse
+import os
 
-from parser.segments import str_to_comment_list
-
-def get_rocq_files(directory):
-    """Retrieve all Rocq files in a directory, and remove non-Rocq and non-Make files."""
-
-    files = []
-    for path in directory.iterdir():
-        if path.is_file():
-            if path.suffix == ".v":
-                files.append(path)
-            if path.suffix != ".v" and path.suffix != ".vo" and path.name.find("Make") < 0:
-                path.unlink()
-        elif path.is_dir():
-            files += get_rocq_files(path)
-            if not any(path.iterdir()):
-                path.rmdir()
-
-    return files
+from dataset.steps.utils import get_rocq_files
+from dataset.parser.segments import str_to_comment_list
+"""
+Step 0: remove comments, remove all non source file.
+"""
 
 def remove_comments(content: str) -> str:
     """Remove Rocq comments in a file."""
@@ -57,7 +45,10 @@ def make(dataset: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Keep only Rocq and Make files, remove comments in Rocq files.")
-    parser.add_argument("--dataset", type=str, default="mathcomp", help="The path of the dataset, default is 'mathcomp'")
+    parser.add_argument("--input", type=str, default="export/mathcomp", help="The path of the dataset")
+    parser.add_argument("--output", type=str, default="export/output/steps/step_0", help="Output of step 0")
     args = parser.parse_args()
-    make(args.dataset)
+    os.makedirs(args.output, exist_ok=True)
+    shutil.copytree(args.input, args.output, dirs_exist_ok=True)
+    make(args.output)
 

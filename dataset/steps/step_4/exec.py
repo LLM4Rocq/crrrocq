@@ -1,15 +1,23 @@
 import re
 import json
 import argparse
-from typing import Any, Tuple
-from pytanque import Pytanque, State, Goal
+from typing import Any, Tuple, Dict
 from pathlib import Path
+from collections import defaultdict
+import os
+import concurrent.futures
+
+from pytanque import Pytanque, State, Goal
 from tqdm import tqdm
 
-from parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
-from parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
-from parser.goals import goal_lists_diff, replace_list, goal_to_lemma
+from src.training.eval import start_pet_server, stop_pet_server
+from dataset.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
+from dataset.parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
+from dataset.parser.goals import goal_lists_diff, replace_list, goal_to_lemma
 
+"""
+Step 4: Evaluate all theorems (goals, dependencies, etc.) from step 3.
+"""
 rocq_keywords = [
     "Lemma",
     "Theorem",
@@ -245,7 +253,6 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
     have_theorems = []
     previous_goals = initial_goals
     for raw_chain in raw_chain_list:
-
         # If there is some have tactic in the raw chain, expend it
         match = parse_have_tags(raw_chain)
 
@@ -295,62 +302,75 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
 
     return [(qualid_name, new_theorem)] + have_theorems
 
-def make(dataset: str, dictionary: str, petanque_address: str, petanque_port: int):
-    """Compute the evaluation of all theorems in the dataset provided the dictionary."""
+def chunk_dataset(dataset: str, export_path: str):
+    """Chunk dataset to run tasks in parallel."""
 
     datafile = Path(dataset)
-    dataset = dataset.split("_", maxsplit=1)[0]
     if not datafile.exists():
-        raise Exception(f"Error: {datafile} doesn't exists.")
-    dictfile = Path(dictionary)
-    if not dictfile.exists():
-        raise Exception(f"Error: {dictfile} doesn't exists")
-    savefile = Path(datafile.parent, datafile.stem + "_eval.json")
-    if not savefile.exists():
-        with open(savefile, "w") as f:
-            f.write("{}")
+        raise Exception(f"Error: {datafile} doesn't exist.")
 
-    print("Making the evaluated dataset.")
-
-    print("  Connecting to petanque ...")
-    pet = Pytanque(petanque_address, petanque_port)
-    pet.connect()
-
-    print("  Reading the data ...")
     with open(datafile, "r") as f:
         theorems = json.load(f)
 
-    with open(dictfile, "r") as f:
-        dictionary = json.load(f)
+    to_do = defaultdict(list)
+    
+    for qualid_name, theorem in theorems.items():
+        theorem["fqn"] = qualid_name
+        path = theorem["filepath"]
+        export_filepath = os.path.join(export_path, 'aux', qualid_name) + '.json'
+        if not os.path.exists(export_filepath):
+            to_do[path].append((qualid_name, theorem, export_filepath))
+    return to_do
 
-    with open(savefile, "r") as f:
-        evaluated_theorems = json.load(f)
+def make(theorems: str, dictionary: Dict[str, Any], petanque_port: int):
+    """Compute the evaluation of all theorems in the dataset provided the dictionary."""
 
-    non_evaluated_theorems = {qualid_name: theorem for qualid_name, theorem in theorems.items() if not qualid_name in evaluated_theorems}
-
-    print("  Computing evaluations and saving the data ...")
-    count = 0
-    for qualid_name, theorem in tqdm(non_evaluated_theorems.items()):
+    pet_server = start_pet_server(petanque_port)
+    pet = Pytanque("127.0.0.1", petanque_port)
+    pet.connect()
+    # count = 0
+    for qualid_name, theorem, export_filepath in tqdm(theorems):        
         state = pet.get_state_at_pos(theorem["filepath"], theorem["position"]["line"], theorem["position"]["character"], 0)
         sections = find_sections(theorem["filepath"], theorem["position"])
-        for qualid_name, evaluated_theorem in evaluate_theorem(pet, state, sections, qualid_name, theorem, dictionary):
-            evaluated_theorems[qualid_name] = evaluated_theorem
-
-        count += 1
-        if count % 10 == 0:
-            with open(savefile, "w") as f:
-                json.dump(evaluated_theorems, f, indent=2)
-
-    with open(savefile, "w") as f:
-        json.dump(evaluated_theorems, f, indent=2)
-
-    print("  DONE!")
+        result = dict(evaluate_theorem(pet, state, sections, qualid_name, theorem, dictionary))
+        with open(export_filepath, 'w') as file:
+            json.dump(result, file, indent=4)
+        # count += 1
+        # if count%1_000==0:
+        stop_pet_server(pet_server)
+        pet_server = start_pet_server(petanque_port)
+        pet = Pytanque("127.0.0.1", petanque_port)
+        pet.connect()
+    stop_pet_server(pet_server)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate a dataset of Rocq theorems by replaying the proof chain by chain.")
-    parser.add_argument("--dataset", type=str, default="mathcomp_bm25_have_1000_0.5_first_19-20th.json", help="The path of the dataset, default is 'mathcomp_bm25_have_1000_0.5_first_19-20th.json'")
-    parser.add_argument("--dictionary", type=str, default="dictionary.json", help="The path of the dictionary to be used, default is 'dictionary.json'.")
-    parser.add_argument("--address", type=str, default="127.0.0.1", help="Address of the petanque server, default is '127.0.0.1'")
-    parser.add_argument("--port", type=int, default=8765, help="Port of the petanque server, default is 8765")
+    parser.add_argument("--input", type=str, default="export/output/steps/step_3/result.json", help="Path of the input")
+    parser.add_argument("--output", type=str, default="export/output/steps/step_4/", help="Path of the output")
+    parser.add_argument("--dictionary", type=str, default="export/docstrings/dictionary.json", help="The path of the dictionary to be used, default is 'dictionary.json'.")
+    parser.add_argument("--max-workers", type=int, default=8)
     args = parser.parse_args()
-    make(args.dataset, args.dictionary, args.address, args.port)
+    os.makedirs(os.path.join(args.output, 'aux'), exist_ok=True)
+    to_do = chunk_dataset(args.input, args.output)
+
+    with open(args.dictionary, 'r') as file:
+        dictionary = json.load(file)
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
+        futures = []
+        for k, parent in enumerate(to_do):
+            futures.append(executor.submit(make, to_do[parent], dictionary, 8765 + k))
+        for _ in tqdm(concurrent.futures.as_completed(futures), desc="Overall progress", position=0, total=len(futures)):
+            pass
+    
+    result = {}
+    output_aux_path = os.path.join(args.output, 'aux')
+    for filename in os.listdir(output_aux_path):
+        filepath = os.path.join(output_aux_path, filename)
+        with open(filepath, 'r') as file:
+            content =json.load(file)
+        
+        result = result | content
+    
+    with open(os.path.join(args.output, 'result.json'), 'w') as file:
+        json.dump(result, file, indent=4)
