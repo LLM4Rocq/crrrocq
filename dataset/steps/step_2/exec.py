@@ -70,6 +70,8 @@ def make(to_do, export_path: str, petanque_port: int):
                 # reset pet-server to avoid cache overflow
                 stop_pet_server(pet_server)
                 pet_server = start_pet_server(petanque_port)
+                pet = Pytanque("127.0.0.1", petanque_port)
+                pet.connect()
 
         except PetanqueError as err:
             error_theorems.append(qualid_name + " -> " + err.message)
