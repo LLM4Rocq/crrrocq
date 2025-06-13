@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from transformers import AutoModel, AutoTokenizer
 
-from src.models.base import BaseModel
+from src.embedding_models.base import BaseModel
 
 def last_token_pool(last_hidden_states: Tensor,
                  attention_mask: Tensor) -> Tensor:

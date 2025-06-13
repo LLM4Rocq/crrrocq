@@ -8,7 +8,7 @@ import torch
 import faiss
 from tqdm import tqdm
 
-from src.models.base import BaseModel
+from src.embedding_models.base import BaseModel
 
 
 
@@ -34,7 +34,7 @@ class CosimIndex(ABC):
 
 class FaissIndex(CosimIndex):
     def __init__(
-        self, model: BaseModel, content: Dict = None, embedding_path: str = None, cache_path: str="export/cache/", batch_size=1
+        self, model: BaseModel, content: Dict = None, cache_path: str="export/cache/", batch_size=1
     ):
         super().__init__()
         self.model = model
@@ -48,14 +48,11 @@ class FaissIndex(CosimIndex):
         self._compute_and_save_embedding(batch_size=batch_size)
 
 
-        for parent in self.content:
-            for relative_name in self.content[parent]:
-                entry = self.content[parent][relative_name]
-                embedding = entry["embedding"]
-                fqn = f'{parent}.{relative_name}'
-                self.all_fqn.append(fqn)
-                self.all_constants.append(entry)
-                self.all_embeddings.append(embedding.unsqueeze(0))
+        for qualid_name, element in self.content.items():
+            embedding = element["embedding"]
+            self.all_fqn.append(qualid_name)
+            self.all_constants.append(element)
+            self.all_embeddings.append(embedding.unsqueeze(0))
 
         self.all_embeddings = torch.cat(self.all_embeddings, dim=0).to(torch.float32).numpy()
         d = self.all_embeddings.shape[1]
@@ -65,17 +62,14 @@ class FaissIndex(CosimIndex):
 
     def _compute_and_save_embedding(self, batch_size=1):
         to_do = []
-        for parent in self.content:
-            for relative_name in self.content[parent]:
-                element = self.content[parent][relative_name]
-                fqn = f'{parent}.{relative_name}'
-                filename = string_to_filename(fqn) + '.pt'
-                export_path = os.path.join(self.cache_path, filename)
-                if not os.path.exists(export_path):
-                    to_do.append((export_path, element))
-                else:
-                    cache_element = torch.load(export_path)
-                    element['embedding'] = cache_element['embedding']
+        for qualid_name, element in self.content.items():
+            filename = string_to_filename(qualid_name) + '.pt'
+            export_path = os.path.join(self.cache_path, filename)
+            if not os.path.exists(export_path):
+                to_do.append((export_path, element))
+            else:
+                cache_element = torch.load(export_path)
+                element['embedding'] = cache_element['embedding']
         to_do_chunk = list(chunks(to_do, batch_size))
         for batch in tqdm(to_do_chunk):
             docstring_lists = [e['docstring'] for (_, e) in batch]

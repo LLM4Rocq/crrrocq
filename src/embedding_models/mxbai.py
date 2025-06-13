@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from transformers import AutoModel, AutoTokenizer
 
-from src.models.base import BaseModel
+from src.embedding_models.base import BaseModel
 
 def transform_query(query: str) -> str:
     """ For retrieval, add the prompt for query (not for documents).
