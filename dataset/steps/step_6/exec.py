@@ -40,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--output',  default='export/output/steps/step_6/')
     parser.add_argument('--model-name', default='mxbai', help="Embedding model's name")
     parser.add_argument('--device', default='cpu', help="Device for embedding model")
-    parser.add_argument('--batch-size', default=32, help="Batch size used to pre compute embedding")
+    parser.add_argument('--batch-size', default=32, help="Batch size used to pre compute embedding", type=int)
     parser.add_argument('--top-k', default=10, help="Top-k parameter use for retrieval", type=int)
     args = parser.parse_args()
 
