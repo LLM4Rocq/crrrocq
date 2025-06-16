@@ -313,7 +313,7 @@ def chunk_dataset(dataset: str, export_path: str):
         theorems = json.load(f)
 
     to_do = defaultdict(list)
-    
+
     for qualid_name, theorem in theorems.items():
         theorem["fqn"] = qualid_name
         path = theorem["filepath"]
@@ -329,7 +329,7 @@ def make(theorems: str, dictionary: Dict[str, Any], petanque_port: int):
     pet = Pytanque("127.0.0.1", petanque_port)
     pet.connect()
     # count = 0
-    for qualid_name, theorem, export_filepath in tqdm(theorems):        
+    for qualid_name, theorem, export_filepath in tqdm(theorems):
         state = pet.get_state_at_pos(theorem["filepath"], theorem["position"]["line"], theorem["position"]["character"], 0)
         sections = find_sections(theorem["filepath"], theorem["position"])
         result = dict(evaluate_theorem(pet, state, sections, qualid_name, theorem, dictionary))
@@ -362,15 +362,15 @@ if __name__ == "__main__":
             futures.append(executor.submit(make, to_do[parent], dictionary, 8765 + k))
         for _ in tqdm(concurrent.futures.as_completed(futures), desc="Overall progress", position=0, total=len(futures)):
             pass
-    
+
     result = {}
     output_aux_path = os.path.join(args.output, 'aux')
     for filename in os.listdir(output_aux_path):
         filepath = os.path.join(output_aux_path, filename)
         with open(filepath, 'r') as file:
-            content =json.load(file)
-        
+            content = json.load(file)
+
         result = result | content
-    
+
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
         json.dump(result, file, indent=4)

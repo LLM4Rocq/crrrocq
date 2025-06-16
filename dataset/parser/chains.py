@@ -75,11 +75,9 @@ def raw_chain_list_to_str(raw_chain_list: list[str]) -> str:
 #       [
 #         Chain(tactics=[Tactic(tactic='Proof')], suffix='.'),
 #         Chain(tactics=[
-#           By(prefix='\n', chain=Chain(tactics=[
-#             Tactic(tactic=' apply: (iffP (unitrP x)) => [[y []] | [y]]'),
-#             Tactic(tactic=' exists y'),
-#             Tactic(tactic=' rewrite // mulrC')
-#           ], suffix=''))
+#           Tactic(tactic='\nby apply: (iffP (unitrP x)) => [[y []] | [y]]'),
+#           Tactic(tactic=' exists y'),
+#           Tactic(tactic=' rewrite // mulrC')
 #         ], suffix='.'),
 #         Chain(tactics=[Tactic(tactic='\nQed')], suffix='.')
 #       ]
@@ -219,7 +217,7 @@ def copy_chain(chain: Chain) -> Chain:
 def copy_chain_list(chain_list: list[Chain]) -> list[Chain]:
     return list(map(copy_chain, chain_list))
 
-def number_of_tactics_chain(chain: Chain) -> Chain:
+def number_of_tactics_chain(chain: Chain) -> int:
     res = 0
     for tactic in chain.tactics:
         if isinstance(tactic, Tactic):
