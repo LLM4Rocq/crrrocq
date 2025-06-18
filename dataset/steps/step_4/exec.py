@@ -105,7 +105,7 @@ def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: st
     if len(state.feedback) == 0:
         raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
     message = state.feedback[0][1]
-
+    
     # Check if the dependency is syntactically equal to another theorem
     match = re.search(r"(Constant|Inductive|Constructor)\s*(?P<first_qualid_name>\S*)\s*\(syntactically\s*equal\s*to\s*(?P<second_qualid_name>\S*)\s*\)", message)
     if match and match.start() == 0:
@@ -132,9 +132,32 @@ def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: st
         if idx >= 0:
             qualid_name = '.'.join(split_qualid_name[:idx] + split_qualid_name[idx+len(sections):])
 
-        if qualid_name in info_dictionary:
-            res["info"] = info_dictionary[qualid_name]
-            break
+        res['fqn'] = qualid_name
+        if not qualid_name.startswith('mathcomp'):
+            continue
+        qualid_name = qualid_name.replace('mathcomp', 'export.output.steps.step_0')
+        
+        
+
+        if qualid_name not in info_dictionary:
+            state = pet.run(state, f"Check {dependency}.")
+            
+            if len(state.feedback) == 0:
+                raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
+            message_check = state.feedback[0][1]
+            res['info'] = {"check": message_check}
+            message_check = message_check.split('\nwhere')[0]
+            message_check = message_check.split('\n')[0]
+            message_check = message_check.split(':')[-1]
+
+            for entry in info_dictionary.values():
+                if entry['name'].strip() == dependency.strip():
+                    if message_check in entry['fullname']:
+                        res['info'].update(entry)
+                        break
+            continue
+        res["info"] = info_dictionary[qualid_name]
+        break
 
     return res
 
@@ -322,25 +345,25 @@ def chunk_dataset(dataset: str, export_path: str):
             to_do[path].append((qualid_name, theorem, export_filepath))
     return to_do
 
-def make(theorems: str, dictionary: Dict[str, Any], petanque_port: int):
+def make(theorems: str, dictionary: Dict[str, Any], petanque_port: int, max_step_before_reset=32):
     """Compute the evaluation of all theorems in the dataset provided the dictionary."""
 
     pet_server = start_pet_server(petanque_port)
     pet = Pytanque("127.0.0.1", petanque_port)
     pet.connect()
-    # count = 0
+    count = 0
     for qualid_name, theorem, export_filepath in tqdm(theorems):
         state = pet.get_state_at_pos(theorem["filepath"], theorem["position"]["line"], theorem["position"]["character"], 0)
         sections = find_sections(theorem["filepath"], theorem["position"])
         result = dict(evaluate_theorem(pet, state, sections, qualid_name, theorem, dictionary))
         with open(export_filepath, 'w') as file:
             json.dump(result, file, indent=4)
-        # count += 1
-        # if count%1_000==0:
-        stop_pet_server(pet_server)
-        pet_server = start_pet_server(petanque_port)
-        pet = Pytanque("127.0.0.1", petanque_port)
-        pet.connect()
+        count += 1
+        if count%max_step_before_reset==0:
+            stop_pet_server(pet_server)
+            pet_server = start_pet_server(petanque_port)
+            pet = Pytanque("127.0.0.1", petanque_port)
+            pet.connect()
     stop_pet_server(pet_server)
 
 if __name__ == "__main__":
@@ -369,7 +392,6 @@ if __name__ == "__main__":
         filepath = os.path.join(output_aux_path, filename)
         with open(filepath, 'r') as file:
             content = json.load(file)
-
         result = result | content
 
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
