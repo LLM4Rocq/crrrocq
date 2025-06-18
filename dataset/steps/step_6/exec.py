@@ -38,10 +38,10 @@ if __name__ == '__main__':
     parser.add_argument('--input',  default='export/output/steps/step_5/result.json')
     parser.add_argument('--dictionary', default='export/docstrings/dictionary.json', help='Database path')
     parser.add_argument('--output',  default='export/output/steps/step_6/')
-    parser.add_argument('--model-name', default='mxbai', help="Embedding model's name")
+    parser.add_argument('--model-name', default='qwen_embedding_4b', help="Embedding model's name")
     parser.add_argument('--device', default='cpu', help="Device for embedding model")
     parser.add_argument('--batch-size', default=32, help="Batch size used to pre compute embedding", type=int)
-    parser.add_argument('--top-k', default=10, help="Top-k parameter use for retrieval", type=int)
+    parser.add_argument('--top-k', default=20, help="Top-k parameter use for retrieval", type=int)
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
@@ -54,12 +54,15 @@ if __name__ == '__main__':
     model = DICT_MODEL[args.model_name](device=args.device)
     index = FaissIndex(model, dictionary, batch_size=args.batch_size)
 
-    for entry in content:
-        blocks = parse_output(entry['output'])
+    for entry in tqdm(list(content.values())):
+        blocks = parse_output(entry['CoT'])
         for block in blocks:
             if block['kind'] == 'search':
-                search_result = index.query(block['content'], top_k=args.top_k)
-
+                if 'search_result' not in block:
+                    block['search_result'] = index.query(block['content'], top_k=3*args.top_k)
+            if block['kind'] == 'searchs':
+                block['searchs_result'] = [index.query(content, top_k=3*args.top_k) for content in block["contents"]]
+        entry['output_blocks'] = blocks
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
         json.dump(content, file, indent=4)
     
