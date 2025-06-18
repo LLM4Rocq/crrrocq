@@ -88,7 +88,7 @@ class FaissIndex(CosimIndex):
             element = copy.deepcopy(self.all_constants[idx])
             del element['embedding']
             result.append(
-                (distances[0][i], element, self.all_fqn[idx])
+                (float(distances[0][i]), element, self.all_fqn[idx])
             )
 
         return result
