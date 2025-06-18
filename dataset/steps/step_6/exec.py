@@ -64,7 +64,7 @@ if __name__ == '__main__':
                     block['search_result'] = index.query(block['content'], top_k=3*args.top_k)
             if block['kind'] == 'searchs':
                 if 'search_result' not in block:
-                    block['searchs_result'] = [index.query(content, top_k=3*args.top_k) for content in block["contents"]]
+                    block['searchs_result'] = [index.query(content, top_k=3*args.top_k) for content in block["content"]]
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
         json.dump(content, file, indent=4)
     
