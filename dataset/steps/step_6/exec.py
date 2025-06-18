@@ -55,13 +55,16 @@ if __name__ == '__main__':
     index = FaissIndex(model, dictionary, batch_size=args.batch_size)
 
     for entry in tqdm(list(content.values())):
-        blocks = parse_output(entry['CoT'])
+        if 'output_blocks' not in entry:
+            entry['output_blocks'] = parse_output(entry['CoT'])
+        blocks = entry['output_blocks']
         for block in blocks:
             if block['kind'] == 'search':
                 if 'search_result' not in block:
                     block['search_result'] = index.query(block['content'], top_k=3*args.top_k)
             if block['kind'] == 'searchs':
-                block['searchs_result'] = [index.query(content, top_k=3*args.top_k) for content in block["contents"]]
+                if 'search_result' not in block:
+                    block['searchs_result'] = [index.query(content, top_k=3*args.top_k) for content in block["contents"]]
         entry['output_blocks'] = blocks
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
         json.dump(content, file, indent=4)
