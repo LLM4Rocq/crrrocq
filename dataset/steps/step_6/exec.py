@@ -3,6 +3,7 @@ import json
 import os
 from copy import deepcopy
 import re
+import random
 
 from tqdm import tqdm
 
@@ -32,6 +33,23 @@ def parse_output(output: str):
         })
 
     return blocks
+
+def filter_best_search(block):
+    assert block['kind'] == 'searchs', 'Block must be a "searchs" (*plural*) block'
+    k = random.randint(0, len(block['content']) - 1)
+    if 'target' in block:
+        target = block['target']
+        best_rank = float('inf')
+        for k_aux, search_result in enumerate(block['searchs_result']):
+            for rank, (_, element, _) in enumerate(search_result):
+                if element['name'] == target:
+                    if rank < best_rank:
+                        best_rank
+                        k = k_aux
+    block['kind'] = "search"
+    block['content'] = block['content'][k]
+    block['search_result'] = block['searchs_result'][k]
+    del block['searchs_result']
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -65,7 +83,6 @@ if __name__ == '__main__':
             if block['kind'] == 'searchs':
                 if 'search_result' not in block:
                     block['searchs_result'] = [index.query(content, top_k=3*args.top_k) for content in block["content"]]
+                filter_best_search(block)
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
         json.dump(content, file, indent=4)
-    
-    # score = index.query(query, top_k=args.top_k)
