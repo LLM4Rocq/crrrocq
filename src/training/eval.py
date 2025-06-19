@@ -8,7 +8,7 @@ def start_pet_server(port=8765, mean_wait=10):
     """
     Starts the pet-server process and returns the process handle.
     """
-    process = subprocess.Popen(["pet-server", "--port", f"{port}"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(["pet-server", "--port", f"{port}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     # wait a bit to ensure the server is fully up before proceeding
     wait = random.randint(1, 2*mean_wait)
     time.sleep(wait)
