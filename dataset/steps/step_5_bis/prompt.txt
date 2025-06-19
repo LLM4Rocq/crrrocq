@@ -1,0 +1,30 @@
+I need you to help me write a docstring for an element of the Coq proof assistant standard library.
+
+To do it, write a json corresponding to the docstring, in the format:
+
+{{
+    "docstring": ....
+}}
+
+More precisely, I want you do it for the following element:
+
+{fullname}
+
+Here are the guidelines to write the docstrings:
+
+Follow these rules when writing “docstring”:
+
+1.  **Natural language only.**  Do not use any mathematical symbols (like <, ≤, =, etc.).  
+2.  **Complete sentences.**  Write at least one full sentence; use clear subject-verb-object structure.  
+3.  **Explicit**.  Spell out operations and relationships in plain English (e.g. “less than” instead of “<”).  
+4.  **Self-contained.**  Anyone reading just the docstring should understand what the lemma does without needing to see Coq syntax or names.  
+5.  **Embedding-friendly.**  Avoid pronouns or references that need extra context (e.g. “this” or “it”); mention the inputs and outputs by name or role.  
+6.  **Don't cite the name of the premise in the docstring**.
+
+Here is some examples of good docstrings:
+
+"A lemma stating that in a finite field F, the number of invertible elements equals the total number of elements in F minus one, since exactly the zero element is not invertible."
+"A notation introducing {{unit R}} to denote the group of invertible elements of a ring R, enabling implicit conversion between units and ring elements as a subtype."
+"A lemma stating that multiplication operation on the ring of integers modulo p is commutative."
+"A notation denoting the type of integers modulo the maximum of p and two."
+"A factory record asserting that a subset of a unital algebra contains zero and one, is closed under subtraction, multiplication, taking inverses of units, and scalar multiplication, thus forming a division-closed subalgebra."

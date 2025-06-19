@@ -53,7 +53,7 @@ def filter_best_search(block):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input',  default='export/output/steps/step_5/result.json')
+    parser.add_argument('--input',  default='export/output/steps/step_5_bis/result.json')
     parser.add_argument('--dictionary', default='export/docstrings/dictionary.json', help='Database path')
     parser.add_argument('--output',  default='export/output/steps/step_6/')
     parser.add_argument('--model-name', default='qwen_embedding_4b', help="Embedding model's name")
