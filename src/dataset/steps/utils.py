@@ -1,3 +1,5 @@
+import re
+
 def get_rocq_files(directory):
     """Retrieve all Rocq files in a directory, and remove non-Rocq and non-Make files."""
 
@@ -14,3 +16,7 @@ def get_rocq_files(directory):
                 path.rmdir()
 
     return files
+
+def is_proof_keyword(text: str) -> bool:
+    """Return True if the text corresponds to a proof keyword: Proof, Qed or Defined."""
+    return bool(re.search(r"(Proof|Qed|Defined)\.", text.strip()))

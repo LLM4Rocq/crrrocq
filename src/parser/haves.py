@@ -65,6 +65,18 @@ def remove_parasite(tactic: str) -> str:
 
     return tactic
 
+def remove_segments(tactic: str) -> str:
+    """Remove content inside of segments in a tactic."""
+
+    segment_list = str_to_segment_list(tactic)
+
+    new_tactic = ""
+    for segment in segment_list:
+        if isinstance(segment, str):
+            new_tactic += segment
+
+    return new_tactic
+
 def is_have_tactic(tactic: str) -> bool:
     """Check if the given tactic is an interesting have."""
 
@@ -74,6 +86,7 @@ def is_have_tactic(tactic: str) -> bool:
         return False
 
     tactic = remove_parasite(tactic)
+    tactic = remove_segments(tactic)
 
     # Check if we have [have ... := ...] or [have ... : ...]
     if re.search(r"have[\s\S]*?:=", tactic):
@@ -88,6 +101,8 @@ def is_have_by_tactic(tactic: str) -> bool:
 def flexible_run(pet: Pytanque, state: State, code: str, is_have_by: bool) -> Tuple[bool, State]:
     """Run the code on some state with a pet instance.
     If `is_have_by` is true, then Petanque errors are allowed."""
+
+    print("Before running:", code)
 
     try:
         state = pet.run(state, code)
@@ -114,14 +129,17 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
     i = 0
     while i < len(chain_list):
         old_chain = chain_list[i]
+        print("OLD CHAIN:", old_chain)
 
         # Iter through the tactics of the old chain
         for tactic in old_chain.tactics:
 
             # Check if we are in a have proof or not
             if not in_have_proof:
+                print("not in have proof")
                 added = False
                 if isinstance(tactic, Tactic) and is_have_tactic(str(tactic)):
+                    print("HAVE TACTIC:", tactic)
                     is_have_by = is_have_by_tactic(str(tactic))
 
                     # Start the proof checking if it had not been initialized yet
@@ -131,18 +149,27 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
                         base_state_checkpoint = 0
                         init = True
 
+                    print("chain to run:", chain_list_to_str(new_chain_list[base_state_checkpoint:]))
+
                     # Update the base state so it represents the state of the proof at the chain before the one we are checking
+                    print("r", base_state_checkpoint, len(new_chain_list))
                     base_state = pet.run(base_state, chain_list_to_str(new_chain_list[base_state_checkpoint:]))
+                    print("ru")
                     base_state_checkpoint = len(new_chain_list)
                     # Compute the number of goals at this point
+                    print("run")
                     nbr_previous_goals = len(pet.goals(base_state))
 
+                    print("New state computed")
                     # Look at the number of goals introduced between the start of the chain and the have tactic
                     if len(new_chain) > 0:
+                        print("Run new chain")
                         state = pet.run(base_state, str(Chain(new_chain, '.')))
                         nbr_inter_goals = len(pet.goals(state)) - nbr_previous_goals
                     else:
                         nbr_inter_goals = 0
+
+                    print("NBR INTER GOAL:", nbr_inter_goals)
 
                     # If there is no new goals introduced, it means the previous part of the chain is focusing on the top goal
                     # We can split the current chain in two: first the previous part of the chain, then the part after the have
@@ -150,6 +177,8 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
                         # We compute the number of goals introduced by the have tactic (it should always be one)
                         success, state = flexible_run(pet, base_state, str(Chain(new_chain + [tactic], '.')), is_have_by)
                         nbr_new_goals = len(pet.goals(state)) - nbr_previous_goals
+
+                        print("After running:", str(Chain(new_chain + [tactic], '.')))
 
                         # Because a [have ... by] can fail and return the previous state, we must check thouroughly if the tactic is proven on the spot or not
                         # If the run ended with a success, the proof of the [have ... by] tactic is contained in it
@@ -240,6 +269,8 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
 
             # If we are in the proof of a have, we have to look if the proof ends within the current chain
             else:
+                print("in have proof")
+                print("TACTIC:", tactic)
 
                 # If we encounter a branch, the first sub-chain should target the top goal before the have, and the rest of the sub-chains should target the goals introduced after the have tactic
                 if isinstance(tactic, BranchTactic):
@@ -271,6 +302,7 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
 
         # If we are still searching for the proof of the have at the end of the chain, we look for the proof in the following chains
         if in_have_proof:
+            print("chain in have proof")
 
             # Update the new chain-list and the base state
             if len(new_chain) > 0:
@@ -282,6 +314,7 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
             # While we have not finished the have proof, we look at following chains, updating the new chain-list and the base state at each chain
             i += 1
             while i < len(chain_list) and nbr_new_goals > 0:
+                print("HAVE_CHAIN:", chain_list[i])
                 base_state = pet.run(base_state, str(chain_list[i]))
                 base_state_checkpoint += 1
                 new_goals = pet.goals(base_state)

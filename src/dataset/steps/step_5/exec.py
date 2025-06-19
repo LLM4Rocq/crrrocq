@@ -8,11 +8,8 @@ from typing import Any
 
 from tqdm import tqdm
 
+from src.dataset.steps.utils import is_proof_keyword
 from src.dataset.prompts import code_explanation_prompt, proof_explanation_prompt, CoT_creation_prompt
-
-"""
-Step 5: Generate synthetic CoT.
-"""
 
 # ====================
 # Utils
@@ -24,10 +21,6 @@ def dependency_to_str(dependency: dict[str, str]) -> str:
     if "info" in dependency:
         str_dep += '\n' + dependency["info"]["docstring"]
     return str_dep
-
-def is_proof_keyword(text: str) -> bool:
-    """Return True if the text corresponds to a proof keyword: Proof, Qed or Defined."""
-    return bool(re.search(r"(Proof|Qed|Defined)\.", text.strip()))
 
 def open_router_query(messages: list[dict[str, str]]) -> str:
     """A query to open router."""
