@@ -35,7 +35,7 @@ def chunk_dataset(dataset: str, export_path: str):
 
     return to_do
 
-def make(to_do, export_path: str, petanque_port: int):
+def make(to_do, export_path: str, petanque_port: int, timeout=40):
     """Enclose all the have with a proof of a dataset."""
 
     pet_server = start_pet_server(petanque_port)
@@ -57,7 +57,7 @@ def make(to_do, export_path: str, petanque_port: int):
 
             if modified:
                 state = init_state()
-                timeout(40)(pet.run)(state, reproof)
+                timeout(timeout)(pet.run)(state, reproof)
             else:
                 assert (proof == reproof)
 
@@ -93,6 +93,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Enclose all have with a proof in a dataset of theorems.")
     parser.add_argument("--input", type=str, default="export/output/steps/step_1/result.json", help="Path to the output of the previous step")
     parser.add_argument("--output", type=str, default="export/output/steps/step_2/", help="Path to output of the current step")
+    parser.add_argument("--pet-timeout", type=int, default=40, help="Timeout value when running tactic")
     parser.add_argument("--max-workers", type=int, default=8, help="Number of pet server running concurrently")
     args = parser.parse_args()
     to_do = chunk_dataset(args.input, args.output)
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
         futures = []
         for k, source in enumerate(to_do):
-            futures.append(executor.submit(make, to_do[source], args.output, 8765 + k))
+            futures.append(executor.submit(make, to_do[source], args.output, 8765 + k, timeout=args.pet_timeout))
 
         for _ in tqdm(concurrent.futures.as_completed(futures), desc="Overall progress", position=0, total=len(futures)):
             pass
