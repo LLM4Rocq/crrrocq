@@ -135,17 +135,14 @@ def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: st
         res['fqn'] = qualid_name
         if not qualid_name.startswith('mathcomp'):
             continue
-        qualid_name = qualid_name.replace('mathcomp', 'export.output.steps.step_0')
         
-        
-
         if qualid_name not in info_dictionary:
             state = pet.run(state, f"Check {dependency}.")
             
             if len(state.feedback) == 0:
                 raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
             message_check = state.feedback[0][1]
-            res['info'] = {"check": message_check}
+            res['check'] = message_check
             message_check = message_check.split('\nwhere')[0]
             message_check = message_check.split('\n')[0]
             message_check = message_check.split(':')[-1]
