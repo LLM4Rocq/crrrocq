@@ -81,6 +81,8 @@ def make(to_do, export_path: str, petanque_port: int):
             error_theorems.append(qualid_name + " -> " + "timeout")
             stop_pet_server(pet_server)
             pet_server = start_pet_server(petanque_port)
+            pet = Pytanque("127.0.0.1", petanque_port)
+            pet.connect()
 
     error_file = os.path.join(export_path, 'aux', f'error_{petanque_port}')
     with open(error_file, "a+") as file:
