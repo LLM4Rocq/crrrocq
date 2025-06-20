@@ -38,7 +38,7 @@ def filter_best_search(block):
     assert block['kind'] == 'searchs', 'Block must be a "searchs" (*plural*) block'
     k = random.randint(0, len(block['content']) - 1)
     if 'target' in block:
-        target = block['target']
+        target = block['target']['name']
         best_rank = float('inf')
         for k_aux, search_result in enumerate(block['searchs_result']):
             for rank, (_, element, _) in enumerate(search_result):
