@@ -33,10 +33,12 @@ class MockVLLM(VLLM):
         self.verbose = False
 
     def build_prompt(
-        self, theorem_code: str, script_tag: str, goals_tag: str = "GOALS"
+        self, goals: str, coq_tag: str, context: str = "", goals_tag: str = "GOALS"
     ) -> str:
         """Build a simple prompt for testing."""
-        prompt = f"<{goals_tag}>{theorem_code}</{goals_tag}>"
+        prompt = f"<{goals_tag}>{goals}</{goals_tag}>"
+        if context:
+            prompt = f"{context}\n{prompt}"
         return prompt
 
     def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:

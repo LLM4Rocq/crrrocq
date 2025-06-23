@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the necessary classes
 from agent import Parser, ToolHandler, MathProofAgent
-from tools import Tool, ScriptTool
+from tools import Tool, ScriptTool, HaveTool
 from llm import LLM
 from pytanque import Pytanque
 
@@ -64,6 +64,10 @@ class TestSearchTool(Tool):
     @property
     def description(self) -> str:
         return "Search for information."
+    
+    @property
+    def instruction(self) -> str:
+        return "Search for information with a query in natural language."
 
     @property
     def tag(self) -> str:
@@ -93,7 +97,13 @@ class TestBeamSearch(unittest.TestCase):
         """Set up test fixtures before each test."""
         # Create tools
         self.search_tool = TestSearchTool()
-        self.coq_tool = ScriptTool(
+        self.script_tool = ScriptTool(
+            pet=self.pet,
+            workspace=self.workspace,
+            file=self.file,
+            theorem="foo",
+        )
+        self.have_tool = HaveTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -118,7 +128,7 @@ class TestBeamSearch(unittest.TestCase):
         test_llm = BeamSearchTestLLM(beam_responses)
 
         # Create agent
-        agent = MathProofAgent(test_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(test_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run proof with beam size 2
         result = agent.run_proof(beam_size=2)
@@ -147,7 +157,7 @@ class TestBeamSearch(unittest.TestCase):
         test_llm = BeamSearchTestLLM(beam_responses)
 
         # Create agent
-        agent = MathProofAgent(test_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(test_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run proof with beam size 2
         result = agent.run_proof(beam_size=2)
@@ -172,7 +182,7 @@ class TestBeamSearch(unittest.TestCase):
         test_llm = BeamSearchTestLLM(beam_responses)
 
         # Create agent
-        agent = MathProofAgent(test_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(test_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run proof with beam size 2
         result = agent.run_proof(beam_size=2)
@@ -209,7 +219,7 @@ class TestBeamSearch(unittest.TestCase):
         test_llm = BeamSearchTestLLM(beam_responses)
 
         # Create agent
-        agent = MathProofAgent(test_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(test_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run proof with beam size 4
         result = agent.run_proof(beam_size=4)

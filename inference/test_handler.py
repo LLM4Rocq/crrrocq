@@ -43,6 +43,10 @@ class FakeLLM(LLM):
         else:
             return "No more responses available."
 
+    def generate_batch(self, prompts: List[str], stop_sequences: Optional[List[str]] = None) -> List[str]:
+        """Generate responses for a batch of prompts."""
+        return [self.generate(prompt, stop_sequences) for prompt in prompts]
+
 
 # Create a simple search tool for testing
 class FakeSearchTool(Tool):

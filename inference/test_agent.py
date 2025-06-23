@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the necessary classes
 from agent import Parser, ToolHandler, MathProofAgent, Status
-from tools import Tool, ScriptTool, SearchTool
+from tools import Tool, ScriptTool, SearchTool, HaveTool
 from llm import LLM
 from pytanque import Pytanque
 
@@ -42,6 +42,10 @@ class FakeLLM(LLM):
             return response
         else:
             return "No more responses available."
+
+    def generate_batch(self, prompts: List[str], stop_sequences: Optional[List[str]] = None) -> List[str]:
+        """Generate responses for a batch of prompts."""
+        return [self.generate(prompt, stop_sequences) for prompt in prompts]
 
 
 # Create a simple search tool for testing
@@ -91,7 +95,13 @@ class TestMathProofAgent(unittest.TestCase):
 
         # Create tools
         self.search_tool = FakeSearchTool()
-        self.coq_tool = ScriptTool(
+        self.script_tool = ScriptTool(
+            pet=self.pet,
+            workspace=self.workspace,
+            file=self.file,
+            theorem="foo",
+        )
+        self.have_tool = HaveTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -99,7 +109,7 @@ class TestMathProofAgent(unittest.TestCase):
         )
 
         # Need to reset the Coq tool before each test
-        self.coq_tool.reset()
+        self.script_tool.reset()
 
     def test_agent_initialization(self):
         """Test proper initialization of the MathProofAgent."""
@@ -107,13 +117,13 @@ class TestMathProofAgent(unittest.TestCase):
         fake_llm = FakeLLM("Test response")
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Check if it was initialized correctly
         self.assertEqual(agent.llm, fake_llm)
         self.assertEqual(len(agent.tools), 2)
         self.assertIn(self.search_tool.name, agent.tools)
-        self.assertIn(self.coq_tool.name, agent.tools)
+        self.assertIn(self.script_tool.name, agent.tools)
         self.assertIsNotNone(agent.tool_handler)
         self.assertIsNotNone(agent.current_proof)
 
@@ -123,7 +133,7 @@ class TestMathProofAgent(unittest.TestCase):
         fake_llm = FakeLLM("Let me solve this. <script>lia.</script>")
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run the proof
         result = agent.run_proof()
@@ -138,7 +148,7 @@ class TestMathProofAgent(unittest.TestCase):
         fake_llm = FakeLLM("Let me try this. <script>invalid_tactic.</script>")
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run the proof
         result = agent.run_proof()
@@ -159,7 +169,7 @@ class TestMathProofAgent(unittest.TestCase):
         )
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run the proof
         result = agent.run_proof()
@@ -179,7 +189,7 @@ class TestMathProofAgent(unittest.TestCase):
         )
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run the proof
         result = agent.run_proof()
@@ -196,7 +206,7 @@ class TestMathProofAgent(unittest.TestCase):
         fake_llm = FakeLLM("Let me solve this. <script>lia.</script>")
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run the proof with verbose output (capturing stdout)
         import io
@@ -224,7 +234,7 @@ class TestMathProofAgent(unittest.TestCase):
         fake_llm = FakeLLM("This is a bit harder. <script>lia.</script>")
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, foofoo_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, foofoo_tool, self.have_tool)
 
         # Run the proof
         result = agent.run_proof()
@@ -247,7 +257,7 @@ class TestMathProofAgent(unittest.TestCase):
         )
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
+        agent = MathProofAgent(fake_llm, self.search_tool, self.script_tool, self.have_tool)
 
         # Run the proof
         result = agent.run_proof()
@@ -272,7 +282,7 @@ class TestMathProofAgent(unittest.TestCase):
         )
 
         # Create an agent
-        agent = MathProofAgent(fake_llm, real_search, self.coq_tool)
+        agent = MathProofAgent(fake_llm, real_search, self.script_tool, self.have_tool)
 
         # Run the proof
         result = agent.run_proof()
