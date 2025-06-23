@@ -55,7 +55,7 @@ python -m unittest test_tools.py
 ## Project Structure
 
 - `agent.py`: Contains the main agent implementation including Parser, ToolHandler, and MathProofAgent
-- `tools.py`: Tool implementations (SearchTool, CoqProverTool)
+- `tools.py`: Tool implementations (SearchTool, ScriptTool)
 - `llm.py`: Language model interface and implementations
 - `env.py`: Environment for interacting with Coq via Pytanque
 - `inference-cli.py`: Command-line interface for running proofs

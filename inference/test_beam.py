@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the necessary classes
 from agent import Parser, ToolHandler, MathProofAgent
-from tools import Tool, CoqProverTool
+from tools import Tool, ScriptTool
 from llm import LLM
 from pytanque import Pytanque
 
@@ -93,7 +93,7 @@ class TestBeamSearch(unittest.TestCase):
         """Set up test fixtures before each test."""
         # Create tools
         self.search_tool = TestSearchTool()
-        self.coq_tool = CoqProverTool(
+        self.coq_tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,

@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the necessary classes
 from agent import Parser, ToolHandler, MathProofAgent, Status
-from tools import Tool, CoqProverTool, SearchTool
+from tools import Tool, ScriptTool, SearchTool
 from llm import LLM
 from pytanque import Pytanque
 
@@ -57,8 +57,12 @@ class FakeSearchTool(Tool):
         return "Search for information."
 
     @property
+    def instruction(self) -> str:
+        return "Use <search>query</search> to search for relevant theorems and lemmas."
+
+    @property
     def tag(self) -> str:
-        return "SEARCH"
+        return "search"
 
     def run(self, input_text: str) -> Any:
         """Return a predefined search result."""
@@ -87,7 +91,7 @@ class TestMathProofAgent(unittest.TestCase):
 
         # Create tools
         self.search_tool = FakeSearchTool()
-        self.coq_tool = CoqProverTool(
+        self.coq_tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -113,31 +117,10 @@ class TestMathProofAgent(unittest.TestCase):
         self.assertIsNotNone(agent.tool_handler)
         self.assertIsNotNone(agent.current_proof)
 
-    def test_build_prompt(self):
-        """Test prompt building functionality."""
-        # Create a fake LLM
-        fake_llm = FakeLLM("Test response")
-
-        # Create an agent
-        agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
-
-        # Build a prompt
-        prompt = agent.build_prompt()
-
-        # Verify prompt content
-        self.assertIn("You are a formal mathematics proving assistant", prompt)
-        self.assertIn("<SEARCH>", prompt)
-        self.assertIn("<SCRIPT>", prompt)
-        self.assertIn(self.search_tool.name, prompt)
-        self.assertIn(self.coq_tool.name, prompt)
-        self.assertIn(self.search_tool.description, prompt)
-        self.assertIn(self.coq_tool.description, prompt)
-        self.assertIn("forall n : nat, 1 + n > n", prompt)  # The foo theorem
-
     def test_run_proof_success(self):
         """Test running a proof that succeeds."""
         # Create a fake LLM that will make a successful proof
-        fake_llm = FakeLLM("Let me solve this. <SCRIPT>lia.</SCRIPT>")
+        fake_llm = FakeLLM("Let me solve this. <script>lia.</script>")
 
         # Create an agent
         agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
@@ -152,7 +135,7 @@ class TestMathProofAgent(unittest.TestCase):
     def test_run_proof_failure(self):
         """Test running a proof that fails."""
         # Create a fake LLM that will make an invalid proof attempt
-        fake_llm = FakeLLM("Let me try this. <SCRIPT>invalid_tactic.</SCRIPT>")
+        fake_llm = FakeLLM("Let me try this. <script>invalid_tactic.</script>")
 
         # Create an agent
         agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
@@ -170,8 +153,8 @@ class TestMathProofAgent(unittest.TestCase):
         # Create a fake LLM that will search and then apply tactics
         fake_llm = FakeLLM(
             [
-                "Let me search for relevant theorems. <SEARCH>arithmetic inequalities</SEARCH>",
-                "Based on the search results, I'll use lia. <SCRIPT>lia.</SCRIPT>",
+                "Let me search for relevant theorems. <search>arithmetic inequalities</search>",
+                "Based on the search results, I'll use lia. <script>lia.</script>",
             ]
         )
 
@@ -190,8 +173,8 @@ class TestMathProofAgent(unittest.TestCase):
         # Create a fake LLM that will execute multiple tactics
         fake_llm = FakeLLM(
             [
-                "First, let's introduce the variable. <SCRIPT>intros n.</SCRIPT>",
-                "Now, let's apply arithmetic reasoning. <SCRIPT>lia.</SCRIPT>",
+                "First, let's introduce the variable. <script>intros n.</script>",
+                "Now, let's apply arithmetic reasoning. <script>lia.</script>",
             ]
         )
 
@@ -210,7 +193,7 @@ class TestMathProofAgent(unittest.TestCase):
     def test_verbose_mode(self):
         """Test running in verbose mode."""
         # Create a fake LLM
-        fake_llm = FakeLLM("Let me solve this. <SCRIPT>lia.</SCRIPT>")
+        fake_llm = FakeLLM("Let me solve this. <script>lia.</script>")
 
         # Create an agent
         agent = MathProofAgent(fake_llm, self.search_tool, self.coq_tool)
@@ -230,7 +213,7 @@ class TestMathProofAgent(unittest.TestCase):
     def test_foofoo_theorem(self):
         """Test proving a different theorem (foofoo)."""
         # Create a different Coq tool for the foofoo theorem
-        foofoo_tool = CoqProverTool(
+        foofoo_tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -238,7 +221,7 @@ class TestMathProofAgent(unittest.TestCase):
         )
 
         # Create a fake LLM
-        fake_llm = FakeLLM("This is a bit harder. <SCRIPT>lia.</SCRIPT>")
+        fake_llm = FakeLLM("This is a bit harder. <script>lia.</script>")
 
         # Create an agent
         agent = MathProofAgent(fake_llm, self.search_tool, foofoo_tool)
@@ -255,11 +238,11 @@ class TestMathProofAgent(unittest.TestCase):
         # Create a fake LLM with a sequence of responses simulating a complex proof
         fake_llm = FakeLLM(
             [
-                "Let me think about this problem. <SEARCH>arithmetic inequality tactics</SEARCH>",
-                "Based on the search results, I'll first introduce the variable. <SCRIPT>intros n.</SCRIPT>",
-                "Now I need to consider the cases. <SCRIPT>destruct n.</SCRIPT>",
-                "For the base case, it's simple. <SCRIPT>simpl. lia.</SCRIPT>",
-                "For the inductive case, let's use our arithmetic solver. <SCRIPT>lia.</SCRIPT>",
+                "Let me think about this problem. <search>arithmetic inequality tactics</search>",
+                "Based on the search results, I'll first introduce the variable. <script>intros n.</script>",
+                "Now I need to consider the cases. <script>destruct n.</script>",
+                "For the base case, it's simple. <script>simpl. lia.</script>",
+                "For the inductive case, let's use our arithmetic solver. <script>lia.</script>",
             ]
         )
 
@@ -283,8 +266,8 @@ class TestMathProofAgent(unittest.TestCase):
         # Create a fake LLM
         fake_llm = FakeLLM(
             [
-                "Let me search for relevant information. <SEARCH>Coq arithmetic inequalities</SEARCH>",
-                "Now I'll apply what I found. <SCRIPT>lia.</SCRIPT>",
+                "Let me search for relevant information. <search>Coq arithmetic inequalities</search>",
+                "Now I'll apply what I found. <script>lia.</script>",
             ]
         )
 

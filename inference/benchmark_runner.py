@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 
 from pass_at_k_prover import PassAtKProver
-from tools import CoqProverTool
+from tools import ScriptTool
 from llm import VLLM
 from pytanque import Pytanque
 
@@ -132,8 +132,8 @@ class BenchmarkRunner:
         """
         start_time = time.time()
 
-        # Create CoqProverTool for this theorem
-        coq_tool = CoqProverTool(
+        # Create ScriptTool for this theorem
+        coq_tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace_dir,
             file=filename,

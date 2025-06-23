@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 from pytanque import Pytanque
-from tools import SearchTool, CoqProverTool
+from tools import SearchTool, ScriptTool, HaveTool
 from llm import VLLM
 from agent import MathProofAgent
 
@@ -57,7 +57,13 @@ def main():
 
     # Setup tools
     search_tool = SearchTool()
-    coq_tool = CoqProverTool(
+    script_tool = ScriptTool(
+        pet=pet,
+        workspace=args.workspace,
+        file=args.file,
+        theorem=args.theorem,
+    )
+    have_tool = HaveTool(
         pet=pet,
         workspace=args.workspace,
         file=args.file,
@@ -73,7 +79,7 @@ def main():
     )
 
     # Create agent and run proof with specified beam size
-    agent = MathProofAgent(llm, search_tool, coq_tool)
+    agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
     status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
 
     # Print results

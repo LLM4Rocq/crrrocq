@@ -4,7 +4,7 @@ import argparse
 from typing import List, Optional, Tuple, Dict, Any
 
 from prover_agent import CoqProofManager, ProverResult
-from tools import CoqProverTool
+from tools import ScriptTool
 from llm import VLLM
 from pytanque import Pytanque
 
@@ -17,7 +17,7 @@ class PassAtKProver:
     def __init__(
         self,
         llm: VLLM,
-        coq_tool: CoqProverTool,
+        coq_tool: ScriptTool,
         k: int = 3,
         max_iterations: int = 10,
         verbose: bool = False,
@@ -29,7 +29,7 @@ class PassAtKProver:
 
         Args:
             llm: VLLM instance for generating completions
-            coq_tool: CoqProverTool instance for theorem proving
+            script_tool: ScriptTool instance for theorem proving
             k: Number of parallel paths to explore
             max_iterations: Maximum number of iterations before giving up
             verbose: Whether to print verbose output
@@ -198,8 +198,8 @@ def main():
     pet.connect()
     pet.set_workspace(False, str(args.workspace))
 
-    # Setup CoqProverTool
-    coq_tool = CoqProverTool(
+    # Setup ScriptTool
+    script_tool = ScriptTool(
         pet=pet,
         workspace=args.workspace,
         file=args.file,
@@ -220,7 +220,7 @@ def main():
     # Create and run the pass@k prover
     prover = PassAtKProver(
         llm=llm,
-        coq_tool=coq_tool,
+        coq_tool=script_tool,
         k=args.k,
         max_iterations=args.max_iterations,
         verbose=args.verbose,

@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Dict, Any, Union
 import re
 import copy
 
-from tools import CoqProverTool
+from tools import ScriptTool
 from llm import LLM
 
 
@@ -22,7 +22,7 @@ class ProverResult:
 class CoqProofManager:
     """Manager for Coq theorem proving processes, focused on proof state manipulation."""
 
-    def __init__(self, coq_tool: CoqProverTool):
+    def __init__(self, coq_tool: ScriptTool):
         """
         Initialize the proof manager with a Coq prover tool.
 
@@ -54,7 +54,7 @@ class CoqProofManager:
     def process_response(
         self,
         response: str,
-        coq_tool: CoqProverTool,
+        coq_tool: ScriptTool,
         verbose: bool = False,
     ) -> ProverResult:
         """
@@ -117,7 +117,7 @@ class CoqProofManager:
     def process_batch_responses(
         self,
         responses: List[str],
-        coq_tools: List[CoqProverTool],
+        coq_tools: List[ScriptTool],
         verbose: bool = False,
     ) -> Tuple[List[ProverResult], Optional[ProverResult]]:
         """
@@ -167,7 +167,7 @@ class CoqProofManager:
 
     def get_initial_state(
         self, beam_size: int
-    ) -> Tuple[List[CoqProverTool], List[int]]:
+    ) -> Tuple[List[ScriptTool], List[int]]:
         """
         Create the initial state for a proof search with multiple beams.
 

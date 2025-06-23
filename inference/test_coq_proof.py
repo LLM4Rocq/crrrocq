@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from prover_agent import CoqProofManager, ProverResult
-from tools import CoqProverTool
+from tools import ScriptTool
 from pytanque import Pytanque
 
 
@@ -28,8 +28,8 @@ class TestCoqProofManager(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures before each test."""
-        # Create a CoqProverTool for the 'foo' theorem
-        self.coq_tool = CoqProverTool(
+        # Create a ScriptTool for the 'foo' theorem
+        self.coq_tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -212,8 +212,8 @@ class TestCoqProofManager(unittest.TestCase):
 
     def test_foofoo_theorem(self):
         """Test with a different theorem (foofoo)."""
-        # Create a CoqProverTool for the 'foofoo' theorem
-        foofoo_tool = CoqProverTool(
+        # Create a ScriptTool for the 'foofoo' theorem
+        foofoo_tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,

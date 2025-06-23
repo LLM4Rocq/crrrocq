@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 from pytanque import Pytanque
-from tools import SearchTool, CoqProverTool
+from tools import SearchTool, ScriptTool, HaveTool
 from agent import MathProofAgent
 from mock_llm import MockVLLM
 
@@ -44,7 +44,13 @@ def main():
 
     # Setup tools
     search_tool = SearchTool()
-    coq_tool = CoqProverTool(
+    script_tool = ScriptTool(
+        pet=pet,
+        workspace=args.workspace,
+        file=args.file,
+        theorem=args.theorem,
+    )
+    have_tool = HaveTool(
         pet=pet,
         workspace=args.workspace,
         file=args.file,
@@ -66,7 +72,7 @@ def main():
         print("You'll be prompted for completions for each active beam.")
 
     # Create agent and run proof
-    agent = MathProofAgent(llm, search_tool, coq_tool)
+    agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
     status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
 
     # Print results
