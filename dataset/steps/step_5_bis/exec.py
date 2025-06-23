@@ -43,7 +43,7 @@ def query(fullname, fqn, client, config, prompt_template, export_path, delay=0, 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input',  default='export/output/steps/step_5/result.json')
+    parser.add_argument('--input',  default='export/output/steps/step_5/')
     parser.add_argument('--dictionary', default='export/docstrings/dictionary.json', help='Database path')
     parser.add_argument('--output',  default='export/output/steps/step_5_bis/')
     parser.add_argument('--config-dir', default='dataset/steps/step_5_bis/')
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     output_aux = os.path.join(args.output, 'aux')
     os.makedirs(output_aux, exist_ok=True)
 
-    with open(args.input, 'r') as file:
+    with open(os.path.join(args.input, 'result.json'), 'r') as file:
         input_content = json.load(file)
 
     config_path = os.path.join(args.config_dir, 'config.yaml')
@@ -71,6 +71,7 @@ if __name__ == '__main__':
         api_key=os.getenv("OPENAI_API_KEY")
     )
     to_do = set()
+
     for fqn, entry in input_content.items():
         for eval in entry['evaluation']:
             for c in eval['dependencies']:
@@ -87,6 +88,7 @@ if __name__ == '__main__':
             pass
     
     result = {}
+    
     for filename in os.listdir(output_aux):
         with open(os.path.join(output_aux, filename), 'r') as file:
             content = json.load(file)
