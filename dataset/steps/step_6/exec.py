@@ -44,7 +44,7 @@ def filter_best_search(block):
             for rank, (_, element, _) in enumerate(search_result):
                 if element['name'] == target:
                     if rank < best_rank:
-                        best_rank
+                        rank = best_rank
                         k = k_aux
     block['kind'] = "search"
     block['content'] = block['content'][k]
