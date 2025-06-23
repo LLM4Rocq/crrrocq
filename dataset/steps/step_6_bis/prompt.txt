@@ -1,0 +1,96 @@
+You are an AI theorem prover working in the Rocq/Coq proof assistant.
+You have just used a semantic search tool to find a lemma/theorem needed for your proof, but the query you used did not return the correct result.
+
+You are provided with:
+
+    The query you used (which was not successful)
+
+    The target lemma/theorem you wanted to find (including its docstring, for your own reference)
+
+    The first result returned by the tool (which did not include the target)
+
+    The final "think" block confirming that the target lemma was what you were seeking
+
+Your task:
+Simulate a reasoning process where you analyze why your first query failed (in a form similar to the final positive "think" block, but explaining what was missing or misleading in the query or in the tool’s interpretation).
+Then, generate five new improved search queries that could better describe what you are looking for, strictly following the constraints below.
+
+Constraints for each new search query:
+
+    Your query should describe what you are looking for or hoping to find, not the statement or docstring of any particular result.
+
+    Do not use the name or statement of any specific lemma/theorem; imagine you do not know them.
+
+    Make your query short and focused, as if you are searching a database for relevant results.
+
+Output format:
+Your output should be a single code block, starting with your reasoning in a <think> ... </think> block, followed by five <search> ... </search> blocks (one per query).
+
+Here is the input for your task:
+
+    Wrong query: {wrong_query}
+
+    Target lemma/theorem docstring: {target_lemma}
+
+    First result: {first_result}
+
+    Final positive think block: {think_block_correct}
+
+Please strictly follow this output template:
+
+<think>
+[Explain, in detail and in a negative/diagnostic form, why the previous query did not yield the desired result. Reference the given first result to clarify the mismatch. Demonstrate a logical "debugging" process, identifying what the query missed or misunderstood, and how this leads you to reconsider your approach.]
+</think>
+<search>
+[First improved query, concise and focused, not using any lemma names/statements.]
+</search>
+<search>
+[Second improved query, concise and focused, not using any lemma names/statements.]
+</search>
+<search>
+[Third improved query, concise and focused, not using any lemma names/statements.]
+</search>
+<search>
+[Fourth improved query, concise and focused, not using any lemma names/statements.]
+</search>
+<search>
+[Fifth improved query, concise and focused, not using any lemma names/statements.]
+</search>
+
+Remember:
+
+    Use only the information provided above.
+
+    Focus on the logical gap between what was returned and what you actually needed.
+
+    The <think> section should be an honest internal monologue—diagnosing what went wrong and what you now realize you need to change to find the correct lemma.
+
+    Make each <search> query plausible and meaningfully distinct.
+
+Here is an example of the expected final output
+
+'''code
+<think>
+My previous query did not yield the intended result.
+To improve, I may need to focus my queries on the transformation of irreducible character indices under group conjugation, their explicit computation, and/or structural properties such as injectivity or invertibility, which may lead me to the desired lemma.
+</think>
+<search>
+index of irreducible character after conjugation by group element
+</search>
+<search>
+how to compute conjugate irreducible character index
+</search>
+<search>
+map sending irreducible character index to its conjugate under group action
+</search>
+<search>
+bijection or injective map for conjugating irreducible character indices
+</search>
+<search>
+irreducible character index transformation by group conjugation
+</search>
+'''
+
+Again be very careful, the <think> block must describe what you are looking for or hoping to find, not the statement or docstring of any particular result.
+Do not use the name or statement of the target lemma/theorem; imagine you do not know them yet.
+Your think block should be short, containing maximum two to three short sentences.
