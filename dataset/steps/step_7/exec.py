@@ -11,8 +11,8 @@ def is_valid(entry, dictionary, top_k=10):
     entry_aux = deepcopy(entry)
     if not 'output_blocks' in entry_aux:
         return False, None
-    
-    fqn = entry['fqn']
+
+    fqn = entry['fqn'].replace('export.output.steps.step_0', 'mathcomp')
     fqn_clear = fqn.split('_have')[0]
 
     if fqn_clear not in dictionary:
@@ -31,7 +31,7 @@ def is_valid(entry, dictionary, top_k=10):
     target_found = defaultdict(lambda:False)
 
     for block_prev, block_next, block_next_next in zip(blocks, blocks[1:], blocks[2:]):
-        if not block_prev['kind'] == 'search' or block_next_next['kind'] == 'have' or 'target' not in block_prev:
+        if not block_prev['kind'] == 'search':
             continue
         
         if block_next['kind'] != 'think':
@@ -39,20 +39,25 @@ def is_valid(entry, dictionary, top_k=10):
         
         filtered_search_result = []
         for score, element, fqn in block_prev['search_result']:
+            fqn = fqn.replace('export.output.steps.step_0', 'mathcomp')
             if fqn in dictionary and dictionary[fqn]['parent'] == parent:
                 if dictionary[fqn]['start_line'] >= start_line:
                     continue
             filtered_search_result.append((score, element, fqn))
-
-        block_prev['search_result'] = filtered_search_result[:top_k]
+        
         if len(filtered_search_result[:top_k]) < top_k:
             return False, {}
+        block_prev['search_result'] = filtered_search_result[:top_k]
         search_result = block_prev['search_result']
+        if block_next_next['kind'] == 'have' or 'target' not in block_prev:
+            continue
         target = block_prev['target']['name']
+
         if block_prev['target']['force_result']:
             block_prev['search_result'] = [(1., dependencies[target], dependencies[target]['fqn'])] + search_result[1:]
             target_found[target] = True
             continue
+        
 
         found = False
         
@@ -97,6 +102,7 @@ if __name__ == '__main__':
         output_blocks = entry['output_blocks']
         new_blocks = []
         num_script = 0
+        has_have = False
         for block in output_blocks:
             new_blocks.append(block)
             if block['kind'] == 'search':
@@ -109,8 +115,10 @@ if __name__ == '__main__':
                 new_blocks.append(new_block)
             if block['kind'] == 'script':
                 num_script += 1
-        
-        hist.append(num_script)
+            if block['kind'] == 'have':
+                has_have = True
+        if '_have' not in entry['fqn'] and not has_have:
+            hist.append(num_script)
         block_output = {"name": entry['fqn'], "blocks": new_blocks}
         export.append(block_output)
     
@@ -120,7 +128,7 @@ if __name__ == '__main__':
     hist = np.array(hist)
 
     bins = np.arange(hist.min(), hist.max() + 2)  # +2 so last integer included
-    plt.hist(hist, bins=bins, align="left", rwidth=0.8, label="Proof lengths")
+    plt.hist(hist, bins=bins, align="left", rwidth=0.8, label="Proof lengths for proof without have")
     plt.xlabel("Length of proof")
     plt.ylabel("Count")
     plt.legend()
