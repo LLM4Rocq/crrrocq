@@ -1,0 +1,38 @@
+#!/bin/bash
+
+#SBATCH --job-name=crrrocq # job's name
+#SBATCH --output=crrrocq%j.out # output log (%j = job ID)
+#SBATCH --error=crrrocq%j.err # error log (%j = job ID)
+#SBATCH --constraint=h100 # h100 gpus
+#SBATCH --nodes=2 # number of nodes
+#SBATCH --ntasks-per-node=1 # beware, idr_accelerate manage subtasks, don't change this parameter
+#SBATCH --gres=gpu:8 # number of gpus/node
+#SBATCH --cpus-per-task=96 # cpus/per_tasks
+#SBATCH --time=01:00:00 # maximal duration "(HH:MM:SS)"
+#SBATCH --qos=qos_gpu_a100-dev # QoS
+#SBATCH --hint=nomultithread # no hyperthreading
+#SBATCH --account=isf@a100 # account
+
+module purge
+conda deactivate
+
+module load arch/a100
+module load miniforge cuda/12.4.1 cudnn/9.7.1.26-cuda nccl/2.25.1-1-cuda
+conda activate nemo
+export HF_HOME="$SCRATCH/HF"
+export SCRATCH="/lustre/fsn1/projects/rech/isf/ulu88xb"
+set -x
+cd $SCRATCH/crrrocq
+
+head_node=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
+
+export GLOO_SOCKET_IFNAME=<nic-interface-name>
+srun --ntasks={SLURM_NNODES} \
+     --ntasks-per-node=1 \
+        torchrun \
+            --nproc-per-node=${SLURM_NTASKS_PER_NODE} \
+            --nnodes=${SLURM_NNODES} \
+            --rdzv-backend=c10d \
+            --rdzv-endpoint=${head_node}:29500 \
+            --rdzv-id=abc123 \
+            training_nemo/training.py

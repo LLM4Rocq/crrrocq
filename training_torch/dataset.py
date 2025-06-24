@@ -139,7 +139,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", type=str, default='dataset/')
     parser.add_argument("--prompt-path", type=str, default='training/prompts/prompt.json')
-    parser.add_argument("--model-name", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
+    parser.add_argument("--model-name", type=str, default="Qwen/Qwen2.5-32B-Instruct")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -153,5 +153,6 @@ if __name__ == "__main__":
         for k, label in enumerate(entry['labels']):
             if label == -100:
                 input_ids[k] = 0
-        print(tokenizer.decode(entry["input_ids"]))
+        print(len(entry['input_ids']))
+        # print(tokenizer.decode(entry["input_ids"]))
         input("continue?")

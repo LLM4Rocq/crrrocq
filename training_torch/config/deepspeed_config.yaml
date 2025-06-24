@@ -1,0 +1,3 @@
+distributed_type: DEEPSPEED
+deepspeed_config: 
+  deepspeed_config_file: training/config/deepspeed_offload.json

@@ -121,8 +121,8 @@ def main(args):
         collate_fn=lambda x:merge_and_pad_entries(x, tokenizer.pad_token_id, pad_first=False)
     )
 
-    torch.set_default_device(accelerator.device)
     model = AutoModelForCausalLM.from_pretrained(args.model_name, attn_implementation="flash_attention_2", torch_dtype=torch.bfloat16, trust_remote_code=True)
+    model.config.use_cache = False
     if not model.config.pad_token_id:
         model.config.pad_token_id = model.config.eos_token_id
     model.gradient_checkpointing_enable({"use_reentrant": False})
