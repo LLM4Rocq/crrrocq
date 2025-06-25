@@ -77,11 +77,13 @@ def is_valid(entry, dictionary, top_k=10):
     
     return is_all_okay, entry_aux
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input', default='export/output/steps/step_6/result.json')
     parser.add_argument('--dictionary', default='export/docstrings/dictionary.json', help='Database path')
     parser.add_argument('--top-k', type=int, default=10)
+    parser.add_argument('--plot-hist', type=bool, default=False)
     parser.add_argument('--output', default='export/output/steps/step_7/')
 
     args = parser.parse_args()
@@ -125,11 +127,12 @@ if __name__ == '__main__':
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
         json.dump(export, file, indent=4)
 
-    hist = np.array(hist)
+    if args.plot_hist:
+        hist = np.array(hist)
 
-    bins = np.arange(hist.min(), hist.max() + 2)  # +2 so last integer included
-    plt.hist(hist, bins=bins, align="left", rwidth=0.8, label="Proof lengths for proof without have")
-    plt.xlabel("Length of proof")
-    plt.ylabel("Count")
-    plt.legend()
-    plt.show()
+        bins = np.arange(hist.min(), hist.max() + 2)  # +2 so last integer included
+        plt.hist(hist, bins=bins, align="left", rwidth=0.8, label="Proof lengths for proof without have")
+        plt.xlabel("Length of proof")
+        plt.ylabel("Count")
+        plt.legend()
+        plt.show()
