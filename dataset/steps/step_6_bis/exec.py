@@ -15,7 +15,7 @@ class MissingBlock(Exception):
 
 def parse_output(output: str, expected_len=5):
     pattern = re.compile(
-        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*</\1>",
+        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*<\/\1>",
         re.DOTALL | re.MULTILINE,
     )
     block_think = {}
