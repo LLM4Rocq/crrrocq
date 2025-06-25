@@ -37,7 +37,6 @@ class GPTSFTDatasetInterleaved(Dataset):
     def __init__(
         self,
         file_path: str,
-        prompt_path: str,
         tokenizer: TokenizerSpec,
         max_seq_length: int = 1024,
         min_seq_length: int = 1,
@@ -69,7 +68,6 @@ class GPTSFTDatasetInterleaved(Dataset):
         """
         self.tokenizer = tokenizer
         self.file_path = file_path
-        self.prompt_path = prompt_path
         self.max_seq_length = max_seq_length
         self.min_seq_length = min_seq_length
         self.pad_seq_length_to_mult = pad_seq_length_to_mult
@@ -82,11 +80,6 @@ class GPTSFTDatasetInterleaved(Dataset):
         self.is_test = is_test
 
         self._load_dataset()
-        self._load_prompt()
-
-    def _load_prompt(self):
-        with open(self.prompt_path, 'r') as file:
-            self.prompt = json.load(file)
 
     def _load_dataset(self):
         self.indexed_dataset = _JSONLMemMapDataset(
@@ -118,35 +111,10 @@ class GPTSFTDatasetInterleaved(Dataset):
         except Exception as e:
             logger.error(f"Error while loading example {idx} from dataset {self.file_path}")
             raise e
-        return self._process_example(example)
+        return example
 
     def _truncation(self, ids, expect_length):
         return ids[:expect_length]
-
-    def _process_example(self, example):
-        """
-        Create an example by concatenating reasoning block
-        Truncation is carried out when needed.
-        BOS, and EOS are added.
-        """
-
-        input_ids = self.tokenizer.text_to_ids(self.prompt['instruction'].format(initial_goal=example['initial_goal']))
-        ignore_idx = len(input_ids) * [0]
-    
-        for block in example['blocks']:
-            tag_beg_ids = self.tokenizer.text_to_ids(f"<{block['kind']}>\n")
-            content_ids = self.tokenizer.text_to_ids(f"{block['content']}\n")
-            tag_end_ids = self.tokenizer.text_to_ids(f"/<{block['kind']}>\n")
-            input_ids += tag_beg_ids + content_ids + tag_end_ids
-            ignore_idx += (len(tag_beg_ids) + len(content_ids) + len(tag_end_ids)) * [0 if block['ignore'] else 1]
-        input_ids = input_ids + [self.tokenizer.eos_id]
-        ignore_idx.append(1)
-        processed_example = {
-            'input_ids': input_ids,
-            'ignore_idx': ignore_idx,
-            'token_count': len(input_ids)
-        }
-        return processed_example
 
     def _maybe_cast_to_list(self, x):
         if isinstance(x, np.ndarray):

@@ -49,7 +49,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         persistent_workers: bool = False,
         packed_sequence_specs: Optional["PackedSequenceSpecs"] = None,
         dataset_kwargs: Optional[Dict[str, Any]] = None,
-        dataset_root: str = "crrrocq_ds",
+        dataset_root: str = "export/dataset/",
         dataset_raw_filepath: str = "export/dataset/train.json",
         prompt_filepath: str = "export/dataset/prompt.json"
     ):
@@ -71,6 +71,11 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
             packed_sequence_specs=packed_sequence_specs,
             dataset_kwargs=dataset_kwargs,
         )
+        self._load_prompt()
+
+    def _load_prompt(self):
+        with open(self.prompt_path, 'r') as file:
+            self.prompt_filepath = json.load(file)
 
     def prepare_data(self) -> None:
         # if train file is specified, no need to do anything
@@ -78,11 +83,34 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         super().prepare_data()
 
 
-    def _preprocess_and_split_data(self, dset, train_ratio: float = 0.80, val_ratio: float = 0.15):
+    def _preprocess_example(self, example):
+        """
+        Create an example by concatenating reasoning block
+        Truncation is carried out when needed.
+        BOS, and EOS are added.
+        """
+
+        input_ids = self.tokenizer.text_to_ids(self.prompt['instruction'].format(initial_goal=example['initial_goal']))
+        ignore_idx = len(input_ids) * [0]
+    
+        for block in example['blocks']:
+            tag_beg_ids = self.tokenizer.text_to_ids(f"<{block['kind']}>\n")
+            content_ids = self.tokenizer.text_to_ids(f"{block['content']}\n")
+            tag_end_ids = self.tokenizer.text_to_ids(f"/<{block['kind']}>\n")
+            input_ids += tag_beg_ids + content_ids + tag_end_ids
+            ignore_idx += (len(tag_beg_ids) + len(content_ids) + len(tag_end_ids)) * [0 if block['ignore'] else 1]
+        input_ids = input_ids + [self.tokenizer.eos_id]
+        ignore_idx.append(1)
+        processed_example = {
+            'input_ids': input_ids,
+            'ignore_idx': ignore_idx,
+            'token_count': len(input_ids)
+        }
+        return processed_example
+    
+    def _preprocess_and_split_data(self, dset):
         logging.info(f"Preprocessing {self.__class__.__name__} to jsonl format and splitting...")
 
-        test_ratio = 1 - train_ratio - val_ratio
-        save_splits = {}
         dset = load_dataset(
             "json",
             data_files={
@@ -90,34 +118,22 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
             }
         )
         dataset = dset.get('train')
-        split_dataset = dataset.train_test_split(test_size=val_ratio + test_ratio, seed=self.seed)
-        split_dataset2 = split_dataset['test'].train_test_split(
-            test_size=test_ratio / (val_ratio + test_ratio), seed=self.seed
-        )
-        save_splits['training'] = split_dataset['train']
-        save_splits['validation'] = split_dataset2['train']
-        save_splits['test'] = split_dataset2['test']
+        print("len training: ", len(dataset))
 
-        print("len training: ", len(save_splits['training']))
-        print("len validation: ", len(save_splits['validation']))
-        print("len test: ", len(save_splits['test']))
+        output_file = self.dataset_root / f"training.jsonl"
+        with output_file.open("w", encoding="utf-8") as f:
+            for example in dataset:                   
+                f.write(json.dumps(self._preprocess_example(example)) + "\n")
 
-        for split_name, dataset in save_splits.items():
-            output_file = self.dataset_root / f"{split_name}.jsonl"
-            with output_file.open("w", encoding="utf-8") as f:
-                for example in dataset:                   
-                    f.write(json.dumps(example) + "\n")
-
-            logging.info(f"{split_name} split saved to {output_file}")
-            self.output_jsonl[split_name]=output_file
+        logging.info(f"training split saved to {output_file}")
+        self.output_jsonl["training"]=output_file
 
 
     @lru_cache
     def _create_dataset(self, is_test=False, pack_metadata_file_path = None, **kwargs):
         # pylint: disable=C0115,C0116
         return GPTSFTDatasetInterleaved(
-            file_path=self.dataset_root / "training.jsonl", #self.output_jsonl['training'],
-            prompt_path=self.prompt_filepath,
+            file_path=self.dataset_root / "training.jsonl",
             tokenizer=self.tokenizer,
             max_seq_length=self.seq_length,
             seed=self.seed,
@@ -131,11 +147,9 @@ def crrrocq(model_name, **kwargs) -> run.Config[pl.LightningDataModule]:
 
 
 if __name__ == '__main__':
-    from transformers import AutoTokenizer
     import torch
     model_name = "Qwen/Qwen2.5-32B-Instruct"
     tokenizer = AutoTokenizer(model_name)
-
     dm = CrrrocqDataModule(tokenizer=tokenizer)
     dm.prepare_data()
     ds = dm._create_dataset()

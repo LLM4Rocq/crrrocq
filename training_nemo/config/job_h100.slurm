@@ -29,10 +29,8 @@ cd $SCRATCH/crrrocq
 
 head_node=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 
-srun --ntasks=${SLURM_NNODES} \
-     --ntasks-per-node=1 \
-        torchrun \
-            --nproc-per-node=${SLURM_NTASKS_PER_NODE} \
+srun torchrun \
+            --nproc-per-node=${SLURM_GPUS_PER_NODE} \
             --nnodes=${SLURM_NNODES} \
             --rdzv-backend=c10d \
             --rdzv-endpoint=${head_node}:29500 \
