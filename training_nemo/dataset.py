@@ -130,18 +130,15 @@ class GPTSFTDatasetInterleaved(Dataset):
         BOS, and EOS are added.
         """
 
-        input_ids = self.tokenizer.text_to_ids(self.prompt['text_before'])
+        input_ids = self.tokenizer.text_to_ids(self.prompt['instruction'])
         ignore_idx = len(input_ids) * [0]
     
         for block in example['blocks']:
-            tag_ids = self.tokenizer.text_to_ids(f"\n\n<{block['tag']}>\n")
-            content_ids = self.tokenizer.text_to_ids(f"{block['content']}\n</{block['tag']}>")
-
-            input_ids += tag_ids + content_ids
-            ignore_idx += len(tag_ids) * [1]
-            ignore_idx += len(content_ids) * [0 if block['tag'] == 'result' else 1]
-            
-    
+            tag_beg_ids = self.tokenizer.text_to_ids(f"<{block['kind']}>\n")
+            content_ids = self.tokenizer.text_to_ids(f"{block['content']}\n")
+            tag_end_ids = self.tokenizer.text_to_ids(f"/<{block['kind']}>\n")
+            input_ids += tag_beg_ids + content_ids + tag_end_ids
+            ignore_idx += (len(tag_beg_ids) + len(content_ids) + len(tag_end_ids)) * [0 if block['ignore'] else 1]
         input_ids = input_ids + [self.tokenizer.eos_id]
         ignore_idx.append(1)
         processed_example = {
@@ -149,7 +146,6 @@ class GPTSFTDatasetInterleaved(Dataset):
             'ignore_idx': ignore_idx,
             'token_count': len(input_ids)
         }
-
         return processed_example
 
     def _maybe_cast_to_list(self, x):
