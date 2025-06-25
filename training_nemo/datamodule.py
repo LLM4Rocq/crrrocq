@@ -93,13 +93,13 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         BOS, and EOS are added.
         """
 
-        input_ids = self.tokenizer.encode(self.prompt['instruction'].format(initial_goal=example['initial_goal']))
+        input_ids = self.tokenizer.text_to_ids(self.prompt['instruction'].format(initial_goal=example['initial_goal']))
         ignore_idx = len(input_ids) * [0]
     
         for block in example['blocks']:
-            tag_beg_ids = self.tokenizer.encode(f"<{block['kind']}>\n")
-            content_ids = self.tokenizer.encode(f"{block['content']}\n")
-            tag_end_ids = self.tokenizer.encode(f"</{block['kind']}>\n")
+            tag_beg_ids = self.tokenizer.text_to_ids(f"<{block['kind']}>\n")
+            content_ids = self.tokenizer.text_to_ids(f"{block['content']}\n")
+            tag_end_ids = self.tokenizer.text_to_ids(f"</{block['kind']}>\n")
             input_ids += tag_beg_ids + content_ids + tag_end_ids
             ignore_idx += (len(tag_beg_ids) + len(content_ids) + len(tag_end_ids)) * [0 if block['ignore'] else 1]
         input_ids = input_ids + [self.tokenizer.eos_id]
