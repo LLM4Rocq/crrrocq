@@ -15,7 +15,7 @@ def configure_checkpoint_conversion():
     return run.Partial(
         llm.import_ckpt,
         model=llm.qwen2_32b.model(),
-        source="hf://Qwen/Qwen2.5-0.5B-Instruct",
+        source="hf://Qwen/Qwen2.5-32B-Instruct",
         overwrite=True,
     )
 
