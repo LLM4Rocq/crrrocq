@@ -50,8 +50,8 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         packed_sequence_specs: Optional["PackedSequenceSpecs"] = None,
         dataset_kwargs: Optional[Dict[str, Any]] = None,
         dataset_root: str = "crrrocq_ds",
-        dataset_raw_filepath: str = "dataset/train.json",
-        prompt_filepath: str = "dataset/prompt.json"
+        dataset_raw_filepath: str = "export/dataset/train.json",
+        prompt_filepath: str = "export/dataset/prompt.json"
     ):
         self.dataset_raw_filepath = dataset_raw_filepath
         self.prompt_filepath = prompt_filepath
