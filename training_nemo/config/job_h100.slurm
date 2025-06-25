@@ -4,7 +4,7 @@
 #SBATCH --output=crrrocq%j.out # output log (%j = job ID)
 #SBATCH --error=crrrocq%j.err # error log (%j = job ID)
 #SBATCH --constraint=h100 # h100 gpus
-#SBATCH --nodes=4 # number of nodes
+#SBATCH --nodes=8 # number of nodes
 #SBATCH --ntasks-per-node=4 # beware, idr_accelerate manage subtasks, don't change this parameter
 #SBATCH --gres=gpu:4 # number of gpus/node
 #SBATCH --cpus-per-task=24 # cpus/per_tasks
