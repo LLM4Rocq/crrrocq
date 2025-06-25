@@ -1,0 +1,64 @@
+import argparse
+import json
+import os
+from collections import defaultdict
+from copy import deepcopy
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+def split_compress(entry):
+    splits = []
+    cumulative_wo_result_search = []
+    cumulative_wo_result_script = []
+    cumulative_wo_result = []
+
+    last_complete = []
+    kind_result = ""
+    for block in entry['blocks']:
+        block['ignore'] = (block['kind'] == 'result')
+
+        if block['kind'] in ['search', 'script']:
+            kind_result = block['kind']
+
+        if block['kind'] == 'result':
+            if last_complete:
+                splits.append({"name": entry['name'], "blocks": last_complete})
+            if kind_result == 'search':
+                cumulative_wo_result_script = cumulative_wo_result + [block]
+                last_complete = cumulative_wo_result_search + [block]
+            else:
+                cumulative_wo_result_search = cumulative_wo_result + [block]
+                last_complete = cumulative_wo_result_script + [block]
+        else:
+            cumulative_wo_result_script.append(block)
+            cumulative_wo_result_search.append(block)
+            cumulative_wo_result.append(block)
+            last_complete.append(block)
+    splits.append({"name": entry['name'], "blocks": last_complete})
+    return splits
+
+
+        
+def blocks_to_str(blocks):
+    result = ""
+    for block in blocks:
+        result += f'{block["kind"]}\n{block["content"]}\n\n'
+    return result
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', default='export/output/steps/step_7/result.json')
+    parser.add_argument('--output', default='export/output/steps/step_8/')
+
+    args = parser.parse_args()
+
+    os.makedirs(args.output, exist_ok=True)
+    with open(args.input, 'r') as file:
+        content = json.load(file)
+
+    export = []
+    for entry in content:
+        export += split_compress(entry)
+    with open(os.path.join(args.output, 'result.json'), 'w') as file:
+        json.dump(export, file, indent=4)
