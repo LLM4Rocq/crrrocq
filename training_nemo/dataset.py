@@ -38,6 +38,7 @@ class GPTSFTDatasetInterleaved(Dataset):
         self,
         file_path: str,
         tokenizer: TokenizerSpec,
+        eos_id: int=151643,
         max_seq_length: int = 1024,
         min_seq_length: int = 1,
         pad_seq_length_to_mult: int = 16,
@@ -66,6 +67,7 @@ class GPTSFTDatasetInterleaved(Dataset):
             If None, will write to the same folder as the dataset.
         is_test: Whether this dataset is the test split.
         """
+        self.eos_id = eos_id
         self.tokenizer = tokenizer
         self.file_path = file_path
         self.max_seq_length = max_seq_length
@@ -144,9 +146,9 @@ class GPTSFTDatasetInterleaved(Dataset):
         position_ids = [list(range(max_length)) for _ in batch]
         position_ids = torch.LongTensor(position_ids)
         input_ids = torch.LongTensor(
-            self._collate_item(input_ids, max_length=max_length, pad_id=self.tokenizer.eos_id)
+            self._collate_item(input_ids, max_length=max_length, pad_id=self.eos_id)
         )
-        labels = torch.LongTensor(self._collate_item(labels, max_length=max_length, pad_id=self.tokenizer.eos_id))
+        labels = torch.LongTensor(self._collate_item(labels, max_length=max_length, pad_id=self.eos_id))
         loss_mask = torch.LongTensor(self._collate_item(loss_mask, max_length=max_length, pad_id=0))
 
         processed_batch = {
