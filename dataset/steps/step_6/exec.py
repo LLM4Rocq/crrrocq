@@ -22,7 +22,7 @@ DICT_MODEL = {
 
 def parse_output(output: str):
     pattern = re.compile(
-        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*</\1>",
+        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*<\/\1>",
         re.DOTALL | re.MULTILINE,
     )
     blocks = []
