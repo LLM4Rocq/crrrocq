@@ -5,9 +5,9 @@
 #SBATCH --error=crrrocq%j.err # error log (%j = job ID)
 #SBATCH --constraint=h100 # h100 gpus
 #SBATCH --nodes=8 # number of nodes
-#SBATCH --ntasks-per-node=4 # beware, idr_accelerate manage subtasks, don't change this parameter
+#SBATCH --ntasks-per-node=1 # beware, idr_accelerate manage subtasks, don't change this parameter
 #SBATCH --gres=gpu:4 # number of gpus/node
-#SBATCH --cpus-per-task=24 # cpus/per_tasks
+#SBATCH --cpus-per-task=96 # cpus/per_tasks
 #SBATCH --time=01:30:00 # maximal duration "(HH:MM:SS)"
 #SBATCH --qos=qos_gpu_h100-dev # QoS
 #SBATCH --hint=nomultithread # no hyperthreading
@@ -30,7 +30,7 @@ cd $SCRATCH/crrrocq
 head_node=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 
 srun torchrun \
-            --nproc-per-node=${SLURM_GPUS_PER_NODE} \
+            --nproc-per-node=4 \
             --nnodes=${SLURM_NNODES} \
             --rdzv-backend=c10d \
             --rdzv-endpoint=${head_node}:29500 \
