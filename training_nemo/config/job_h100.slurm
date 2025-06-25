@@ -37,4 +37,4 @@ srun --ntasks=${SLURM_NNODES} \
             --rdzv-backend=c10d \
             --rdzv-endpoint=${head_node}:29500 \
             --rdzv-id=abc123 \
-            training_nemo/training.py
+            -m training_nemo.training --config_file "training_nemo/config/nemo.yaml"
