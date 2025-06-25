@@ -36,6 +36,7 @@ optimizer:
   bf16: true
 
 datamodule:
+  dataset_preprocess_filepath: "export/dataset/training.jsonl"
   seq_length: 32768
   micro_batch_size: 1
   global_batch_size: 16

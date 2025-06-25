@@ -51,9 +51,11 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         dataset_kwargs: Optional[Dict[str, Any]] = None,
         dataset_root: str = "export/dataset/",
         dataset_raw_filepath: str = "export/dataset/train.json",
-        prompt_filepath: str = "export/dataset/prompt.json"
+        prompt_filepath: str = "export/dataset/prompt.json",
+        dataset_preprocess_filepath: str = ""
     ):
         self.dataset_raw_filepath = dataset_raw_filepath
+        self.dataset_preprocess_filepath = dataset_preprocess_filepath
         self.prompt_filepath = prompt_filepath
         self.output_jsonl = {}
         super().__init__(
@@ -79,7 +81,8 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
 
     def prepare_data(self) -> None:
         # if train file is specified, no need to do anything
-        self._preprocess_and_split_data(self.dataset_raw_filepath)
+        if not self.dataset_preprocess_filepath:
+            self._preprocess_and_split_data(self.dataset_raw_filepath)
         super().prepare_data()
 
 
@@ -96,7 +99,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         for block in example['blocks']:
             tag_beg_ids = self.tokenizer.text_to_ids(f"<{block['kind']}>\n")
             content_ids = self.tokenizer.text_to_ids(f"{block['content']}\n")
-            tag_end_ids = self.tokenizer.text_to_ids(f"/<{block['kind']}>\n")
+            tag_end_ids = self.tokenizer.text_to_ids(f"</{block['kind']}>\n")
             input_ids += tag_beg_ids + content_ids + tag_end_ids
             ignore_idx += (len(tag_beg_ids) + len(content_ids) + len(tag_end_ids)) * [0 if block['ignore'] else 1]
         input_ids = input_ids + [self.tokenizer.eos_id]
@@ -120,20 +123,19 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         dataset = dset.get('train')
         print("len training: ", len(dataset))
 
-        output_file = self.dataset_root / f"training.jsonl"
-        with output_file.open("w", encoding="utf-8") as f:
+        self.dataset_preprocess_filepath = self.dataset_root / f"training.jsonl"
+        with self.dataset_preprocess_filepath.open("w", encoding="utf-8") as f:
             for example in dataset:                   
                 f.write(json.dumps(self._preprocess_example(example)) + "\n")
 
-        logging.info(f"training split saved to {output_file}")
-        self.output_jsonl["training"]=output_file
+        logging.info(f"training split saved to {self.dataset_preprocess_filepath}")
 
 
     @lru_cache
     def _create_dataset(self, is_test=False, pack_metadata_file_path = None, **kwargs):
         # pylint: disable=C0115,C0116
         return GPTSFTDatasetInterleaved(
-            file_path=self.dataset_root / "training.jsonl",
+            file_path=self.dataset_preprocess_filepath,
             tokenizer=self.tokenizer,
             max_seq_length=self.seq_length,
             seed=self.seed,
