@@ -74,8 +74,8 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         self._load_prompt()
 
     def _load_prompt(self):
-        with open(self.prompt_path, 'r') as file:
-            self.prompt_filepath = json.load(file)
+        with open(self.prompt_filepath, 'r') as file:
+            self.prompt = json.load(file)
 
     def prepare_data(self) -> None:
         # if train file is specified, no need to do anything
