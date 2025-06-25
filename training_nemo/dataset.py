@@ -130,7 +130,7 @@ class GPTSFTDatasetInterleaved(Dataset):
         BOS, and EOS are added.
         """
 
-        input_ids = self.tokenizer.text_to_ids(self.prompt['instruction'])
+        input_ids = self.tokenizer.text_to_ids(self.prompt['instruction'].format(initial_goal=example['initial_goal']))
         ignore_idx = len(input_ids) * [0]
     
         for block in example['blocks']:
