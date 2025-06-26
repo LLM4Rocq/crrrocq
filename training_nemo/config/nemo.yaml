@@ -39,6 +39,7 @@ optimizer:
 scheduler:
   warmup_steps: 130
   max_steps: 2900
+  constant_steps: 0
   min_lr: 0.0
 
 datamodule:
