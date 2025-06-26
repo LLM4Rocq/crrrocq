@@ -58,13 +58,18 @@ def logger(**kwargs) -> run.Config[nl.NeMoLogger]:
 
 
 # Configure the optimizer
-def adam_with_cosine_annealing(**kwargs) -> run.Config[nl.OptimizerModule]:
+def adam_with_cosine_annealing(config_optimizer, config_scheduler) -> run.Config[nl.OptimizerModule]:
     opt_cfg = run.Config(
         OptimizerConfig,
-        **kwargs
+        **config_optimizer
+    )
+    scheduler = run.Config(
+        nl.lr_scheduler.CosineAnnealingScheduler,
+        **config_scheduler
     )
     return run.Config(
         nl.MegatronOptimizerModule,
+        lr_scheduler=scheduler,
         config=opt_cfg
     )
 
@@ -99,13 +104,14 @@ def configure_finetuning_recipe(config):
     config_datamodule = config['datamodule']
     config_logger = config['logger']
     config_optim = config['optimizer']
+    config_scheduler = config['scheduler']
     return run.Partial(
         llm.finetune,
         model=qwen(model_config),
         trainer=trainer(config_strategy, config_trainer, num_nodes=config['nodes']),
         data=crrrocq(model_name, **config_datamodule),
         log=logger(**config_logger),
-        optim=adam_with_cosine_annealing(**config_optim),
+        optim=adam_with_cosine_annealing(config_optim, config_scheduler),
         # resume=resume(model_name),
     )
 

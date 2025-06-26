@@ -12,6 +12,7 @@ strategy:
 trainer:
   devices: auto
   accelerator: gpu
+  max_steps: 2900
   log_every_n_steps: 1
   limit_val_batches: 0
   val_check_interval: 0
@@ -19,9 +20,9 @@ trainer:
 
 logger:
   save_last: true
-  every_n_train_steps: 100
+  every_n_train_steps: 200
   monitor: reduced_train_loss
-  save_top_k: 1
+  save_top_k: 3
   save_on_train_epoch_end: true
   save_optim_on_train_end: true
 
@@ -34,6 +35,11 @@ optimizer:
   use_distributed_optimizer: true
   clip_grad: 1.0
   bf16: true
+
+scheduler:
+  warmup_steps: 130
+  max_steps: 2900
+  min_lr: 0.0
 
 datamodule:
   dataset_preprocess_filepath: "export/dataset/training.jsonl"
