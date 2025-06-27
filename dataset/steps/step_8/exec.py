@@ -23,7 +23,13 @@ def split_compress(entry):
 
         if block['kind'] == 'result':
             if last_complete:
-                splits.append({"name": entry['name'], "blocks": last_complete})
+                splits.append({"name": entry['name'], "blocks": deepcopy(last_complete), "initial_goal": entry['initial_goal']})
+                for block_aux in cumulative_wo_result_search:
+                    block_aux['ignore'] = True
+                for block_aux in cumulative_wo_result_script:
+                    block_aux['ignore'] = True
+                for block_aux in last_complete:
+                    block_aux['ignore'] = True
             if kind_result == 'search':
                 cumulative_wo_result_script = cumulative_wo_result + [block]
                 last_complete = cumulative_wo_result_search + [block]
@@ -35,7 +41,8 @@ def split_compress(entry):
             cumulative_wo_result_search.append(block)
             cumulative_wo_result.append(block)
             last_complete.append(block)
-    splits.append({"name": entry['name'], "blocks": last_complete})
+    if entry['blocks'][-1]['kind'] != 'result':
+        splits.append({"name": entry['name'], "blocks": last_complete, "initial_goal": entry['initial_goal']})
     return splits
 
 
