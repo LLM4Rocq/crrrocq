@@ -52,7 +52,7 @@ if __name__ == '__main__':
         os.system('clear')
         query = input("Query: ")
         for _, entry, _ in index.query(query, top_k=args.top_k):
-            print(bcolors.OKGREEN + entry['name'] + bcolors.ENDC)
+            print(bcolors.OKGREEN + entry['fullname'] + bcolors.ENDC)
             print(bcolors.WARNING + entry['docstring'] + bcolors.END)
             print()
             print()
