@@ -49,8 +49,8 @@ if __name__ == '__main__':
     index = FaissIndex(model, dictionary, batch_size=args.batch_size)
 
     while(True):
-        os.system('clear')
         query = input("Query: ")
+        os.system('clear')
         for _, entry, _ in index.query(query, top_k=args.top_k):
             print(bcolors.OKGREEN + entry['fullname'] + bcolors.ENDC)
             print(bcolors.WARNING + entry['docstring'] + bcolors.ENDC)
