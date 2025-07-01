@@ -8,8 +8,8 @@
 #SBATCH --ntasks-per-node=1 # beware, idr_accelerate manage subtasks, don't change this parameter
 #SBATCH --gres=gpu:4 # number of gpus/node
 #SBATCH --cpus-per-task=96 # cpus/per_tasks
-#SBATCH --time=07:00:00 # maximal duration "(HH:MM:SS)"
-#SBATCH --qos=qos_gpu_h100-t3 # QoS
+#SBATCH --time=01:30:00 # maximal duration "(HH:MM:SS)"
+#SBATCH --qos=qos_gpu_h100-dev # QoS
 #SBATCH --hint=nomultithread # no hyperthreading
 #SBATCH --account=tdm@h100 # account
 

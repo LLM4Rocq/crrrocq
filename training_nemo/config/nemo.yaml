@@ -1,4 +1,4 @@
-model_name: Qwen/Qwen2.5-32B-Instruct
+model_name: Qwen/Qwen2.5-Coder-32B-Instruct
 model_config: Qwen25Config32B
 nodes: 8
 ntasks_per_node: 4

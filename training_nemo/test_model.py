@@ -15,7 +15,6 @@ eq_pq  : p %= q
 
 prompt = PROMPT_TEMPLATE.format(initial_goal=initial_goal)
 messages = [
-    {"role": "system", "content": "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."},
     {"role": "user", "content": prompt}
 ]
 
