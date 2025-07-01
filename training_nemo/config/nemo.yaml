@@ -12,7 +12,7 @@ strategy:
 trainer:
   devices: auto
   accelerator: gpu
-  max_steps: 2900
+  max_steps: 360
   log_every_n_steps: 1
   limit_val_batches: 0
   val_check_interval: 0
@@ -37,8 +37,8 @@ optimizer:
   bf16: true
 
 scheduler:
-  warmup_steps: 130
-  max_steps: 2900
+  warmup_steps: 15
+  max_steps: 360
   constant_steps: 0
   min_lr: 0.0
 
