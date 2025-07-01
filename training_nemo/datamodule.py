@@ -67,7 +67,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
             global_batch_size=global_batch_size,
             rampup_batch_size=rampup_batch_size,
             seed=seed,
-            tokenizer=tokenizer
+            tokenizer=tokenizer,
             memmap_workers=memmap_workers,
             num_workers=num_workers,
             pin_memory=pin_memory,
