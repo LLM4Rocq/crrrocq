@@ -20,7 +20,7 @@ def configure_checkpoint_conversion():
         llm.export_ckpt,
         path=sft_ckpt_path,
         target="hf",
-        output_path="./model"
+        output_path="model/"
     )
 
 # configure your function

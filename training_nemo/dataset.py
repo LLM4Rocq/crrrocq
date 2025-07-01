@@ -37,7 +37,6 @@ class GPTSFTDatasetInterleaved(Dataset):
     def __init__(
         self,
         file_path: str,
-        tokenizer: TokenizerSpec,
         eos_id: int=151643,
         max_seq_length: int = 1024,
         min_seq_length: int = 1,
@@ -68,7 +67,6 @@ class GPTSFTDatasetInterleaved(Dataset):
         is_test: Whether this dataset is the test split.
         """
         self.eos_id = eos_id
-        self.tokenizer = tokenizer
         self.file_path = file_path
         self.max_seq_length = max_seq_length
         self.min_seq_length = min_seq_length
