@@ -41,6 +41,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         tokenizer_hf: Optional["TokenizerSpec"] = None,
         micro_batch_size: int = 4,
         global_batch_size: int = 8,
+        tokenizer: Optional["TokenizerSpec"] = None,
         rampup_batch_size: Optional[List[int]] = None,
         seed: int = 1234,
         memmap_workers: int = 1,
@@ -66,6 +67,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
             global_batch_size=global_batch_size,
             rampup_batch_size=rampup_batch_size,
             seed=seed,
+            tokenizer=tokenizer
             memmap_workers=memmap_workers,
             num_workers=num_workers,
             pin_memory=pin_memory,
