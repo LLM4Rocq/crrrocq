@@ -38,7 +38,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
     def __init__(
         self,
         seq_length: int = 2048,
-        tokenizer: Optional["TokenizerSpec"] = None,
+        tokenizer_hf: Optional["TokenizerSpec"] = None,
         micro_batch_size: int = 4,
         global_batch_size: int = 8,
         rampup_batch_size: Optional[List[int]] = None,
@@ -54,6 +54,7 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         prompt_filepath: str = "export/dataset/prompt.json",
         dataset_preprocess_filepath: str = ""
     ):
+        self.tokenizer_hf = tokenizer_hf
         self.dataset_raw_filepath = dataset_raw_filepath
         self.dataset_preprocess_filepath = dataset_preprocess_filepath
         self.prompt_filepath = prompt_filepath
@@ -61,7 +62,6 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         super().__init__(
             dataset_root=dataset_root,
             seq_length=seq_length,
-            tokenizer=tokenizer,
             micro_batch_size=micro_batch_size,
             global_batch_size=global_batch_size,
             rampup_batch_size=rampup_batch_size,
@@ -92,17 +92,24 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         Truncation is carried out when needed.
         BOS, and EOS are added.
         """
-
-        input_ids = self.tokenizer.text_to_ids(self.prompt['instruction'].format(initial_goal=example['initial_goal']))
+        messages = [
+            {"role": "user", "content": self.prompt['instruction'].format(initial_goal=example['initial_goal'])}
+        ]
+        prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        input_ids = self.tokenizer_hf(prompt)['input_ids']
         ignore_idx = len(input_ids) * [0]
-    
         for block in example['blocks']:
-            tag_beg_ids = self.tokenizer.text_to_ids(f"<{block['kind']}>\n")
-            content_ids = self.tokenizer.text_to_ids(f"{block['content']}\n")
-            tag_end_ids = self.tokenizer.text_to_ids(f"</{block['kind']}>\n")
+            tag_beg_ids = self.tokenizer_hf(f"<{block['kind']}>\n")['input_ids']
+            content_ids = self.tokenizer_hf(f"{block['content']}\n")['input_ids']
+            tag_end_ids = self.tokenizer_hf(f"</{block['kind']}>\n")['input_ids']
             input_ids += tag_beg_ids + content_ids + tag_end_ids
             ignore_idx += (len(tag_beg_ids) + len(content_ids) + len(tag_end_ids)) * [0 if block['ignore'] else 1]
-        input_ids = input_ids + [self.tokenizer.eos_id]
+        
+        input_ids = input_ids + [self.tokenizer_hf.eos_token_id]
         ignore_idx.append(1)
         processed_example = {
             'input_ids': input_ids,
@@ -136,7 +143,6 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         # pylint: disable=C0115,C0116
         return GPTSFTDatasetInterleaved(
             file_path=self.dataset_preprocess_filepath,
-            tokenizer=self.tokenizer,
             max_seq_length=self.seq_length,
             seed=self.seed,
             is_test=is_test,
@@ -144,21 +150,22 @@ class CrrrocqDataModule(FineTuningDataModule, IOMixin):
         )
 
 def crrrocq(model_name, **kwargs) -> run.Config[pl.LightningDataModule]:
-    tokenizer = AutoTokenizer(model_name)
-    return run.Config(CrrrocqDataModule, tokenizer=tokenizer, **kwargs)
+    return run.Config(CrrrocqDataModule, **kwargs)
 
 
 if __name__ == '__main__':
     import torch
-    model_name = "Qwen/Qwen2.5-32B-Instruct"
-    tokenizer = AutoTokenizer(model_name)
-    dm = CrrrocqDataModule(tokenizer=tokenizer)
+    from transformers import AutoTokenizer
+
+    model_name = "Qwen/Qwen2.5-Coder-32B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    dm = CrrrocqDataModule(tokenizer_hf=tokenizer)
     dm.prepare_data()
     ds = dm._create_dataset()
     for entry in ds:
         input_ids = torch.tensor(entry['input_ids'])
         ignore_idx = torch.tensor(entry['ignore_idx'])
 
-        input_ids = input_ids.where(ignore_idx==1, 0)
-        print(tokenizer.tokenizer.decode(input_ids))
+        # input_ids = input_ids.where(ignore_idx==1, 0)
+        print(tokenizer.decode(input_ids))
         input('Continue?')
