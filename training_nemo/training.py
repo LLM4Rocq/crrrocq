@@ -112,7 +112,7 @@ def configure_finetuning_recipe(config):
         data=crrrocq(model_name, **config_datamodule),
         log=logger(**config_logger),
         optim=adam_with_cosine_annealing(config_optim, config_scheduler),
-        # resume=resume(model_name),
+        resume=resume(model_name),
     )
 
 def local_executor_torchrun(ntasks_per_node: int = 1) -> run.LocalExecutor:
