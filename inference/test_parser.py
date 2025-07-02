@@ -6,11 +6,11 @@ class TestParser(unittest.TestCase):
     def setUp(self):
         self.parser = Parser()
         # Register tools with their tags
-        self.parser.register_tool("search", "SEARCH")
-        self.parser.register_tool("coq-prover", "SCRIPT")
+        self.parser.register_tool("search", "search")
+        self.parser.register_tool("coq-prover", "script")
 
     def test_extract_search_tool_call(self):
-        text = "I think we should <SEARCH>mathematical induction principles</SEARCH> to solve this."
+        text = "I think we should <search>mathematical induction principles</search> to solve this."
         result = self.parser.extract_next_tool_call(text)
 
         self.assertIsNotNone(result)
@@ -18,7 +18,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(result[1], "mathematical induction principles")
 
     def test_extract_coq_tool_call(self):
-        text = "Let's try this proof: <SCRIPT>intros n. induction n; auto.</SCRIPT>"
+        text = "Let's try this proof: <script>intros n. induction n; auto.</script>"
         result = self.parser.extract_next_tool_call(text)
 
         self.assertIsNotNone(result)
@@ -32,7 +32,7 @@ class TestParser(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_empty_tool_calls(self):
-        text = "This has an empty search call: <SEARCH></SEARCH>"
+        text = "This has an empty search call: <search></search>"
         result = self.parser.extract_next_tool_call(text)
 
         self.assertIsNotNone(result)
@@ -40,13 +40,13 @@ class TestParser(unittest.TestCase):
         self.assertEqual(result[1], "")  # Empty content
 
     def test_malformed_tags(self):
-        text = "<SEARCH>incomplete tag"
+        text = "<search>incomplete tag"
         result = self.parser.extract_next_tool_call(text)
 
         self.assertIsNone(result)  # Should not match incomplete tags
 
     def test_text_with_angle_brackets(self):
-        text = "<SEARCH>Use angle brackets like < and > in math</SEARCH>"
+        text = "<search>Use angle brackets like < and > in math</search>"
         result = self.parser.extract_next_tool_call(text)
 
         self.assertIsNotNone(result)

@@ -7,12 +7,12 @@ from typing import List, Dict, Any
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the necessary classes
-from tools import CoqProverTool
+from tools import ScriptTool
 from pytanque import Pytanque
 
 
-class TestCoqProverToolIntegration(unittest.TestCase):
-    """Integration tests for CoqProverTool with a running pet-server."""
+class TestScriptToolIntegration(unittest.TestCase):
+    """Integration tests for ScriptTool with a running pet-server."""
 
     @classmethod
     def setUpClass(cls):
@@ -29,7 +29,7 @@ class TestCoqProverToolIntegration(unittest.TestCase):
     def test_prove_foo_theorem_with_lia(self):
         """Test proving the 'foo' theorem using the 'lia' tactic."""
         # Create a tool instance for the 'foo' theorem
-        tool = CoqProverTool(
+        tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -53,7 +53,7 @@ class TestCoqProverToolIntegration(unittest.TestCase):
     def test_prove_foofoo_theorem_with_lia(self):
         """Test proving the 'foofoo' theorem using the 'lia' tactic."""
         # Create a tool instance for the 'foofoo' theorem
-        tool = CoqProverTool(
+        tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -77,7 +77,7 @@ class TestCoqProverToolIntegration(unittest.TestCase):
     def test_incremental_proof_foo_theorem(self):
         """Test an incremental proof of the 'foo' theorem."""
         # Create a tool instance for the 'foo' theorem
-        tool = CoqProverTool(
+        tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -107,7 +107,7 @@ class TestCoqProverToolIntegration(unittest.TestCase):
     def test_invalid_tactic(self):
         """Test using an invalid tactic."""
         # Create a tool instance for the 'foo' theorem
-        tool = CoqProverTool(
+        tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -124,7 +124,7 @@ class TestCoqProverToolIntegration(unittest.TestCase):
     def test_multiple_tactics_at_once(self):
         """Test running multiple tactics at once."""
         # Create a tool instance for the 'foo' theorem
-        tool = CoqProverTool(
+        tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,
@@ -148,7 +148,7 @@ class TestCoqProverToolIntegration(unittest.TestCase):
     def test_reset_functionality(self):
         """Test the reset functionality."""
         # Create a tool instance for the 'foo' theorem
-        tool = CoqProverTool(
+        tool = ScriptTool(
             pet=self.pet,
             workspace=self.workspace,
             file=self.file,

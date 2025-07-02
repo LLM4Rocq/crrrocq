@@ -26,6 +26,12 @@ class Tool(ABC):
 
     @property
     @abstractmethod
+    def instruction(self) -> str:
+        """Return the instructions on how to use the tool."""
+        pass
+
+    @property
+    @abstractmethod
     def tag(self) -> str:
         """Return the XML tag name to use for this tool."""
         pass
@@ -50,26 +56,36 @@ class SearchTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Search for relevant mathematical theorems, definitions, or proofs."
+        return "Query for relevant existing theorems and lemmas"
+    
+    @property
+    def instruction(self) -> str:
+        return """### 🔍 Search Block  
+**Purpose**: Discover relevant theorems and lemmas
+- Query the theorem database with natural language descriptions
+- Find existing results that support your proof strategy
+- Identify patterns, equivalences, and useful properties
+- **Best Practice**: Be specific in your search queries
+"""
 
     @property
     def tag(self) -> str:
-        return "SEARCH"
+        return "search"
 
-    def run(self, query: str) -> List[str]:
+    def run(self, input_text: str) -> List[str]:
         """
         Execute a search and return results.
 
         Note: This is a placeholder. Implement actual search functionality here.
         """
         # This would be replaced with actual search functionality
-        return [f"Search result for: {query}"]
+        return [f"Search result for: {input_text}"]
 
 
-class CoqProverTool(Tool):
+class ScriptTool(Tool):
     """Tool for interacting with the Coq theorem prover."""
 
-    def __init__(self, pet, workspace, file, theorem):
+    def __init__(self, pet, workspace, file, theorem, context=False):
         """
         Initialize the Coq prover tool.
 
@@ -84,7 +100,8 @@ class CoqProverTool(Tool):
         self.workspace = workspace
         self.file = file
         self.theorem = theorem
-        self.env = ScriptEnv(pet, workspace, file, theorem)
+        self.env = ScriptEnv(pet, workspace, file, theorem, context=context)
+        self.context = self.env.context
 
     @property
     def name(self) -> str:
@@ -92,11 +109,21 @@ class CoqProverTool(Tool):
 
     @property
     def description(self) -> str:
-        return "Execute Coq tactics and return the new proof state or error."
+        return "Executable Coq proof tactics and code"
+    
+    @property
+    def instruction(self) -> str:
+        return """### ⚡ Script Block
+**Purpose**: Execute Coq proof tactics
+- Write valid Coq tactic sequences
+- Apply theorems, perform rewrites, and manipulate goals
+- **Requirement**: Code must be syntactically correct Coq
+- **Output**: New proof state or error messages
+"""
 
     @property
     def tag(self) -> str:
-        return "SCRIPT"
+        return "script"
 
     def run(self, input_text: str) -> Dict[str, Any]:
         """
@@ -115,7 +142,7 @@ class CoqProverTool(Tool):
             # Execute the tactics
             self.env.exec(tactics)
 
-            if self.env.failed:
+            if self.env.failed and not self.env.added_tac:
                 return {"status": "error", "message": "Tactic execution failed"}
 
             # Check if the proof is finished
@@ -127,9 +154,9 @@ class CoqProverTool(Tool):
                 }
 
             # Get the new proof state
-            new_goal = self.env.new_goal_pp
+            # new_goal = self.env.new_goal_pp
 
-            return {"status": "success", "goal": new_goal, "is_complete": False}
+            return {"status": "success", "is_complete": False}  # "goal": new_goal,
 
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -137,3 +164,32 @@ class CoqProverTool(Tool):
     def reset(self) -> None:
         """Reset the prover to the initial state."""
         self.env = ScriptEnv(self.pet, self.workspace, self.file, self.theorem)
+
+    def deepcopy(self) -> "ScriptTool":
+        """Create a deep copy of the ScriptTool instance."""
+        new = self.__class__(self.pet, self.workspace, self.file, self.theorem)
+        new.env = self.env.deepcopy()
+        return new
+    
+class HaveTool(ScriptTool):
+    @property
+    def name(self) -> str:
+        return "have-prover"
+
+    @property
+    def description(self) -> str:
+        return "Intermediate lemma introduction"
+    
+    @property
+    def instruction(self) -> str:
+        return """### 🎯 Have Block
+**Intermediate lemma creation**
+- Introduce auxiliary goals using `have` tactics
+- Break complex proofs into manageable subgoals
+- **Constraint**: Must use valid `have` tactic syntax
+- **Application**: Essential for multi-step mathematical arguments
+"""
+
+    @property
+    def tag(self) -> str:
+        return "have"

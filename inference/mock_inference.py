@@ -2,15 +2,17 @@ import os
 import sys
 import argparse
 from pytanque import Pytanque
-from tools import SearchTool, CoqProverTool
+from tools import SearchTool, ScriptTool, HaveTool
 from agent import MathProofAgent
 from mock_llm import MockVLLM
 
 
 def main():
-    """Main entry point for the inference CLI."""
+    """Main entry point for the mock inference CLI."""
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Coq Proof Assistant CLI")
+    parser = argparse.ArgumentParser(
+        description="Coq Proof Assistant CLI with Mock LLM"
+    )
     parser.add_argument(
         "--workspace",
         type=str,
@@ -25,6 +27,12 @@ def main():
         "--host", type=str, default="127.0.0.1", help="Pytanque server host"
     )
     parser.add_argument("--port", type=int, default=8765, help="Pytanque server port")
+    parser.add_argument(
+        "--beam-size",
+        type=int,
+        default=1,
+        help="Number of parallel paths to explore (beam search width)",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
@@ -36,7 +44,13 @@ def main():
 
     # Setup tools
     search_tool = SearchTool()
-    coq_tool = CoqProverTool(
+    script_tool = ScriptTool(
+        pet=pet,
+        workspace=args.workspace,
+        file=args.file,
+        theorem=args.theorem,
+    )
+    have_tool = HaveTool(
         pet=pet,
         workspace=args.workspace,
         file=args.file,
@@ -53,9 +67,13 @@ def main():
     )
     print("When entering a response, type 'END' on a new line to finish.\n")
 
+    if args.beam_size > 1:
+        print(f"Using beam search with {args.beam_size} beams.")
+        print("You'll be prompted for completions for each active beam.")
+
     # Create agent and run proof
-    agent = MathProofAgent(llm, search_tool, coq_tool)
-    status = agent.run_proof(verbose=args.verbose)
+    agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
+    status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
 
     # Print results
     if status.success:
