@@ -20,7 +20,7 @@ from .datamodule import crrrocq
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_file", type=str, help="configuration file for training")
+    parser.add_argument("--config-file", type=str, help="configuration file for training")
     args = parser.parse_args()
     return args
 

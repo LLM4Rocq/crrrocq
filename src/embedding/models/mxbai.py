@@ -10,8 +10,7 @@ from transformers import AutoModel, AutoTokenizer
 from .base import BaseModel
 
 def transform_query(query: str) -> str:
-    """ For retrieval, add the prompt for query (not for documents).
-    """
+    """ For retrieval, add the prompt for query (not for documents)."""
     return f'Represent this sentence for searching relevant passages: {query}'
 
 def pooling(outputs: torch.Tensor, inputs: Dict,  strategy: str = 'cls') -> np.ndarray:
@@ -25,7 +24,7 @@ def pooling(outputs: torch.Tensor, inputs: Dict,  strategy: str = 'cls') -> np.n
     return outputs.detach()
 
 class MxbaiEmbedding(BaseModel):
-
+    """Wrapper around the MXBai embedding model."""
     def __init__(self, device):
         super().__init__()
         self.device = device

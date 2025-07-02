@@ -4,11 +4,11 @@ import json
 import argparse
 import requests
 import concurrent.futures
-from pathlib import Path
 from typing import Any
+
 from tqdm import tqdm
 
-from dataset.prompts import code_explanation_prompt, proof_explanation_prompt, CoT_creation_prompt
+from src.dataset.prompts import code_explanation_prompt, proof_explanation_prompt, CoT_creation_prompt
 
 """
 Step 5: Generate synthetic CoT.

@@ -10,7 +10,7 @@ import concurrent.futures
 from pytanque import Pytanque, State, Goal
 from tqdm import tqdm
 
-from training_nemo.eval import start_pet_server, stop_pet_server
+from src.training.eval import start_pet_server, stop_pet_server
 from src.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
 from src.parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
 from src.parser.goals import goal_lists_diff, replace_list, goal_to_lemma

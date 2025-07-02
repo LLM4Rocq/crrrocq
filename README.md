@@ -13,11 +13,11 @@ We train the model to reason using the SSReflect tactic language which is 1) mor
 
 ## Tasks
 
-- [ ] Generate the dataset for the RAG (search tool)
-- [ ] Build the RAG
-- [ ] Inference pipeline with tool calling
-- [ ] Generate the dataset for CoT with tool calling
-- [ ] Train the model following the S1 paper (1000 well chosen examples)
+- [x] Generate the dataset for the RAG (search tool)
+- [x] Build the RAG
+- [x] Inference pipeline with tool calling
+- [x] Generate the dataset for CoT with tool calling
+- [x] Train the model following the S1 paper (1000 well chosen examples)
 - [ ] Test / Benchmarks
 
 ## Workflow

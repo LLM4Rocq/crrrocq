@@ -129,7 +129,6 @@ while True:
     while ongoing:
         os.system('clear')
         print(prefix_text)
-        input('Continue?')
         input_ids = tokenizer(prefix_text, return_tensors="pt").to(model.device)
         output_ids = model.generate(**input_ids, stopping_criteria=stopper.criteria, max_new_tokens=768)
         text = tokenizer.decode(output_ids[0])

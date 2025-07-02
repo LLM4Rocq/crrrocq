@@ -158,16 +158,27 @@ def crrrocq(model_name, **kwargs) -> run.Config[pl.LightningDataModule]:
 if __name__ == '__main__':
     import torch
     from transformers import AutoTokenizer
+    import argparse
+    import yaml
 
-    model_name = "Qwen/Qwen2.5-Coder-32B-Instruct"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config-file", type=str, help="configuration file for training")
+    parser.add_argument("--debug", type=bool, default=False, help="To print samples from dataset")
+    args = parser.parse_args()
+
+    with open(args.config_file, 'r') as file:
+        config_file = yaml.safe_load(file)
+
+    model_name = config_file['model_name']
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     dm = CrrrocqDataModule(tokenizer_hf=tokenizer)
     dm.prepare_data()
-    ds = dm._create_dataset()
-    for entry in ds:
-        input_ids = torch.tensor(entry['input_ids'])
-        ignore_idx = torch.tensor(entry['ignore_idx'])
+    if args.debug:
+        ds = dm._create_dataset()
+        for entry in ds:
+            input_ids = torch.tensor(entry['input_ids'])
+            ignore_idx = torch.tensor(entry['ignore_idx'])
 
-        # input_ids = input_ids.where(ignore_idx==1, 0)
-        print(tokenizer.decode(input_ids))
-        input('Continue?')
+            input_ids = input_ids.where(ignore_idx==1, 0)
+            print(tokenizer.decode(input_ids))
+            input('Continue?')
