@@ -27,7 +27,7 @@ cd $SCRATCH/crrrocq
 head_node=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 
 export GLOO_SOCKET_IFNAME=<nic-interface-name>
-srun --ntasks={SLURM_NNODES} \
+srun --ntasks=${SLURM_NNODES} \
      --ntasks-per-node=1 \
         torchrun \
             --nproc-per-node=${SLURM_NTASKS_PER_NODE} \
