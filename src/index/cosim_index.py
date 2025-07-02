@@ -6,6 +6,7 @@ import hashlib
 
 import torch
 import faiss
+from faiss import write_index, read_index
 from tqdm import tqdm
 
 from src.embedding_models.base import BaseModel
@@ -34,7 +35,7 @@ class CosimIndex(ABC):
 
 class FaissIndex(CosimIndex):
     def __init__(
-        self, model: BaseModel, content: Dict = None, cache_path: str="export/cache/", batch_size=1
+        self, model: BaseModel, content: Dict = None, cache_path: str="export/cache/", batch_size=1, load_cache_index=True
     ):
         super().__init__()
         self.model = model
@@ -57,8 +58,14 @@ class FaissIndex(CosimIndex):
         self.all_embeddings = torch.cat(self.all_embeddings, dim=0).to(torch.float32).numpy()
         d = self.all_embeddings.shape[1]
         faiss.normalize_L2(self.all_embeddings)
-        self.index = faiss.IndexFlatIP(d)
-        self.index.add(self.all_embeddings)
+        
+        if load_cache_index:
+            self.index = read_index(os.path.join(cache_path, "index"))
+        else:
+            self.index = faiss.IndexFlatIP(d)
+            self.index.add(self.all_embeddings)
+            write_index(self.index, os.path.join(cache_path, "index"))
+        
 
     def _compute_and_save_embedding(self, batch_size=1):
         to_do = []
