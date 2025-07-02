@@ -121,7 +121,7 @@ if __name__ == '__main__':
                 has_have = True
         if '_have' not in entry['fqn'] and not has_have:
             hist.append(num_script)
-        block_output = {"name": entry['fqn'], "blocks": new_blocks}
+        block_output = {"name": entry['fqn'], "blocks": new_blocks, "initial_goal": entry['initial_goal']}
         export.append(block_output)
     
     with open(os.path.join(args.output, 'result.json'), 'w') as file:
