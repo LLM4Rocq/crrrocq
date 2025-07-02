@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Union, Tuple
 from dataclasses import dataclass
+import json
 
-from env import ScriptEnv
+from .env import ScriptEnv
+from .llm import LLM
+from src.embedding.models.base import BaseEmbedding
+from src.embedding.index.cosim_index import FaissIndex
 
 # ===============================================
 # Tool Interface
@@ -50,6 +54,12 @@ class Tool(ABC):
 class SearchTool(Tool):
     """Tool for searching relevant information."""
 
+    def __init__(self, embedding_model:BaseEmbedding, docstrings_path="", batch_size=16, cache_path=None):
+        super().__init__()
+        with open(docstrings_path, 'r') as file:
+            docstrings = json.load(file)
+        self.index = FaissIndex(embedding_model, docstrings, batch_size=batch_size, cache_path=cache_path, load_cache_index=True if cache_path else False)
+
     @property
     def name(self) -> str:
         return "search"
@@ -72,14 +82,19 @@ class SearchTool(Tool):
     def tag(self) -> str:
         return "search"
 
-    def run(self, input_text: str) -> List[str]:
+    def run(self, input_text: str, top_k=10) -> str:
         """
         Execute a search and return results.
 
         Note: This is a placeholder. Implement actual search functionality here.
         """
-        # This would be replaced with actual search functionality
-        return [f"Search result for: {input_text}"]
+        search_result = self.index.query(input_text, top_k=top_k)
+        # TODO: retrain with clean format
+        for k, (_, element, _) in enumerate(search_result, start=1):
+            fullname, docstring = element['fullname'], element['docstring']
+            output += f"{k}. {fullname}\n{docstring}\n\n"
+        return {"content": output, "search_result": search_result}
+
 
 
 class ScriptTool(Tool):

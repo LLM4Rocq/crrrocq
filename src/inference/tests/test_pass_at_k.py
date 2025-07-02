@@ -3,15 +3,12 @@ import os
 import sys
 from typing import List, Dict, Any, Optional
 
-# Add parent directory to Python path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from pass_at_k_prover import PassAtKProver
-from prover_agent import CoqProofManager, ProverResult
-from tools import ScriptTool
-from llm import VLLM
 from pytanque import Pytanque
 
+from ..pass_at_k_prover import PassAtKProver
+from ..prover_agent import CoqProofManager, ProverResult
+from ..tools import ScriptTool
+from ..llm import VLLM
 
 # Mock VLLM class for testing
 class MockVLLM(VLLM):

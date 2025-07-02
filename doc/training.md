@@ -28,11 +28,11 @@ python -m src.training.datamodule
 
 ## Step 3: Train the Model
 
-Adjust config/nemo.yaml and job_h100.slurm file depending on your configuration.
+Adjust config/training/nemo.yaml and job_h100.slurm file depending on your configuration.
 Train Crrrocq using the prepared dataset and configuration.
 
 ```console
-sbatch job_h100.slurm
+sbatch config/training/training_h100.slurm
 ```
 
 ## Step 4: Export the Model to Hugging Face Format

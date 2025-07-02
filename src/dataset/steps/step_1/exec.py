@@ -2,10 +2,11 @@ import json
 import os
 import argparse
 from pathlib import Path
+
 from tqdm import tqdm
 
-from dataset.steps.step_0.exec import get_rocq_files
-from dataset.parser.theorems import read_theorems_in_file, format_theorem
+from src.dataset.steps.step_0.exec import get_rocq_files
+from src.parser.theorems import read_theorems_in_file, format_theorem
 
 """
 Step 1: extract all theorems from mathcomp.

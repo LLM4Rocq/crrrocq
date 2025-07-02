@@ -3,8 +3,8 @@ import re
 import json
 from dataclasses import dataclass
 
-from tools import Tool
-from llm import LLM
+from .tools import Tool
+from .llm import LLM
 
 
 @dataclass
@@ -161,11 +161,10 @@ class ToolHandler:
 
                 # Format the tool result
                 if tool_name == "search":
-                    result_text = f"Search results: {json.dumps(tool_result, indent=2)}"
                     # Keep this beam active
                     all_prompts[
                         idx
-                    ] += f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
+                    ] += f"<{self.RESULT_TAG}>\n{tool_result['content']}\n</{self.RESULT_TAG}>"
                     new_active_indices.append(idx)
                 elif tool_name == "coq-prover":
                     if tool_result["status"] == "success":

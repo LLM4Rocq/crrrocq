@@ -3,8 +3,8 @@ from typing import List, Optional, Tuple, Dict, Any, Union
 import re
 import copy
 
-from tools import ScriptTool
-from llm import LLM
+from .tools import ScriptTool
+from .llm import LLM
 
 
 @dataclass

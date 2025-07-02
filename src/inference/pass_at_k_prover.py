@@ -3,11 +3,11 @@ import sys
 import argparse
 from typing import List, Optional, Tuple, Dict, Any
 
-from prover_agent import CoqProofManager, ProverResult
-from tools import ScriptTool
-from llm import VLLM
 from pytanque import Pytanque
 
+from .prover_agent import CoqProofManager, ProverResult
+from .tools import ScriptTool
+from .llm import VLLM
 
 class PassAtKProver:
     """

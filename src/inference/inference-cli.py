@@ -1,10 +1,8 @@
-import os
-import sys
 import argparse
 from pytanque import Pytanque
-from tools import SearchTool, ScriptTool, HaveTool
-from llm import VLLM
-from agent import MathProofAgent
+from .tools import SearchTool, ScriptTool, HaveTool
+from .llm import VLLM
+from .agent import MathProofAgent
 
 
 def main():

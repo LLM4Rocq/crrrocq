@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Union, Tuple
 import requests
 from dataclasses import dataclass
-from llm_logger import LLMLogger
-from prompts import tactic_prompts
+
+from .llm_logger import LLMLogger
+from .prompts import tactic_prompts
 
 # ===============================================
 # LLM Interface and Implementations

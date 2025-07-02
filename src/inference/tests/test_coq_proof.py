@@ -3,12 +3,10 @@ import os
 import sys
 from typing import List, Dict, Any, Optional
 
-# Add parent directory to Python path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from prover_agent import CoqProofManager, ProverResult
-from tools import ScriptTool
 from pytanque import Pytanque
+
+from ..prover_agent import CoqProofManager, ProverResult
+from ..tools import ScriptTool
 
 
 class TestCoqProofManager(unittest.TestCase):

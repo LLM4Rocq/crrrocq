@@ -1,6 +1,6 @@
-from llm import LLM
 from typing import List, Optional
 
+from .llm import LLM
 
 class MockVLLM(LLM):
     """A mock implementation of the VLLM class that allows manual control."""

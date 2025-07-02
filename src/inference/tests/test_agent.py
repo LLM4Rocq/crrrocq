@@ -3,13 +3,10 @@ import os
 import sys
 from typing import List, Dict, Any, Optional
 
-# Add parent directory to Python path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # Import the necessary classes
-from agent import Parser, ToolHandler, MathProofAgent, Status
-from tools import Tool, ScriptTool, SearchTool, HaveTool
-from llm import LLM
+from ..agent import Parser, ToolHandler, MathProofAgent, Status
+from ..tools import Tool, ScriptTool, SearchTool, HaveTool
+from ..llm import LLM
 from pytanque import Pytanque
 
 

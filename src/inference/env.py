@@ -4,9 +4,7 @@ import re
 import os
 import copy
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from collections import deque
-from typing import Iterable, Union, Tuple
+
 from pytanque import Pytanque, State, Goal, PetanqueError
 
 

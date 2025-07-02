@@ -1,10 +1,12 @@
 import os
 import sys
 import argparse
+
 from pytanque import Pytanque
-from tools import SearchTool, ScriptTool, HaveTool
-from agent import MathProofAgent
-from mock_llm import MockVLLM
+
+from .tools import SearchTool, ScriptTool, HaveTool
+from .agent import MathProofAgent
+from .mock_llm import MockVLLM
 
 
 def main():

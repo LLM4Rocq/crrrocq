@@ -1,5 +1,6 @@
 import unittest
-from agent import Parser
+
+from ..agent import Parser
 
 
 class TestParser(unittest.TestCase):

@@ -3,14 +3,13 @@ import os
 import sys
 from typing import List, Dict, Any, Optional
 
-# Add parent directory to Python path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pytanque import Pytanque
 
 # Import the necessary classes
-from agent import Parser, ToolHandler, MathProofAgent
-from tools import Tool, ScriptTool, HaveTool
-from llm import LLM
-from pytanque import Pytanque
+from ..agent import Parser, ToolHandler, MathProofAgent
+from ..tools import Tool, ScriptTool, HaveTool
+from ..llm import LLM
+
 
 
 # Create a fake LLM class for testing beam search

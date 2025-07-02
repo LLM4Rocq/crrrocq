@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from transformers import AutoModel, AutoTokenizer
 
-from .base import BaseModel
+from .base import BaseEmbedding
 
 def last_token_pool(last_hidden_states: Tensor,
                  attention_mask: Tensor) -> Tensor:
@@ -20,7 +20,7 @@ def last_token_pool(last_hidden_states: Tensor,
 def get_detailed_instruct(task_description: str, query: str) -> str:
     return f'Instruct: {task_description}\nQuery: {query}'
 
-class GteQwenEmbedding(BaseModel):
+class GteQwenEmbedding(BaseEmbedding):
     """Wrapper around the gte-Qwen embedding model."""
     def __init__(self, device:str):
         super().__init__()

@@ -1,14 +1,13 @@
 import os
-import sys
 import json
 import time
 import argparse
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Tuple
 from datetime import datetime
 
-from pass_at_k_prover import PassAtKProver
-from tools import ScriptTool
-from llm import VLLM
+from .pass_at_k_prover import PassAtKProver
+from .tools import ScriptTool
+from .llm import VLLM
 from pytanque import Pytanque
 
 

@@ -20,7 +20,7 @@ def pooling(outputs: torch.Tensor, inputs: Dict,  strategy: str = 'cls') -> np.n
         raise NotImplementedError
     return outputs.detach()
 
-class BaseModel(ABC):
+class BaseEmbedding(ABC):
     """Abstract base class for embedding model."""
 
     @abstractmethod

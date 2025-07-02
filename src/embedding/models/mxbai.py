@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from transformers import AutoModel, AutoTokenizer
 
-from .base import BaseModel
+from .base import BaseEmbedding
 
 def transform_query(query: str) -> str:
     """ For retrieval, add the prompt for query (not for documents)."""
@@ -23,7 +23,7 @@ def pooling(outputs: torch.Tensor, inputs: Dict,  strategy: str = 'cls') -> np.n
         raise NotImplementedError
     return outputs.detach()
 
-class MxbaiEmbedding(BaseModel):
+class MxbaiEmbedding(BaseEmbedding):
     """Wrapper around the MXBai embedding model."""
     def __init__(self, device):
         super().__init__()

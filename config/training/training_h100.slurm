@@ -35,4 +35,4 @@ srun torchrun \
             --rdzv-backend=c10d \
             --rdzv-endpoint=${head_node}:29500 \
             --rdzv-id=abc123 \
-            -m src.training.training --config-file "config/nemo.yaml"
+            -m src.training.training --config-file "config/training/nemo.yaml"

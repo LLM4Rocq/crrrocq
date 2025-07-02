@@ -3,12 +3,9 @@ import os
 import sys
 from typing import List, Dict, Any
 
-# Add parent directory to Python path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import the necessary classes
-from tools import ScriptTool
 from pytanque import Pytanque
+
+from ..tools import ScriptTool
 
 
 class TestScriptToolIntegration(unittest.TestCase):
@@ -171,7 +168,7 @@ class TestScriptToolIntegration(unittest.TestCase):
             result["goal"],
             "Goal should be reset to initial state",
         )
-
+    
 
 if __name__ == "__main__":
     unittest.main()
