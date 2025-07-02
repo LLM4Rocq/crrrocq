@@ -59,12 +59,13 @@ class FaissIndex(CosimIndex):
         d = self.all_embeddings.shape[1]
         faiss.normalize_L2(self.all_embeddings)
         
-        if load_cache_index:
-            self.index = read_index(os.path.join(cache_path, "index"))
+        cache_index_path = os.path.join(cache_path, "index")
+        if load_cache_index and os.path.exists(cache_index_path):
+            self.index = read_index(cache_index_path)
         else:
             self.index = faiss.IndexFlatIP(d)
             self.index.add(self.all_embeddings)
-            write_index(self.index, os.path.join(cache_path, "index"))
+            write_index(self.index, cache_index_path)
         
 
     def _compute_and_save_embedding(self, batch_size=1):
