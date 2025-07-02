@@ -1,5 +1,0 @@
-{
-    "text_before": "<|im_start|>user\nINSTRUCTION",
-    "sep": "<|im_end|>\n<|im_start|>assistant",
-    "end": "<|im_end|>"
-}
