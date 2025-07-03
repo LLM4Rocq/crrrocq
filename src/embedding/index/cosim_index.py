@@ -8,7 +8,7 @@ import torch
 import faiss
 from tqdm import tqdm
 
-from ..models.base import BaseModel
+from ..models.base import BaseEmbedding
 
 
 
@@ -34,7 +34,7 @@ class CosimIndex(ABC):
 
 class FaissIndex(CosimIndex):
     def __init__(
-        self, model: BaseModel, content: Dict = None, cache_path: str="export/cache/", batch_size=1, load_cache_index=True
+        self, model: BaseEmbedding, content: Dict = None, cache_path: str="export/cache/", batch_size=1, load_cache_index=True
     ):
         super().__init__()
         self.model = model

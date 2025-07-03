@@ -89,6 +89,7 @@ class SearchTool(Tool):
         Note: This is a placeholder. Implement actual search functionality here.
         """
         search_result = self.index.query(input_text, top_k=top_k)
+        output = ""
         # TODO: retrain with clean format
         for k, (_, element, _) in enumerate(search_result, start=1):
             fullname, docstring = element['fullname'], element['docstring']
