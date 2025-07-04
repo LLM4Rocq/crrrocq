@@ -26,7 +26,7 @@ def main():
     )
     parser.add_argument("--port", type=int, default=8765, help="Pytanque server port")
     parser.add_argument(
-        "--llm-url", type=str, default="http://localhost:8000", help="LLM API URL"
+        "--llm-url", type=str, default="http://localhost:30000", help="LLM API URL"
     )
     parser.add_argument(
         "--model",
@@ -56,6 +56,7 @@ def main():
     parser.add_argument('--docstrings-path', default='/lustre/fsn1/projects/rech/tdm/commun/dataset/docstrings.json', help='Docstrings path')
     parser.add_argument('--embedding-cache-path', default='/lustre/fsn1/projects/rech/tdm/commun/cache/', help='Embedding cache path')
 
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     args = parser.parse_args()
 
     # Setup Pytanque
@@ -65,12 +66,12 @@ def main():
 
 
     # Setup tools
-    embedding_model = Qwen3Embedding4b(args.embedding_device)
+    #embedding_model = Qwen3Embedding4b(args.embedding_device)
 
     search_tool = SearchTool(
-        embedding_model=embedding_model,
-        docstrings_path=args.docstrings_path,
-        cache_path=args.embedding_cache_path
+        #embedding_model=embedding_model,
+        #docstrings_path=args.docstrings_path,
+        #cache_path=args.embedding_cache_path
     )
     script_tool = ScriptTool(
         pet=pet,

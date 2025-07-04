@@ -147,7 +147,7 @@ class VLLM(LLM):
             # "top_p": self.top_p,
             # "top_k": self.top_k,
             "max_tokens": self.max_tokens,
-            "include_stop_str_in_output": True,
+            # "include_stop_str_in_output": True, not working in sglang
             "stream": False,
         }
 

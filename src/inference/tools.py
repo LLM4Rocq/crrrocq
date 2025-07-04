@@ -54,11 +54,11 @@ class Tool(ABC):
 class SearchTool(Tool):
     """Tool for searching relevant information."""
 
-    def __init__(self, embedding_model:BaseEmbedding, docstrings_path="", batch_size=16, cache_path=None):
-        super().__init__()
-        with open(docstrings_path, 'r') as file:
-            docstrings = json.load(file)
-        self.index = FaissIndex(embedding_model, docstrings, batch_size=batch_size, cache_path=cache_path, load_cache_index=True if cache_path else False)
+    #def __init__(self, embedding_model:BaseEmbedding, docstrings_path="", batch_size=16, cache_path=None):
+    #    super().__init__()
+    #    with open(docstrings_path, 'r') as file:
+    #        docstrings = json.load(file)
+    #    self.index = FaissIndex(embedding_model, docstrings, batch_size=batch_size, cache_path=cache_path, load_cache_index=True if cache_path else False)
 
     @property
     def name(self) -> str:
@@ -88,13 +88,13 @@ class SearchTool(Tool):
 
         Note: This is a placeholder. Implement actual search functionality here.
         """
-        search_result = self.index.query(input_text, top_k=top_k)
+        # search_result = self.index.query(input_text, top_k=top_k)
         output = ""
         # TODO: retrain with clean format
-        for k, (_, element, _) in enumerate(search_result, start=1):
-            fullname, docstring = element['fullname'], element['docstring']
-            output += f"{k}. {fullname}\n{docstring}\n\n"
-        return {"content": output, "search_result": search_result}
+        #for k, (_, element, _) in enumerate(search_result, start=1):
+        #    fullname, docstring = element['fullname'], element['docstring']
+        #    output += f"{k}. {fullname}\n{docstring}\n\n"
+        return {"content": "FOO", "search_result": "BAR"}
 
 
 

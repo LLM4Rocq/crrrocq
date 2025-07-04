@@ -33,7 +33,7 @@ class CoqProofManager:
         self.current_proof = coq_tool.env.thm_code
         # Create pattern for extracting Coq scripts using the tool's tag
         self.script_pattern = re.compile(
-            f"<{coq_tool.tag}>(.*?)</{coq_tool.tag}>", re.DOTALL
+            f"<{coq_tool.tag}>(.*)", re.DOTALL
         )
 
     def extract_script(self, text: str) -> Optional[Tuple[str, int, int]]:
@@ -55,7 +55,7 @@ class CoqProofManager:
         self,
         response: str,
         coq_tool: ScriptTool,
-        verbose: bool = False,
+        verbose: bool = True,
     ) -> ProverResult:
         """
         Process a response: extract script, run it with Coq, and determine next steps.
