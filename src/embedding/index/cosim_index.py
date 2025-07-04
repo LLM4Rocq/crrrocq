@@ -17,11 +17,6 @@ def string_to_filename(s):
     h = hashlib.sha256(s.encode('utf-8')).hexdigest()
     return h
 
-def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
-
 class CosimIndex(ABC):
     """Abstract base class for cosim search."""
 
@@ -34,7 +29,7 @@ class CosimIndex(ABC):
 
 class FaissIndex(CosimIndex):
     def __init__(
-        self, model: BaseEmbedding, content: Dict = None, cache_path: str="export/cache/", batch_size=1, load_cache_index=True
+        self, model: BaseEmbedding, content: Dict = {}, cache_path: str="export/cache/", load_cache_index=True
     ):
         super().__init__()
         self.model = model
@@ -45,20 +40,17 @@ class FaissIndex(CosimIndex):
         self.content = copy.deepcopy(content)
 
         os.makedirs(self.cache_path, exist_ok=True)
-        self._compute_and_save_embedding(batch_size=batch_size)
-
-
+        self._compute_and_save_embedding()
         for qualid_name, element in self.content.items():
             embedding = element["embedding"]
             self.all_fqn.append(qualid_name)
             self.all_constants.append(element)
             self.all_embeddings.append(embedding.unsqueeze(0))
-
         self.all_embeddings = torch.cat(self.all_embeddings, dim=0).to(torch.float32).numpy()
         d = self.all_embeddings.shape[1]
         faiss.normalize_L2(self.all_embeddings)
         
-        cache_index_path = os.path.join(cache_path, "index")
+        cache_index_path = os.path.join(cache_path, f"index_{model.name()}")
         if load_cache_index and os.path.exists(cache_index_path):
             self.index = faiss.read_index(cache_index_path)
         else:
@@ -67,7 +59,7 @@ class FaissIndex(CosimIndex):
             faiss.write_index(self.index, cache_index_path)
         
 
-    def _compute_and_save_embedding(self, batch_size=1):
+    def _compute_and_save_embedding(self):
         to_do = []
         for qualid_name, element in self.content.items():
             filename = string_to_filename(qualid_name) + '.pt'
@@ -76,18 +68,15 @@ class FaissIndex(CosimIndex):
                 to_do.append((export_path, element))
             else:
                 cache_element = torch.load(export_path)
-                element['embedding'] = cache_element['embedding']
-        to_do_chunk = list(chunks(to_do, batch_size))
-        for batch in tqdm(to_do_chunk):
-            docstring_lists = [e['docstring'] for (_, e) in batch]
-            embeddings = self.model.generate(docstring_lists)
-            for (export_path, element), embedding in zip(batch, embeddings):
-                embedding = embedding.detach().clone().cpu()
-                element['embedding'] = embedding
-                torch.save({'embedding': embedding}, export_path)
+                self.content[qualid_name]['embedding'] = cache_element['embedding']
+        for export_path, element in tqdm(to_do):
+            embedding = self.model.generate(element['docstring'])
+            embedding = embedding.detach().clone().cpu()
+            element['embedding'] = embedding
+            torch.save({'embedding': embedding}, export_path)
 
     def query(self, query: str, top_k=10) -> List[Tuple[float, str, str]]:
-        query_embedding = self.model.generate(query, query=True).detach().clone().cpu().to(torch.float32)
+        query_embedding = self.model.generate(query).detach().clone().cpu().to(torch.float32)
         distances, indices = self.index.search(query_embedding, top_k)
 
         result = []

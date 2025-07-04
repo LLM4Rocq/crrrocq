@@ -1,6 +1,6 @@
 from .gteqwen import GteQwenEmbedding
 from .mxbai import MxbaiEmbedding
-from .qwen_embedding import Qwen3Embedding600m, Qwen3Embedding4b, Qwen3Embedding8b
+from .qwen import Qwen3Embedding600m, Qwen3Embedding4b, Qwen3Embedding8b
 
 DICT_MODEL = {
     "gte_qwen": GteQwenEmbedding,

@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 import torch.nn.functional as F
-
+import openai
 from transformers import AutoModel, AutoTokenizer
 
 from .base import BaseEmbedding
