@@ -4,6 +4,8 @@ from .tools import SearchTool, ScriptTool, HaveTool
 from .llm import VLLM
 from .agent import MathProofAgent
 
+from src.embedding.models.qwen_embedding import Qwen3Embedding4b
+from src.embedding.index.cosim_index import FaissIndex
 
 def main():
     """Main entry point for the inference CLI."""
@@ -44,7 +46,15 @@ def main():
         default=0.1,
         help="Temperature for the LLM generation",
     )
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+
+    parser.add_argument(
+        "--embedding-device",
+        type=str,
+        default="cuda:0"
+    )
+
+    parser.add_argument('--docstrings-path', default='/lustre/fsn1/projects/rech/tdm/commun/dataset/docstrings.json', help='Docstrings path')
+    parser.add_argument('--embedding-cache-path', default='/lustre/fsn1/projects/rech/tdm/commun/cache/', help='Embedding cache path')
 
     args = parser.parse_args()
 
@@ -53,8 +63,15 @@ def main():
     pet.connect()
     pet.set_workspace(False, str(args.workspace))
 
+
     # Setup tools
-    search_tool = SearchTool()
+    embedding_model = Qwen3Embedding4b(args.embedding_device)
+
+    search_tool = SearchTool(
+        embedding_model=embedding_model,
+        docstrings_path=args.docstrings_path,
+        cache_path=args.embedding_cache_path
+    )
     script_tool = ScriptTool(
         pet=pet,
         workspace=args.workspace,
