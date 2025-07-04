@@ -5,3 +5,4 @@
 __pycache__/
 dataset/math-comp*
 export/
+src/servers/script/thm_filename.json
