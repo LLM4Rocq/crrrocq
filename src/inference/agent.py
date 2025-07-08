@@ -173,7 +173,9 @@ class ToolHandler:
                             return Status(success=True, proof=current_tool.env.proof)
                         else:
                             # Proof is progressing, keep this beam active
-                            result_text = f"Goals: {tool_result['goal']}"
+                            result_text = (
+                                f"The goal to prove is:\n{tool_result['goal']}"
+                            )
                             all_prompts[
                                 idx
                             ] += f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
@@ -199,7 +201,11 @@ class MathProofAgent:
 
     def __init__(self, llm: LLM, search_tool: Tool, script_tool: Tool, have_tool: Tool):
         self.llm = llm
-        self.tools = {search_tool.name: search_tool, script_tool.name: script_tool, have_tool.name: have_tool}
+        self.tools = {
+            search_tool.name: search_tool,
+            script_tool.name: script_tool,
+            have_tool.name: have_tool,
+        }
         self.tool_handler = ToolHandler(parser=Parser(), tools=self.tools)
         self.current_proof = script_tool.env.thm_code
 
@@ -216,10 +222,7 @@ class MathProofAgent:
 
         # Build instructions for tool usage with proper tags
         tool_instructions = "\n".join(
-            [
-                f"{tool.instruction}"
-                for tool in self.tools.values()
-            ]
+            [f"{tool.instruction}" for tool in self.tools.values()]
         )
 
         # Build the prompt

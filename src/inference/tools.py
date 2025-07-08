@@ -54,7 +54,7 @@ class Tool(ABC):
 class SearchTool(Tool):
     """Tool for searching relevant information."""
 
-    #def __init__(self, embedding_model:BaseEmbedding, docstrings_path="", batch_size=16, cache_path=None):
+    # def __init__(self, embedding_model:BaseEmbedding, docstrings_path="", batch_size=16, cache_path=None):
     #    super().__init__()
     #    with open(docstrings_path, 'r') as file:
     #        docstrings = json.load(file)
@@ -67,7 +67,7 @@ class SearchTool(Tool):
     @property
     def description(self) -> str:
         return "Query for relevant existing theorems and lemmas"
-    
+
     @property
     def instruction(self) -> str:
         return """### 🔍 Search Block  
@@ -91,11 +91,10 @@ class SearchTool(Tool):
         # search_result = self.index.query(input_text, top_k=top_k)
         output = ""
         # TODO: retrain with clean format
-        #for k, (_, element, _) in enumerate(search_result, start=1):
+        # for k, (_, element, _) in enumerate(search_result, start=1):
         #    fullname, docstring = element['fullname'], element['docstring']
         #    output += f"{k}. {fullname}\n{docstring}\n\n"
         return {"content": "FOO", "search_result": "BAR"}
-
 
 
 class ScriptTool(Tool):
@@ -126,7 +125,7 @@ class ScriptTool(Tool):
     @property
     def description(self) -> str:
         return "Executable Coq proof tactics and code"
-    
+
     @property
     def instruction(self) -> str:
         return """### ⚡ Script Block
@@ -170,9 +169,9 @@ class ScriptTool(Tool):
                 }
 
             # Get the new proof state
-            # new_goal = self.env.new_goal_pp
+            new_goal = self.env.new_goal_pp
 
-            return {"status": "success", "is_complete": False}  # "goal": new_goal,
+            return {"status": "success", "is_complete": False, "goal": new_goal}
 
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -186,7 +185,8 @@ class ScriptTool(Tool):
         new = self.__class__(self.pet, self.workspace, self.file, self.theorem)
         new.env = self.env.deepcopy()
         return new
-    
+
+
 class HaveTool(ScriptTool):
     @property
     def name(self) -> str:
@@ -195,7 +195,7 @@ class HaveTool(ScriptTool):
     @property
     def description(self) -> str:
         return "Intermediate lemma introduction"
-    
+
     @property
     def instruction(self) -> str:
         return """### 🎯 Have Block
