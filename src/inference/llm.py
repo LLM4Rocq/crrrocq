@@ -169,8 +169,8 @@ class VLLM(LLM):
 
             data = response.json()
 
-            # if self.verbose:
-            #    print(f"LLM API response: {data}")
+            if self.verbose:
+                print(f"LLM API response: {data}")
 
             # Extract the completions from the response
             llm_responses = [choice["text"] for choice in data["choices"]]
