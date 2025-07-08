@@ -144,6 +144,8 @@ class ToolHandler:
                 # Check if there's a tool call in the new response only
                 tool_call = self.parser.extract_next_tool_call(response)
 
+                print("tool_call:", tool_call)
+
                 if not tool_call:
                     # No tool call found, this beam is done
                     continue

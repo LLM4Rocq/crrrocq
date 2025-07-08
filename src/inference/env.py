@@ -129,7 +129,7 @@ class ScriptEnv(Env):
         file: str,
         thm: str,
         context=False,
-        verbose=False,
+        verbose=True,
     ):
         super().__init__(pet, workspace, file, thm, context, verbose)
         self.state: State = self.initial_state
