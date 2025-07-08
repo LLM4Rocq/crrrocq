@@ -169,10 +169,15 @@ class VLLM(LLM):
 
             data = response.json()
 
-            print(f"LLM API response: {data}")
+            # print(f"LLM API response: {data}")
 
             # Extract the completions from the response
-            llm_responses = [choice["text"] for choice in data["choices"]]
+            llm_responses = [
+                choice["text"]
+                + (choice["matched_stop"] if choice["matched_stop"] != 151645 else "")
+                for choice in data["choices"]
+            ]
+            # llm_responses = [choice["text"] for choice in data["choices"]]
 
             # Log the interaction
             metadata = {

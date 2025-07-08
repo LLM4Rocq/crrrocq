@@ -34,7 +34,7 @@ class Parser:
             tag: The XML tag to use for this tool (without angle brackets)
         """
         # Create a regex pattern for this tag - using non-greedy matching
-        pattern = re.compile(f"<{tag}>(.*)", re.DOTALL)
+        pattern = re.compile(f"<{tag}>(.*?)</{tag}>", re.DOTALL)
         self.tool_patterns[tool_name] = pattern
 
     def extract_next_tool_call(self, text: str) -> Optional[Tuple[str, str, int, int]]:
