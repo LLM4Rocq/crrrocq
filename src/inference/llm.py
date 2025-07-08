@@ -39,7 +39,7 @@ class VLLM(LLM):
         top_p: float = 0.9,
         top_k: int = 40,
         max_tokens: int = 16384,
-        verbose: bool = False,
+        verbose: bool = True,
         log_dir: str = "llm_logs",
         log_to_console: bool = False,
     ):
