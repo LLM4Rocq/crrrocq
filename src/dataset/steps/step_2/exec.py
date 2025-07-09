@@ -16,7 +16,7 @@ from src.training.eval import start_pet_server, stop_pet_server, timeout, Timeou
 Step 2: Extract all have, rewrite them if necessary.
 """
 
-def chunk_dataset(dataset: str, export_path: str):
+def chunk_dataset(dataset: str, export_path: str, error_path: str):
     """Chunk dataset to run tasks in parallel."""
 
     datafile = Path(dataset)
@@ -30,8 +30,8 @@ def chunk_dataset(dataset: str, export_path: str):
 
     for qualid_name, theorem in theorems.items():
         path = theorem["filepath"]
-        export_filepath = Path(export_path, "aux", qualid_name + '.json')
-        error_filepath = Path(export_path, "error", qualid_name + '.json')
+        export_filepath = Path(export_path, qualid_name + '.json')
+        error_filepath = Path(error_path, qualid_name + '.json')
         if not export_filepath.exists() and not error_filepath.exists():
             to_do[path].append((theorem, export_filepath, error_filepath))
 
@@ -91,10 +91,14 @@ if __name__ == "__main__":
     parser.add_argument("--pet-timeout", type=int, default=40, help="Timeout value when running tactic")
     parser.add_argument("--max-workers", type=int, default=8, help="Number of pet server running concurrently")
     args = parser.parse_args()
-    to_do = chunk_dataset(args.input, args.output)
 
-    os.makedirs(Path(args.output, "aux"), exist_ok=True)
-    os.makedirs(Path(args.output, "error"), exist_ok=True)
+    dataset = Path(args.input).stem
+    aux_path = Path(args.output, "aux", dataset)
+    os.makedirs(aux_path, exist_ok=True)
+    error_path = Path(args.output, "errors", dataset)
+    os.makedirs(error_path, exist_ok=True)
+
+    to_do = chunk_dataset(args.input, aux_path, error_path)
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
         futures = []
@@ -105,19 +109,19 @@ if __name__ == "__main__":
             pass
 
     result = {}
-    for filepath in Path(args.output, "aux").iterdir():
+    for filepath in aux_path.iterdir():
         with open(filepath, 'r') as file:
             content = json.load(file)
             result[filepath.stem] = content
 
-    with open(Path(args.output, f"{Path(args.input).stem}.json"), 'w') as file:
+    with open(Path(args.output, f"{dataset}.json"), 'w') as file:
         json.dump(result, file, indent=4)
 
     errors = {}
-    for filepath in Path(args.output, "error").iterdir():
+    for filepath in error_path.iterdir():
         with open(filepath, 'r') as file:
             content = json.load(file)
             errors[filepath.stem] = content
 
-    with open(Path(args.output, f"{Path(args.input).stem}_errors.json"), 'w') as file:
+    with open(Path(args.output, f"{dataset}_errors.json"), 'w') as file:
         json.dump(errors, file, indent=4)

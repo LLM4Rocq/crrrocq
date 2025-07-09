@@ -3,5 +3,4 @@
 .python-version
 .envrc
 __pycache__/
-dataset/math-comp*
 export/

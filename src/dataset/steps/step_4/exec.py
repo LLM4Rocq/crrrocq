@@ -1,162 +1,196 @@
 import re
 import json
 import argparse
-from typing import Any, Tuple, Dict
+from typing import Any, Tuple, Optional
 from pathlib import Path
 from collections import defaultdict
 import os
 import concurrent.futures
 
-from pytanque import Pytanque, State, Goal
+from pytanque import Pytanque, State, Goal, PetanqueError
 from tqdm import tqdm
 
 from src.training.eval import start_pet_server, stop_pet_server
+from src.parser.ast import list_dependencies
 from src.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
 from src.parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
-from src.parser.goals import goal_lists_diff, replace_list, goal_to_lemma
+from src.parser.goals import goal_lists_diff, replace_list, goal_to_lemma, goal_to_lemma_def
 
 """
-Step 4: Evaluate all theorems (goals, dependencies, etc.) from step 3.
+Step 4: Evaluate all theorems (goals, dependencies, etc.).
 """
-rocq_keywords = [
-    "Lemma",
-    "Theorem",
-    "Fact",
-    "Remark",
-    "Corollary",
-    "Proposition",
-    "Property",
-    "Proof",
-    "Defined",
-    "Qed",
-    "have",
-    "move",
-    "intro",
-    "intros",
-    "induction",
-    "rewrite",
-    "by",
-    "at",
-    "apply"
-]
 
-# TODO: better handle `last` case (if at the beginning of a tactic, do not count as a dependency)
-# TODO: better handle `{poly _}` case to not yield a dependency with lemma poly
+# ====================
+# Utils
+# ====================
 
-def find_dependencies(code: str, bad_names: list[str], valid_names: list[str]) -> Tuple[list[str], list[str]]:
-    """Find all occurrences of `valid_names` in `code`, provided `bad_names` to not take into account."""
-    bad_names = rocq_keywords + bad_names
-    matches = re.finditer(r"(?P<name>[_'a-zA-Z0-9][_'a-zA-Z0-9\.]*[_'a-zA-Z0-9])", code)
-    names = [match.group("name") for match in matches]
+def load_dictionary(dfile: str) -> dict:
+    """Load the dictionary."""
 
-    dependencies = []
-    for name in names:
-        if not name in bad_names and name in valid_names:
-            dependencies.append(name)
-            bad_names.append(name)
+    with open(dfile, 'r') as file:
+        d_base = json.load(file)
 
-    return dependencies
+    d = {"objects": {}, "notations": d_base["notations"]}
 
-def find_opened_sections(text: str) -> list[str]:
-    """Return the list of opened sections in some text."""
-    sections = []
-    match = re.search(r"Section\s(?P<name>\S*).", text)
+    for keys, value in d_base["objects"]:
+        for key in keys:
+            d["objects"][key] = value
 
-    if match:
-        text = text[match.end():]
-        section_name = match.group("name")
-        section_end = f"End {section_name}."
-        close_idx = text.find(section_end)
+    return d
 
-        if close_idx >= 0:
-            text = text[close_idx+len(section_end):]
-            return find_opened_sections(text)
+# ====================
+# Notations
+# ====================
+
+def find_notations(pet: Pytanque, state: State, code: str) -> list[str]:
+    """Find all notations appearing in `code`."""
+    pre_notation_list = pet.list_notations_in_statement(state, code)
+
+    notation_list = {"scope": {}, "noscope": {}}
+    for cnot in pre_notation_list:
+        qualid_name = cnot["path"] + ('.' + cnot["secpath"] if cnot["secpath"] != "<>" else "") + '.' + cnot["notation"]
+        if cnot["scope"]:
+            if not cnot["scope"] in notation_list["scope"]:
+                notation_list["scope"][cnot["scope"]] = {}
+            d = notation_list["scope"][cnot["scope"]]
         else:
-            return [section_name] + find_opened_sections(text)
+            d = notation_list["noscope"]
 
-    else:
-        return sections
+        d[qualid_name] = {"name": cnot["notation"]}
 
-def find_sections(filepath: str, position: str) -> list[str]:
-    """Return the list of sections we are in at a certain position in a file."""
+    return notation_list
 
-    content = ""
-    with open(filepath, "r") as f:
-        for i, line in enumerate(f):
-            if i < position["line"]:
-                content += line
+def format_notations(pet: Pytanque, state: State, notation_list: list, filepath: str, dictionary: dict[str, str]) -> list:
+    """Format notations."""
+
+    filepath = Path(filepath)
+    filename = filepath.stem
+
+    new_notations_list = {"scope": {scope: {} for scope in notation_list["scope"]}, "noscope": {}}
+
+    # Iter over notations with scope and notations without scope
+    all_notations = []
+    for scope, scope_notations in notation_list["scope"].items():
+        if scope in dictionary["scope"]:
+            all_notations.append((new_notations_list["scope"][scope], scope_notations, dictionary["scope"][scope]))
+    all_notations.append((new_notations_list["noscope"], notation_list["noscope"], dictionary["noscope"]))
+
+    for save_notations, notations, dictionary in all_notations:
+        for qname, notation in notations.items():
+
+            # Check if the notation is declared in the same file that the state is in
+            if filename == qname.split('.', maxsplit=1)[0]:
+                qname = '.'.join(list(filepath.parent.parts) + [qname])
+
+            # Locate the notation
+            lstate = pet.run(state, f'Locate "{notation["name"]}".')
+            message = lstate.feedback[0][1]
+
+            # Extract all notations found by locate
+            ntns = []
+            for match in re.finditer(r'Notation\s(?P<notation>"[\s\S]+?")\s:=', message):
+                ntn_name = match.group("notation")
+                ntns.append(ntn_name)
+
+            # Keep only the notations inside of the notations dictionary
+            dntns = []
+            for ntn_name in ntns:
+                ntn_qname = qname.replace(notation["name"], "") + ntn_name
+                if ntn_qname in dictionary and not ntn_qname in dntns:
+                    dntns.append(ntn_qname)
+
+            # There should be exactly one match
+            if len(dntns) == 0:
+                pass
+                # print("NOTATION:", qname) # for debugging
+            elif len(dntns) > 1:
+                pass
+                # print("NOTATIONS:", dntns) # for debugging
             else:
-                content += line[:position["character"]]
-                break
+                qname = dntns[0]
+                save_notations[qname] = notation | {"info": dictionary[qname]}
 
-    return find_opened_sections(content)
+    return new_notations_list
 
-def sublist_index(l1: list, l2: list) -> bool:
-    """If the first list is a sublist of the second one, return the last index at which the first list starts in the second list. Else return -1."""
-    res = -1
-    for i in range(len(l2) - len(l1) + 1):
-        if l1 == l2[i:i+len(l1)]:
-            res = i
-    return res
+# ====================
+# Dependencies
+# ====================
 
-def format_dependency(pet: Pytanque, state: State, filepath: str, dependency: str, sections: list[str], search_dictionary: dict[str, str], info_dictionary: dict[str, str]) -> dict[str, str]:
+def find_dependencies(pet: Pytanque, state: State, code: str, bad: list[str]) -> list[str]:
+    """Find all dependencies of `code` that are not in `bad`."""
+    ast = pet.ast(state, code)
+    dependencies = list_dependencies(ast)
+
+    goals = pet.goals(state)
+    hypotheses = []
+    if len(goals) > 0:
+        goal = goals[0]
+        for hyp in goal.hyps:
+            hypotheses += hyp.names
+
+    return [dependency for dependency in dependencies if not dependency in bad + hypotheses]
+
+def format_dependency(pet: Pytanque, state: State, dependency: str, filepath: str, search_dictionary: dict[str, str], info_dictionary: dict[str, Any]) -> Optional[dict[str, str]]:
     """Format a dependency."""
+
     state = pet.run(state, f"Locate Term {dependency}.")
     if len(state.feedback) == 0:
-        raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
+        raise Exception(f"Error: there should be at least one feedback when doing `Locate Term {dependency}.`.")
     message = state.feedback[0][1]
-    
+
     # Check if the dependency is syntactically equal to another theorem
     match = re.search(r"(Constant|Inductive|Constructor)\s*(?P<first_qualid_name>\S*)\s*\(syntactically\s*equal\s*to\s*(?P<second_qualid_name>\S*)\s*\)", message)
     if match and match.start() == 0:
         qualid_names = [match.group("first_qualid_name"), match.group("second_qualid_name")]
+
     else:
+        # Check for normal dependency
         match = re.search(r"(Constant|Inductive|Constructor)\s(?P<qualid_name>\S*)", message)
-        if not match or match.start() != 0:
-            raise Exception(f"Error: not the right format for {message}.")
-        qualid_names = [match.group("qualid_name")]
+        if match and match.start() == 0:
+            qualid_names = [match.group("qualid_name")]
+
+        else:
+            # Check for notation dependency
+            match = re.search(r"Notation\s(?P<qualid_name>\S*)", message)
+            if match and match.start() == 0:
+                qualid_names = [match.group("qualid_name")]
+
+            else:
+                # print("NONE, DEP:", dependency)
+                return None
+
+    res = {"name": dependency}
+    if dependency in search_dictionary:
+        res["type"] = search_dictionary[dependency]
 
     filepath = Path(filepath)
     filename = filepath.stem
-    res = {"name": dependency, "type": search_dictionary[dependency]}
+    for qname in qualid_names:
 
-    for qualid_name in qualid_names:
         # Check if the dependency is declared in the same file that the state is in
-        if filename == qualid_name.split('.', maxsplit=1)[0]:
-            qualid_prefix = '.'.join(filepath.parent.parts)
-            qualid_name = qualid_prefix + '.' + qualid_name
+        if filename == qname.split('.', maxsplit=1)[0]:
+            qname = '.'.join(list(filepath.parent.parts) + [qname])
 
-        # Remove names that corresponds to the sections we are in
-        split_qualid_name = qualid_name.split('.')
-        idx = sublist_index(sections, split_qualid_name)
-        if idx >= 0:
-            qualid_name = '.'.join(split_qualid_name[:idx] + split_qualid_name[idx+len(sections):])
+        if qname in info_dictionary:
+            res["info"] = info_dictionary[qname]
+            break
 
-        res['fqn'] = qualid_name
-        if not qualid_name.startswith('mathcomp'):
-            continue
-        
-        if qualid_name not in info_dictionary:
-            state = pet.run(state, f"Check {dependency}.")
-            
-            if len(state.feedback) == 0:
-                raise Exception(f"Error: there should be at least one feedback when doing `Locate {dependency}.`.")
-            message_check = state.feedback[0][1]
-            res['check'] = message_check
-            message_check = message_check.split('\nwhere')[0]
-            message_check = message_check.split('\n')[0]
-            message_check = message_check.split(':')[-1]
-
-            for entry in info_dictionary.values():
-                if entry['name'].strip() == dependency.strip():
-                    if message_check in entry['fullname']:
-                        res['info'].update(entry)
-                        break
-            continue
-        res["info"] = info_dictionary[qualid_name]
-        break
+    if not "info" in res:
+        print("INFO, QUALID NAMES:", qualid_names)
+    if not "type" in res:
+        print("TYPE, QUALID NAMES:", qualid_names)
 
     return res
+
+def format_dependencies(pet: Pytanque, state: State, dependencies: list[str], filepath: str, search_dictionary: dict[str, str], info_dictionary: dict[str, Any]) -> list[dict[str, str]]:
+    """Format dependencies."""
+
+    dependencies = [format_dependency(pet, state, dependency, filepath, search_dictionary, info_dictionary) for dependency in dependencies]
+    return [dependency for dependency in dependencies if dependency]
+
+# ====================
+# Global variables
+# ====================
 
 def find_global_variables(pet: Pytanque, state: State) -> list[str]:
     """Retrieve the global variable present at state `state`."""
@@ -167,7 +201,11 @@ def find_global_variables(pet: Pytanque, state: State) -> list[str]:
         global_variables += hyp.names
     return global_variables
 
-def split_have_proofs(pet: Pytanque, state: State, previous_goals: list[Goal], have_statement: str, have_proof: str, qualid_name: str, global_variables: list[str]) -> list[Tuple[State, str, str, str, str]]:
+# ====================
+# Haves
+# ====================
+
+def split_have_proofs(pet: Pytanque, state: State, previous_goals: list[Goal], have_proof: str, qualid_name: str, global_variables: list[str]) -> list[Tuple[State, str, str, str, str]]:
     """Split the proofs of a have tactic."""
     base_state = state
     goals = pet.goals(base_state)
@@ -215,7 +253,11 @@ def split_have_proofs(pet: Pytanque, state: State, previous_goals: list[Goal], h
 
     return have_proofs
 
-def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_name: str, theorem: dict[str, Any], dictionary: dict[str, Any]) -> dict[str, Any]:
+# ====================
+# Evaluation
+# ====================
+
+def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dict[str, Any], dictionary: dict[str, Any]) -> list[Tuple[str, dict[str, Any]]]:
     """Evaluate a theorem's proof."""
 
     # Preprocess the proof
@@ -261,12 +303,18 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
             if not name in hypotheses:
                 search_dictionary[name] = type_
 
-    valid_names = list(search_dictionary.keys())
-
     # Compute the statement's dependencies
-    sttt_dependencies = find_dependencies(theorem["statement"], [name] + hypotheses, valid_names)
-    sttt_dependencies = [format_dependency(pet, state, theorem["filepath"], dep, sections, search_dictionary, dictionary) for dep in sttt_dependencies]
-    known_dependencies = [dep for dep in sttt_dependencies]
+    try:
+        sttt_notations = find_notations(pet, state, theorem["statement"])
+    except PetanqueError as err:
+        name = qualid_name.rsplit('.', maxsplit=1)[-1]
+        _, lemma = goal_to_lemma_def(initial_goal, name, global_variables)
+        sttt_notations = find_notations(pet, state, lemma)
+    sttt_notations = format_notations(pet, state, sttt_notations, theorem["filepath"], dictionary["notations"])
+
+    sttt_dependencies = find_dependencies(pet, state, theorem["statement"], [])
+    sttt_dependencies = format_dependencies(pet, state, sttt_dependencies, theorem["filepath"], search_dictionary, dictionary["objects"])
+    known_dependencies = [dependency["name"] for dependency in sttt_dependencies]
 
     # Compute the evaluation
     evaluation = []
@@ -286,23 +334,32 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
             raw_chain_end = raw_chain[match.end()+1:] # The + 1 account for the point that we don't want inside of a have proof
             raw_chain = raw_chain_start + have_tactic.no_proof() + raw_chain_end
 
+            dependencies = find_dependencies(pet, state, raw_chain_start + have_tactic.tactic, known_dependencies)
+            dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], search_dictionary, dictionary["objects"])
+
             state = pet.run(state, raw_chain_start + have_tactic.tactic)
 
             proof = enclose_haves_in_proof(pet, state, have_tactic.proof)
-            have_proofs = split_have_proofs(pet, state, previous_goals, have_tactic.get_statement(), proof, qualid_name + '_have_' + str(idx+1), global_variables)
+            have_proofs = split_have_proofs(pet, state, previous_goals, proof, qualid_name + '_have_' + str(idx+1), global_variables)
+
             for st, qn, lm, rlm, pf in have_proofs:
                 have_theorem = {"filepath": theorem["filepath"], "statement": lm, "raw_statement": rlm, "proof": pf}
-                evaluated_theorems = evaluate_theorem(pet, st, sections, qn, have_theorem, dictionary)
-                have_theorems += evaluated_theorems
+                try:
+                    evaluated_theorems = evaluate_theorem(pet, st, qn, have_theorem, dictionary)
+                    have_theorems += evaluated_theorems
+                except PetanqueError as err:
+                    print("QUALID NAME:", qn)
+                    print("LEMMA:", lm)
+                    print("ERROR:", err.message)
 
             state = pet.run(state, have_tactic.proof + "." + raw_chain_end)
 
         else:
+            dependencies = find_dependencies(pet, state, raw_chain, known_dependencies)
+            dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], search_dictionary, dictionary["objects"])
             state = pet.run(state, raw_chain)
 
-        dependencies = find_dependencies(raw_chain, known_dependencies + hypotheses, valid_names)
-        dependencies = [format_dependency(pet, state, theorem["filepath"], dep, sections, search_dictionary, dictionary) for dep in dependencies]
-        known_dependencies += dependencies
+        known_dependencies += [dependency["name"] for dependency in dependencies]
 
         new_goals = pet.goals(state)
         goal_diff = goal_lists_diff(previous_goals, new_goals)
@@ -313,6 +370,7 @@ def evaluate_theorem(pet: Pytanque, state: State, sections: list[str], qualid_na
     new_theorem = {
         "statement": theorem["statement"],
         "statement_dependencies": sttt_dependencies,
+        "statement_notations": sttt_notations,
         "global_variables": global_variables,
         "initial_goal": initial_goal.pp,
         "evaluation": evaluation
@@ -335,61 +393,63 @@ def chunk_dataset(dataset: str, export_path: str):
     to_do = defaultdict(list)
 
     for qualid_name, theorem in theorems.items():
-        theorem["fqn"] = qualid_name
         path = theorem["filepath"]
-        export_filepath = os.path.join(export_path, 'aux', qualid_name) + '.json'
-        if not os.path.exists(export_filepath):
+        export_filepath = Path(export_path, qualid_name + ".json")
+        if not export_filepath.exists():
             to_do[path].append((qualid_name, theorem, export_filepath))
     return to_do
 
-def make(theorems: str, dictionary: Dict[str, Any], petanque_port: int, max_step_before_reset=32):
+def make(to_do: str, dictionary: dict[str, Any], petanque_port: int):
     """Compute the evaluation of all theorems in the dataset provided the dictionary."""
 
     pet_server = start_pet_server(petanque_port)
     pet = Pytanque("127.0.0.1", petanque_port)
     pet.connect()
-    count = 0
-    for qualid_name, theorem, export_filepath in tqdm(theorems):
-        state = pet.get_state_at_pos(theorem["filepath"], theorem["position"]["line"], theorem["position"]["character"], 0)
-        sections = find_sections(theorem["filepath"], theorem["position"])
-        result = dict(evaluate_theorem(pet, state, sections, qualid_name, theorem, dictionary))
-        with open(export_filepath, 'w') as file:
-            json.dump(result, file, indent=4)
-        count += 1
-        if count%max_step_before_reset==0:
-            stop_pet_server(pet_server)
-            pet_server = start_pet_server(petanque_port)
-            pet = Pytanque("127.0.0.1", petanque_port)
-            pet.connect()
+
+    for qualid_name, theorem, export_filepath in tqdm(to_do):
+        try:
+            path = Path(theorem["filepath_prefix"], theorem["filepath"])
+            state = pet.get_state_at_pos(str(path), theorem["position"]["line"], theorem["position"]["character"], 0)
+            result = dict(evaluate_theorem(pet, state, qualid_name, theorem, dictionary))
+
+            with open(export_filepath, 'w') as file:
+                json.dump(result, file, indent=4)
+
+        except Exception as err:
+            print("Exception:", qualid_name, "\n->", str(err.args[0]))
+        except PetanqueError as err:
+            print("Petanque:", qualid_name, "\n->", err.message)
+
     stop_pet_server(pet_server)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate a dataset of Rocq theorems by replaying the proof chain by chain.")
-    parser.add_argument("--input", type=str, default="export/output/steps/step_3/result.json", help="Path of the input")
-    parser.add_argument("--output", type=str, default="export/output/steps/step_4/", help="Path of the output")
-    parser.add_argument("--dictionary", type=str, default="export/docstrings/dictionary.json", help="The path of the dictionary to be used, default is 'dictionary.json'.")
-    parser.add_argument("--max-workers", type=int, default=8)
+    parser.add_argument("--input", type=str, default="export/output/steps/step_3/mathcomp.json", help="Path of the output of the previous step")
+    parser.add_argument("--output", type=str, default="export/output/steps/step_4/", help="Path of the output of this step")
+    parser.add_argument("--dictionary", type=str, default="export/docstrings/dictionary.json", help="Path of the dictionary to be used.")
+    parser.add_argument("--max-workers", type=int, default=8, help="Number of pet server running concurrently")
     args = parser.parse_args()
-    os.makedirs(os.path.join(args.output, 'aux'), exist_ok=True)
-    to_do = chunk_dataset(args.input, args.output)
 
-    with open(args.dictionary, 'r') as file:
-        dictionary = json.load(file)
+    dataset = Path(args.input).stem
+    aux_path = Path(args.output, "aux", dataset)
+    os.makedirs(aux_path, exist_ok=True)
+
+    to_do = chunk_dataset(args.input, aux_path)
+
+    dictionary = load_dictionary(args.dictionary)
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
         futures = []
-        for k, parent in enumerate(to_do):
-            futures.append(executor.submit(make, to_do[parent], dictionary, 8765 + k))
+        for k, source in enumerate(to_do):
+            futures.append(executor.submit(make, to_do[source], dictionary, 8765 + k))
         for _ in tqdm(concurrent.futures.as_completed(futures), desc="Overall progress", position=0, total=len(futures)):
             pass
 
     result = {}
-    output_aux_path = os.path.join(args.output, 'aux')
-    for filename in os.listdir(output_aux_path):
-        filepath = os.path.join(output_aux_path, filename)
+    for filepath in aux_path.iterdir():
         with open(filepath, 'r') as file:
             content = json.load(file)
         result = result | content
 
-    with open(os.path.join(args.output, 'result.json'), 'w') as file:
+    with open(Path(args.output, f"{Path(args.input).stem}.json"), 'w') as file:
         json.dump(result, file, indent=4)

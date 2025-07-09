@@ -113,6 +113,27 @@ def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> Tuple[l
     lemma += " : " + replace_list(goal.ty, renamed) + "."
     return renamed, lemma
 
+def goal_to_lemma_def(goal: Goal, name: str, global_variables: list[str]) -> Tuple[list[Tuple[str, str]], str]:
+    """Return a string containing a lemma version of some goal. If some hypotheses have a definition, their type is not written."""
+    renamed = []
+    lemma = f"Lemma {name}"
+
+    for hyp in goal.hyps:
+        names = [name for name in hyp.names if not name in global_variables]
+
+        # Variables named `_?_` are not possible to write as lemmas arguments
+        for i, name in enumerate(names):
+            if name[0] == '_' and name[-1] == '_':
+                new_name = name[1:]
+                renamed.append((name, new_name))
+                names[i] = new_name
+
+        if len(names) > 0:
+            lemma += " (" + " ".join(names) + (" := (" + replace_list(hyp.def_, renamed) + ")" if hyp.def_ else " : " + replace_list(hyp.ty, renamed)) + ")"
+
+    lemma += " : " + replace_list(goal.ty, renamed) + "."
+    return renamed, lemma
+
 # ====================
 # Testing
 # ====================
