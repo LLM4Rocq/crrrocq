@@ -2,20 +2,21 @@
 
 ## Installation
 
-**mathcomp**: follow the guidelines [here](mathcomp_installation.md), then do
-```console
-opam pin add rocq-mathcomp-boot rocq-mathcomp-order rocq-mathcomp-fingroup rocq-mathcomp-algebra rocq-mathcomp-solvable rocq-mathcomp-field rocq-mathcomp-character https://github.com/theostos/math-comp.git
-opam pin add coq-mathcomp-boot coq-mathcomp-order coq-mathcomp-fingroup coq-mathcomp-algebra coq-mathcomp-solvable coq-mathcomp-field coq-mathcomp-character https://github.com/theostos/math-comp.git
+**rocq**:
+```
+$ opam install coq.8.20.0
+$ opam repo add rocq-released https://rocq-prover.org/opam/released
 ```
 
 **coq-lsp**:
-```console
-opam pin add coq-lsp https://github.com/ejgallego/coq-lsp.git#v8.20
+```
+$ opam install lwt logs
+$ opam pin add coq-lsp https://github.com/ejgallego/coq-lsp.git#v8.20
 ```
 
 **pytanque**:
-```console
-uv pip install git+https://github.com/LLM4Rocq/pytanque.git@PetanqueV2
+```
+$ uv pip install git+https://github.com/LLM4Rocq/pytanque.git@PetanqueV2
 ```
 
 ## New features
