@@ -105,7 +105,7 @@ class SearchTool(Tool):
             np.array([text_embedding], dtype=np.float32), top_k
         )
         output = ""
-        for i in indices[0]:
+        for k, i in enumerate(indices[0]):
             key = self.docstrings_keys[i]
             element = self.docstrings_dic[key]
             fullname, docstring = element["fullname"], element["docstring"]
