@@ -90,7 +90,7 @@ For example, once the step 0 is completed with the default mode for mathcomp, ru
 *Arguments*:
 - `--input`: output path of the previous step, default is "export/output/steps/step_3/mathcomp.json"
 - `--output`: output directory of this step, default is "export/output/steps/step_4"
-- `--dictionary`: path of the dictionary, default is "export/docstrings/dictionary.json"
+- `--dictionary`: path of the dictionary, default is "export/docstrings/LLM4Docq.json"
 - `--max-workers`: number of petanque servers running concurrently, default is 8
 
 **Dictionary**: for mathcomp, we recommand using [LLM4Docq](https://github.com/LLM4Rocq/LLM4Docq) as dictionary. To illustrate the expected dictionary format, here is a truncated view of LLM4Docq:
@@ -106,6 +106,7 @@ For example, once the step 0 is completed with the default mode for mathcomp, ru
             "value": {
                 "kind": "Lemma",
                 "name": "rdivpp",
+                "docstring": "The quotient of a monic polynomial divided by itself is the polynomial representing one.",
                 "fullname": "Lemma rdivpp : rdivp d d = 1.",
                 "line": 543,
                 "historic": [
@@ -136,6 +137,7 @@ For example, once the step 0 is completed with the default mode for mathcomp, ru
                 "mathcomp.algebra.mxpoly.MapRingMatrix.\"A ^f\"": {
                     "kind": "Notation",
                     "name": "\"A ^f\"",
+                    "docstring": "This notation denotes the matrix obtained by applying a ring morphism f to every entry of the matrix A.",
                     "fullname": "Local Notation \"A ^f\" := (map_mx (GRing.RMorphism.sort f) A) : ring_scope.",
                     "scope": "ring_scope",
                     "line": 782,
@@ -155,6 +157,7 @@ For example, once the step 0 is completed with the default mode for mathcomp, ru
             "mathcomp.algebra.mxpoly.\"A ~_ P B\"": {
                 "kind": "Notation",
                 "name": "\"A ~_ P B\"",
+                "docstring": "This notation expresses that matrix A is similar to matrix B via the matrix P, meaning A can be conjugated by P to yield B.",
                 "fullname": "Notation \"A ~_ P B\" :=  (simmx_for P A B) (format \"A  ~_ P  B\").",
                 "scope": "",
                 "line": 1674,

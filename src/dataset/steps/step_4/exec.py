@@ -426,7 +426,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate a dataset of Rocq theorems by replaying the proof chain by chain.")
     parser.add_argument("--input", type=str, default="export/output/steps/step_3/mathcomp.json", help="Path of the output of the previous step")
     parser.add_argument("--output", type=str, default="export/output/steps/step_4/", help="Path of the output of this step")
-    parser.add_argument("--dictionary", type=str, default="export/docstrings/dictionary.json", help="Path of the dictionary to be used.")
+    parser.add_argument("--dictionary", type=str, default="export/docstrings/LLM4Docq.json", help="Path of the dictionary to be used.")
     parser.add_argument("--max-workers", type=int, default=8, help="Number of pet server running concurrently")
     args = parser.parse_args()
 
