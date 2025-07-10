@@ -67,7 +67,7 @@ def main():
 
     parser.add_argument(
         "--embedding-api",
-        default="http://localhost:3100",
+        default="http://localhost:31000",
         help="API URL for embedding service",
     )
 
