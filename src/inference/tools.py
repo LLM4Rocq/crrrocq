@@ -100,8 +100,10 @@ class SearchTool(Tool):
         )
 
         text_embedding = response.json()["data"][0]["embedding"]
-        print(np.array(text_embedding).shape)
-        distances, indices = self.index.search(np.array(text_embedding), top_k)
+        print(np.array([text_embedding]).shape)
+        distances, indices = self.index.search(
+            np.array([text_embedding], dtype=np.float32), top_k
+        )
         output = ""
         for i in indices[0]:
             key = self.docstrings_keys[i]
