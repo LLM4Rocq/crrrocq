@@ -2,11 +2,14 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Union, Tuple
 from dataclasses import dataclass
 import json
+import faiss
+import requests
 
 from .env import ScriptEnv
 from .llm import LLM
-from src.embedding.models.base import BaseEmbedding
-from src.embedding.index.cosim_index import FaissIndex
+
+# from src.embedding.models.base import BaseEmbedding
+# from src.embedding.index.cosim_index import FaissIndex
 
 # ===============================================
 # Tool Interface
@@ -54,11 +57,15 @@ class Tool(ABC):
 class SearchTool(Tool):
     """Tool for searching relevant information."""
 
-    # def __init__(self, embedding_model:BaseEmbedding, docstrings_path="", batch_size=16, cache_path=None):
-    #    super().__init__()
-    #    with open(docstrings_path, 'r') as file:
-    #        docstrings = json.load(file)
-    #    self.index = FaissIndex(embedding_model, docstrings, batch_size=batch_size, cache_path=cache_path, load_cache_index=True if cache_path else False)
+    def __init__(self, index_path, model, api_url, docstrings_path):
+        super().__init__()
+        self.index = faiss.read_index(index_path)
+        self.model = model
+        self.api_url = api_url
+        self.docstrings_path = docstrings_path
+        with open(docstrings_path, "r") as file:
+            self.docstrings_dic = json.load(file)
+        self.docstrings_keys = list(self.docstrings_dic.keys())
 
     @property
     def name(self) -> str:
@@ -85,16 +92,21 @@ class SearchTool(Tool):
     def run(self, input_text: str, top_k=10) -> str:
         """
         Execute a search and return results.
-
-        Note: This is a placeholder. Implement actual search functionality here.
         """
-        # search_result = self.index.query(input_text, top_k=top_k)
+        response = requests.post(
+            f"{self.api_url}/v1/embeddings",
+            json={"model": self.model, "input": input_text},
+        )
+
+        text_embedding = response.json()["data"][0]["embedding"]
+        distances, indices = self.index.search(text_embedding, top_k)
         output = ""
-        # TODO: retrain with clean format
-        # for k, (_, element, _) in enumerate(search_result, start=1):
-        #    fullname, docstring = element['fullname'], element['docstring']
-        #    output += f"{k}. {fullname}\n{docstring}\n\n"
-        return {"content": "FOO", "search_result": "BAR"}
+        for i in indices[0]:
+            key = self.docstrings_keys[i]
+            element = self.docstrings_dic[key]
+            fullname, docstring = element["fullname"], element["docstring"]
+            output += f"{k}. {fullname}\n{docstring}\n\n"
+        return {"content": output}
 
 
 class ScriptTool(Tool):

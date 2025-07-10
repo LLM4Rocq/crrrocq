@@ -1,8 +1,10 @@
 import argparse
-from pytanque import Pytanque
+
+# from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool
-from .llm import VLLM
-from .agent import MathProofAgent
+
+# from .llm import VLLM
+# from .agent import MathProofAgent
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
@@ -89,40 +91,11 @@ def main():
         docstrings_path=args.docstrings_path,
     )
 
-    script_tool = ScriptTool(
-        pet=pet,
-        workspace=args.workspace,
-        file=args.file,
-        theorem=args.theorem,
-    )
-    have_tool = HaveTool(
-        pet=pet,
-        workspace=args.workspace,
-        file=args.file,
-        theorem=args.theorem,
+    search_res = search_tool.run(
+        "A lemma relating strict inequality to non-strict inequality in natural numbers."
     )
 
-    # Setup LLM
-    llm = VLLM(
-        api_url=args.llm_url,
-        model=args.model,
-        temperature=args.temperature,
-        verbose=args.verbose,
-    )
-
-    # Create agent and run proof with specified beam size
-    agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
-    status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
-
-    # Print results
-    if status.success:
-        print("Proof completed successfully!")
-    else:
-        print("Proof incomplete.")
-
-    print("\nProof tactics:")
-    for tactic in status.proof:
-        print(f"  {tactic}")
+    print(search_res)
 
 
 if __name__ == "__main__":
