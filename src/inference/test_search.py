@@ -69,7 +69,7 @@ def main():
 
     parser.add_argument(
         "--embedding-api",
-        default="http://localhost:3100",
+        default="http://localhost:31000",
         help="API URL for embedding service",
     )
 
@@ -77,9 +77,9 @@ def main():
     args = parser.parse_args()
 
     # Setup Pytanque
-    pet = Pytanque(args.host, args.port)
-    pet.connect()
-    pet.set_workspace(False, str(args.workspace))
+    # pet = Pytanque(args.host, args.port)
+    # pet.connect()
+    # pet.set_workspace(False, str(args.workspace))
 
     # Setup tools
     # embedding_model = Qwen3Embedding4b(args.embedding_device)

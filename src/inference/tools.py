@@ -99,6 +99,7 @@ class SearchTool(Tool):
         )
 
         text_embedding = response.json()["data"][0]["embedding"]
+        print(text_embedding)
         distances, indices = self.index.search(text_embedding, top_k)
         output = ""
         for i in indices[0]:
