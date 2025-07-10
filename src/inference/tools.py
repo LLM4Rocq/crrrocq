@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 import faiss
 import requests
+import numpy as np
 
 from .env import ScriptEnv
 from .llm import LLM
@@ -99,8 +100,8 @@ class SearchTool(Tool):
         )
 
         text_embedding = response.json()["data"][0]["embedding"]
-        print(text_embedding)
-        distances, indices = self.index.search(text_embedding, top_k)
+        print(np.array(text_embedding).shape)
+        distances, indices = self.index.search(np.array(text_embedding), top_k)
         output = ""
         for i in indices[0]:
             key = self.docstrings_keys[i]
