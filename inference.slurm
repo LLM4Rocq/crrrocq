@@ -20,7 +20,7 @@ pkill pet-server
 
 # Activate virtual env
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Activating environment 
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Activating environment" 
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
 
 # echo commands
