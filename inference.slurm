@@ -36,9 +36,9 @@ THM=foo
 FILE=foo.v
 PORT_EMB=31000
 
-python -m sglang.launch_server --model-path $MODEL_EMB --host 0.0.0.0 --port $PORT_EMB --is-embedding &
-
 python -m sglang.launch_server --model-path $MODEL --base-gpu-id 1 --host 0.0.0.0 &
+
+python -m sglang.launch_server --model-path $MODEL_EMB -base-gpu-id 0 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
 
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
@@ -48,12 +48,11 @@ done
 # go into the submission directory 
 cd $WORK/GitHub/crrrocq 
 
-# launch pet-server
-pet-server &
+# Run pet-server specifically on NUMA node 0
+numactl --cpunodebind=0 --membind=0 pet-server &
 
-# launch inference
-
-python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
+# launch inference on node 0
+numactl --cpunodebind=0 --membind=0 python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE -
 
 # Keep the script running until the SLURM job times out
 
