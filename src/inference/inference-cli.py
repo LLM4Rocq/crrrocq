@@ -103,7 +103,7 @@ def main():
         theorem=args.theorem,
     )
 
-    if eval:
+    if args.eval:
         try:
             file_path = "/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json"
             with open(file_path, "r", encoding="utf-8") as file:
