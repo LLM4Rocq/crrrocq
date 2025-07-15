@@ -122,10 +122,10 @@ def main():
                 for tactic in tactics:
                     if tactic:  # Only show non-empty tactics
                         print(f"  - {tactic}")
+                        checking_proof = script_tool.run(tactic)
             else:
                 print("Proof not found")
 
-            checking_proof = script_tool.run(tactics)
             print(f"Proof checking status: {checking_proof}")
             del script_tool
 
