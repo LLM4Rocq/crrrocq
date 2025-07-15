@@ -4,6 +4,7 @@ from .tools import SearchTool, ScriptTool, HaveTool
 from .llm import VLLM
 from .agent import MathProofAgent
 from .utils import extract_proof, get_proof_tactics
+import json
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
