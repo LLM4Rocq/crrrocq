@@ -1,0 +1,22 @@
+llm_kind: "openai_instruct"
+llm_config:
+  model_name: ""
+  base_url: "http://127.0.0.1:30000/v1"
+  api_key: "None"
+  generation_parameters:
+    temperature: 0.6
+    max_tokens: 512
+    stop:
+      - "</search>"
+      - "</script>"
+      - "</have>"
+tools:
+  have: {}
+  search:
+    base_url: "http://127.0.0.1:5000"
+  script:
+    base_url: "http://127.0.0.1:5000"
+max_retry:
+  search: 2
+  have: 16
+  script: 32
