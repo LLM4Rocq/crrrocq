@@ -9,7 +9,7 @@ from pytanque import Pytanque, PetanqueError
 from tqdm import tqdm
 
 from src.parser.haves import proof_to_chain_list, enclose_haves, chain_list_to_str
-from src.training_nemo.eval import start_pet_server, stop_pet_server, timeout, TimeoutError
+from src.training.eval import start_pet_server, stop_pet_server, timeout, TimeoutError
 
 """
 Step 2: Extract all have, rewrite them if necessary.
