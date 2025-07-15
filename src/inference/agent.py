@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import re
 from copy import deepcopy
 
+from ..tools.base import ToolError
 from ..tools.factory import get_tool
 from ..llm.factory import get_llm
 
@@ -39,13 +40,13 @@ class MathAgent:
 
     def __init__(self, config):
         self.config = config
-        self.tools = {}
         self.logs = []
+        self.tools = {}
         self.blocks = []
         for tool_name, tool_config in config['tools'].items():
             self.tools[tool_name] = get_tool(tool_name)(**tool_config)
         self.instruct = self.build_instruct()
-        self.llm = get_llm(config['llm_name'])(**config['llm_config'])
+        self.llm = get_llm(config['llm_kind'])(**config['llm_config'])
 
     def duplicate(self, reset_blocks=False) -> Any:
         """Duplicate current agent."""
@@ -99,30 +100,47 @@ class MathAgent:
         )
         return output
 
-    def run_proof(self, goals_init: List[str]=[]):
+    def export_result(self):
+        return {"blocks": deepcopy(self.blocks), "logs": deepcopy(self.logs)}
+
+    def run_proof(self, goals_init: List[str]=None):
         """
         Run the proof.
         """
         assert "script" in self.tools, "Missing script tool."
         curr_depth = 0
         while curr_depth < self.config['max_depth']:
-            messages = [
-                {"role": "user", "content": self.instruct},
-                {"role": "assistant", "content": self.build_blocks()}
-            ]
-            output = self.llm.generate(messages)
-            new_blocks = parse_output(output)
-            blocks += new_blocks
-            last_block = new_blocks[-1]
+            num_retry_parse = 0
+            num_retry_tool = 0
+            while True:
+                messages = [
+                    {"role": "user", "content": self.instruct},
+                    {"role": "assistant", "content": self.build_blocks()}
+                ]
 
-            result = self.tools[last_block['kind']](last_block['content'], agent=self, **self.config['tools_param'])
-            blocks.append({"kind": "result", "content": result})
-
+                output = self.llm.generate(messages)
+                try:
+                    new_blocks = parse_output(output)
+                except ParsingBlockError as e:
+                    self.logs.append({"status": "error", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(output)})
+                    num_retry_parse += 1
+                    continue
+                try:
+                    self.blocks += new_blocks
+                    last_block = new_blocks[-1]
+                    result = self.tools[last_block['kind']](last_block['content'], agent=self, **self.config['tools_param'])
+                    self.blocks.append({"kind": "result", "content": deepcopy(result)})
+                    break
+                except ToolError as e:
+                    self.logs.append({"status": "error", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(new_blocks)})
+                    num_retry_tool += 1
+                    if self.config['max_retry'][last_block['kind']] <= num_retry_tool:
+                        raise MathAgentError(f"Max retry reach for {last_block['kind']}.")
             curr_depth += 1
             if goals_init:
                 match_subgoals = [
                     goal_init['ty'] == goal_new['ty']
-                    for goal_init, goal_new in zip(goals_init, self.tools['script'])
+                    for goal_init, goal_new in zip(goals_init, self.tools['script'].state["goals"])
                 ]
                 if all(match_subgoals):
                     return

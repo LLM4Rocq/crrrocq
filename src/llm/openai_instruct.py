@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict
 
-import llm.openai_instruct as openai_instruct
+import openai
 from transformers import AutoTokenizer
 
 from .base import BaseLLM
@@ -13,7 +13,7 @@ class OpenAIInstructLLM(BaseLLM):
         self.model_name = model_name
         self.generation_parameters = generation_parameters
         self.tokenizer = AutoTokenizer(model_name)
-        self.client = openai_instruct.Client(base_url=base_url, api_key=api_key)
+        self.client = openai.Client(base_url=base_url, api_key=api_key)
     
     def generate(
             self, messages: List[Dict[str, str]], **kwargs
