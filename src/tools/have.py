@@ -8,14 +8,6 @@ from ..inference.agent import MathAgent, MathAgentError
 class HaveTool(BaseTool):
     """Tool for interacting with the Coq theorem prover."""
 
-    def __init__(self, base_url, name, state=None):
-        """
-        Initialize the have tool
-        """
-        self.client = PetClient(base_url)
-        if not state:
-            self.state, self.goals = self.client.start_thm(name)
-
     @property
     def instruction(self) -> str:
         return """### 🎯 Have Block
