@@ -105,7 +105,7 @@ def main():
 
     if eval:
         try:
-            file_path = f"{args.workspace}/poly.v"
+            file_path = "/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json"
             with open(file_path, "r", encoding="utf-8") as file:
                 json_data = json.load(file)
 
