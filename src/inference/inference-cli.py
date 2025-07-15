@@ -3,7 +3,7 @@ from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool
 from .llm import VLLM
 from .agent import MathProofAgent
-from .utils import 
+from .utils import extract_proof, get_proof_tactics
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
@@ -74,7 +74,9 @@ def main():
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
-    parser.add_argument("--eval", action="store_true", help="Running on evaluation dataset")
+    parser.add_argument(
+        "--eval", action="store_true", help="Running on evaluation dataset"
+    )
 
     args = parser.parse_args()
 
@@ -120,20 +122,18 @@ def main():
                         print(f"  - {tactic}")
             else:
                 print("Proof not found")
-            
+
             checking_proof = script_tool.run(tactics)
             print(f"Proof checking status: {checking_proof}")
             del script_tool
-               
 
         except FileNotFoundError:
             print(f"Error: File '{file_path}' not found. Please check the file path.")
-        
+
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON file: {e}")
         except Exception as e:
             print(f"Unexpected error: {e}")
-        
 
     script_tool = ScriptTool(
         pet=pet,
