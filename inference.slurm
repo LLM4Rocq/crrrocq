@@ -55,4 +55,6 @@ pet-server &
 
 python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
 
-pkill pet-server
+# Keep the script running until the SLURM job times out
+
+wait
