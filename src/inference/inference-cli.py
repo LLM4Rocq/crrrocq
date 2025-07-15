@@ -3,6 +3,7 @@ from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool
 from .llm import VLLM
 from .agent import MathProofAgent
+from .utils import 
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
@@ -32,7 +33,7 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        default="/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/",
         help="LLM model name",
     )
     parser.add_argument(
@@ -72,6 +73,9 @@ def main():
     )
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+
+    parser.add_argument("--eval", action="store_true", help="Running on evaluation dataset")
+
     args = parser.parse_args()
 
     # Setup Pytanque
@@ -95,6 +99,49 @@ def main():
         file=args.file,
         theorem=args.theorem,
     )
+
+    if eval:
+        try:
+            with open(file_path, "r", encoding="utf-8") as file:
+                json_data = json.load(file)
+
+            print(f"Loaded JSON data with {len(json_data)} proofs")
+
+            statement_name = args.theorem
+            print(f"\n=== Extracting proof for: {statement_name} ===")
+
+            proof = extract_proof(json_data, statement_name)
+
+            if proof:
+                print("\nTactics used:")
+                tactics = get_proof_tactics(proof)
+                for tactic in tactics:
+                    if tactic:  # Only show non-empty tactics
+                        print(f"  - {tactic}")
+            else:
+                print("Proof not found")
+            
+            checking_proof = script_tool.run(tactics)
+            print(f"Proof checking status: {checking_proof}")
+            del script_tool
+               
+
+        except FileNotFoundError:
+            print(f"Error: File '{file_path}' not found. Please check the file path.")
+        
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON file: {e}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+        
+
+    script_tool = ScriptTool(
+        pet=pet,
+        workspace=args.workspace,
+        file=args.file,
+        theorem=args.theorem,
+    )
+
     have_tool = HaveTool(
         pet=pet,
         workspace=args.workspace,

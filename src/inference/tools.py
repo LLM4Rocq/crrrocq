@@ -100,7 +100,7 @@ class SearchTool(Tool):
         )
 
         text_embedding = response.json()["data"][0]["embedding"]
-        print(np.array([text_embedding]).shape)
+
         distances, indices = self.index.search(
             np.array([text_embedding], dtype=np.float32), top_k
         )

@@ -8,7 +8,7 @@
 #SBATCH --error=infer-test%j.err   # name of error file
 #SBATCH --constraint=h100             # h100 gpus
 #SBATCH --nodes=1                     # number of nodes
-#SBATCH --gres=gpu:1                  # number of gpus/node
+#SBATCH --gres=gpu:2                  # number of gpus/node
 #SBATCH --time=01:00:00               # maximum execution time requested (HH:MM:SS)
 #SBATCH --account=tdm@h100            # account
 #SBATCH --qos=qos_gpu_h100-dev
@@ -30,11 +30,15 @@ set -x
 export TMPDIR=$JOBSCRATCH
 
 MODEL=/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/
+MODEL_EMB=/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b
 WORKSPACE=examples
 THM=foo
 FILE=foo.v
+PORT_EMB=31000
 
-python -m sglang.launch_server --model-path $MODEL --host 0.0.0.0 &
+python -m sglang.launch_server --model-path $MODEL_EMB --host 0.0.0.0 --port $PORT_EMB --is-embedding &
+
+python -m sglang.launch_server --model-path $MODEL --base-gpu-id 1 --host 0.0.0.0 &
 
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
