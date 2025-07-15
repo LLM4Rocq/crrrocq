@@ -105,6 +105,7 @@ def main():
 
     if eval:
         try:
+            file_path = f"{args.workspace}/poly.v"
             with open(file_path, "r", encoding="utf-8") as file:
                 json_data = json.load(file)
 
