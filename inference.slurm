@@ -52,7 +52,7 @@ cd $WORK/GitHub/crrrocq
 numactl --cpunodebind=0 --membind=0 pet-server &
 
 # launch inference on node 0
-numactl --cpunodebind=0 --membind=0 python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE -
+numactl --cpunodebind=0 --membind=0 python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 
 # Keep the script running until the SLURM job times out
 
