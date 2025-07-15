@@ -167,7 +167,9 @@ class ScriptTool(Tool):
             Dictionary with status ('success' or 'error'), goal or error message
         """
         # Split the input into individual tactics
-        tactics = [tac.strip() for tac in input_text.split("\n") if tac.strip()]
+        tactics = [
+            input_text
+        ]  # [tac.strip() for tac in input_text.split("\n") if tac.strip()]
 
         try:
             # Execute the tactics
