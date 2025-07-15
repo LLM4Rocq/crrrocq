@@ -20,12 +20,18 @@ class ScriptTool(BaseTool):
         self.client = PetClient(base_url)
         self.state = state
     
+    def _update_state(self, state, goals):
+        """
+        Update tool state.
+        """
+        self.state = {"pet_state": state, "login": self.client.login, "goals": goals}
+
     def start_thm(self, thm_name: str):
         """
         Initialize tool to start proving the given theorem
         """
-        state, self.goals = self.client.start_thm(thm_name)
-        self.state = {"pet_state": state, "login": self.client.login}
+        state, goals = self.client.start_thm(thm_name)
+        self._update_state(state, goals)
 
     @property
     def instruction(self) -> str:
@@ -47,9 +53,10 @@ class ScriptTool(BaseTool):
         """
         assert self.state, ToolError("No current state, start a theorem (start_thm) before using tool.")
         try:
-            self.state, self.goals = self.client.run_tac(self.state, tactic)
-            if self.goals:
-                return "The goal to prove is:\n" + self.goals[0]['pp']
+            state, goals = self.client.run_tac(self.state, tactic)
+            self._update_state(state, goals)
+            if state['goals']:
+                return "The goal to prove is:\n" + goals[0]['pp']
             else:
                 return "No goals remaining, the proof is finished."
         except ClientError as e:
