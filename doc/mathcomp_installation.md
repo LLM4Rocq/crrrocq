@@ -14,6 +14,13 @@ $ opam install coq-hierarchy-builder.1.9.1
 **mathcomp**:
 ```
 $ git clone https://github.com/theostos/math-comp.git export/mathcomp
-$ opam pin add rocq-mathcomp-boot rocq-mathcomp-order rocq-mathcomp-fingroup rocq-mathcomp-algebra rocq-mathcomp-solvable rocq-mathcomp-field rocq-mathcomp-character export/mathcomp
-$ opam pin add coq-mathcomp-boot coq-mathcomp-order coq-mathcomp-fingroup coq-mathcomp-algebra coq-mathcomp-solvable coq-mathcomp-field coq-mathcomp-character export/mathcomp
+
+$ opam pin add rocq-mathcomp-boot https://github.com/theostos/math-comp.git
+$ opam pin add rocq-mathcomp-order https://github.com/theostos/math-comp.git
+$ opam pin add rocq-mathcomp-fingroup https://github.com/theostos/math-comp.git
+$ opam pin add rocq-mathcomp-algebra https://github.com/theostos/math-comp.git
+$ opam pin add rocq-mathcomp-solvable https://github.com/theostos/math-comp.git
+$ opam pin add rocq-mathcomp-field https://github.com/theostos/math-comp.git
+$ opam pin add rocq-mathcomp-character https://github.com/theostos/math-comp.git
+$ opam pin add rocq-mathcomp-ssreflect https://github.com/theostos/math-comp.git
 ```
