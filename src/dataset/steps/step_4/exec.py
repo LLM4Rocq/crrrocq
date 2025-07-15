@@ -32,9 +32,9 @@ def load_dictionary(dfile: str) -> dict:
 
     d = {"objects": {}, "notations": d_base["notations"]}
 
-    for keys, value in d_base["objects"]:
-        for key in keys:
-            d["objects"][key] = value
+    for object in d_base["objects"]:
+        for key in object["keys"]:
+            d["objects"][key] = object["value"]
 
     return d
 
@@ -134,8 +134,6 @@ def format_dependency(pet: Pytanque, state: State, dependency: str, filepath: st
     """Format a dependency."""
 
     state = pet.run(state, f"Locate Term {dependency}.")
-    if len(state.feedback) == 0:
-        raise Exception(f"Error: there should be at least one feedback when doing `Locate Term {dependency}.`.")
     message = state.feedback[0][1]
 
     # Check if the dependency is syntactically equal to another theorem
@@ -178,7 +176,12 @@ def format_dependency(pet: Pytanque, state: State, dependency: str, filepath: st
     if not "info" in res:
         print("INFO, QUALID NAMES:", qualid_names)
     if not "type" in res:
-        print("TYPE, QUALID NAMES:", qualid_names)
+        state = pet.run(state, f"Check {dependency}.")
+        message = state.feedback[0][1]
+        match = re.search(f"{dependency}\\s*?:\\s(?P<type>[\\s\\S]*)", message)
+        res["type"] = match.group("type").strip()
+        print(qualid_names, "\n    :", res["type"])
+        # print("TYPE, QUALID NAMES:", qualid_names)
 
     return res
 
