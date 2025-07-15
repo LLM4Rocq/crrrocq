@@ -46,7 +46,7 @@ def main():
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.1,
+        default=0.6,
         help="Temperature for the LLM generation",
     )
 
