@@ -185,27 +185,7 @@ ps aux | grep -E "(sglang|python.*sglang)" | grep -v grep
 cd $WORK/GitHub/crrrocq 
 
 # launch pet-server with NUMA binding if available
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching pet-server..."
-if [[ -n "$NUMA_CMD" ]]; then
-    $NUMA_CMD pet-server > pet_server.log 2>&1 &
-    PET_PID=$!
-    
-    # Verify pet-server is running and check its location
-    sleep 5
-    if ps -p $PET_PID > /dev/null; then
-        echo "pet-server running on PID: $PET_PID"
-        echo "Running on CPU: $(ps -o psr= -p $PET_PID)"
-        echo "NUMA binding: $(numactl --show $PET_PID 2>/dev/null | grep -E 'nodebind|membind' || echo 'No explicit binding')"
-    else
-        echo "pet-server failed to start, check pet_server.log"
-        cat pet_server.log
-        exit 1
-    fi
-else
-    pet-server > pet_server.log 2>&1 &
-    PET_PID=$!
-    echo "pet-server running on PID: $PET_PID (no NUMA binding)"
-fi
+
 
 # launch inference with NUMA binding if available
 #echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching inference..."
