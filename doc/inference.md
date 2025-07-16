@@ -1,5 +1,68 @@
 # Simple Inference Pipeline
 
+## Manual
+
+Get resources:
+```bash
+$ srun --account=tdm@h100 --cpus-per-task=48 -C h100 --time=01:00:00 --gres=gpu:2 --qos=qos_gpu_h100-dev --pty bash
+```
+
+Then to launch the sglang server:
+```bash
+$ module load arch/h100 cuda/12.8.0
+
+$ source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
+
+$ python -m sglang.launch_server --model-path /lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/ --host 0.0.0.0 --base-gpu-id 1
+```
+
+Connect to your node with `srun` to launch the embedding server:
+```bash
+$ srun --jobid xxx --overlap --pty bash
+
+$ source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
+
+$ python -m sglang.launch_server --model-path /lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b --host 0.0.0.0 --port 31000 --is-embedding
+```
+
+Reconnect to your node with `srun` to launch the pet-server:
+```bash
+$ srun --jobid xxx --overlap --pty bash
+
+$ pet-server
+```
+
+Reconnect to your node with `srun` to make experiment:
+```bash
+$ srun --jobid xxx --overlap --pty bash
+
+$ source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
+
+$ cd where_is_crrrocq
+
+$ python -m src.inference.inference-cli --theorem foo --file foo.v --workspace examples
+
+$ python -m src.inference.inference-cli --theorem coef_prod_XsubC --file poly.v --workspace /lustre/fsn1/projects/rech/tdm/commun/math-comp/algebra --eval
+
+```
+
+
+## SLURM file is not working
+
+Before you launch the job, you should perhaps modify line 49 with the location of your `crrrocq` repo, then:
+```bash
+$ sbatch inference.slurm
+```
+
+It will: 
+- start a GPU with 2 nodes (H100) for 1h (you can add time up to 2h for more you should change the qos)
+- lauch a sglang server with crrrocq on port 30000
+- lauch a sglang server for the embedding model on port 31000
+- lauch a pet-server
+- once the crrrocq server is up, it run the inference for the theorem `foo` in the `examples/foo.v` file
+
+
+Info below is not relevant anymore...
 ## Install
 
 Set up a virtualenv with UV.
