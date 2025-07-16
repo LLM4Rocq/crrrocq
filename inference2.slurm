@@ -150,7 +150,7 @@ for i in {1..10}; do
         exit 1
     else
         echo "Attempt $i/10: Embedding server not ready, waiting..."
-        sleep 30
+        sleep 60
     fi
 done
 
@@ -171,7 +171,7 @@ for i in {1..10}; do
         exit 1
     else
         echo "Attempt $i/10: Main server not ready, waiting..."
-        sleep 30
+        sleep 60
     fi
 done
 
