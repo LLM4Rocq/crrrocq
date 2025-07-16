@@ -134,12 +134,52 @@ if ! kill -0 $MAIN_PID 2>/dev/null; then
     exit 1
 fi
 
-# Wait for server to respond
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
-until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; do
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
-    sleep 60
+# Wait for server to respond with more robust checking
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for servers to respond..."
+
+# Check embedding server
+echo "Checking embedding server on port $PORT_EMB..."
+for i in {1..10}; do
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT_EMB/v1/models | grep -q "200"; then
+        echo "✓ Embedding server responding on port $PORT_EMB"
+        break
+    elif [[ $i -eq 10 ]]; then
+        echo "✗ Embedding server not responding after 10 attempts"
+        echo "Server logs:"
+        tail -20 embedding_server.log
+        exit 1
+    else
+        echo "Attempt $i/10: Embedding server not ready, waiting..."
+        sleep 30
+    fi
 done
+
+# Check main server
+echo "Checking main server on port 30000..."
+for i in {1..10}; do
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; then
+        echo "✓ Main server responding on port 30000"
+        break
+    elif [[ $i -eq 10 ]]; then
+        echo "✗ Main server not responding after 10 attempts"
+        echo "Server logs:"
+        tail -20 main_server.log
+        echo "Checking if process is still running:"
+        ps aux | grep sglang
+        echo "Checking port usage:"
+        netstat -tlnp | grep :30000
+        exit 1
+    else
+        echo "Attempt $i/10: Main server not ready, waiting..."
+        sleep 30
+    fi
+done
+
+# Additional connectivity tests
+echo "Testing server connectivity..."
+curl -v http://localhost:30000/v1/models 2>&1 | head -10
+echo "Server process status:"
+ps aux | grep -E "(sglang|python.*sglang)" | grep -v grep
 
 # go into the submission directory 
 cd $WORK/GitHub/crrrocq 
