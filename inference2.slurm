@@ -21,34 +21,53 @@ pkill pet-server
 # Detect available NUMA nodes and system topology
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Detecting system topology..."
 
-# Check available NUMA nodes
-AVAILABLE_NODES=$(numactl --hardware | grep "available:" | cut -d' ' -f2)
-echo "Available NUMA nodes: $AVAILABLE_NODES"
+# Check available NUMA nodes more carefully
+echo "Full NUMA hardware info:"
+numactl --hardware
+
+# Get available nodes from /sys filesystem (more reliable)
+if [[ -d /sys/devices/system/node ]]; then
+    AVAILABLE_NODES=$(ls /sys/devices/system/node/ | grep "^node[0-9]" | sed 's/node//' | sort -n | tr '\n' ' ')
+    echo "Available NUMA nodes from /sys: $AVAILABLE_NODES"
+else
+    # Fallback to numactl
+    AVAILABLE_NODES=$(numactl --hardware | grep "available:" | cut -d' ' -f2)
+    echo "Available NUMA nodes from numactl: $AVAILABLE_NODES"
+fi
 
 # Check total CPUs
 TOTAL_CPUS=$(nproc)
 echo "Total CPUs: $TOTAL_CPUS"
 
-# Display NUMA topology
-echo "NUMA topology:"
-numactl --hardware | grep -E "node|cpus"
+# Validate nodes exist
+VALID_NODES=""
+for node in $AVAILABLE_NODES; do
+    if [[ -d "/sys/devices/system/node/node$node" ]]; then
+        VALID_NODES="$VALID_NODES $node"
+    fi
+done
+VALID_NODES=$(echo $VALID_NODES | xargs)  # trim whitespace
+echo "Valid NUMA nodes: $VALID_NODES"
 
-# Set preferred node (default to 0 if available, otherwise first available)
-if [[ "$AVAILABLE_NODES" == *"0"* ]]; then
+# Set preferred node (default to 0 if available, otherwise first valid)
+if [[ "$VALID_NODES" == *"0"* ]]; then
     PREFERRED_NODE=0
     echo "Will use NUMA node 0"
-else
-    PREFERRED_NODE=$(echo $AVAILABLE_NODES | cut -d' ' -f1)
+elif [[ -n "$VALID_NODES" ]]; then
+    PREFERRED_NODE=$(echo $VALID_NODES | cut -d' ' -f1)
     echo "Node 0 not available, using node $PREFERRED_NODE"
+else
+    PREFERRED_NODE=""
+    echo "No valid NUMA nodes found"
 fi
 
 # Set NUMA command based on what's available
-if command -v numactl &> /dev/null && [[ -n "$PREFERRED_NODE" ]]; then
+if command -v numactl &> /dev/null && [[ -n "$PREFERRED_NODE" ]] && [[ -d "/sys/devices/system/node/node$PREFERRED_NODE" ]]; then
     NUMA_CMD="numactl --membind=$PREFERRED_NODE --preferred=$PREFERRED_NODE"
     echo "Using NUMA binding: $NUMA_CMD"
 else
     NUMA_CMD=""
-    echo "NUMA binding not available, running without binding"
+    echo "NUMA binding not available or invalid, running without binding"
 fi
 
 # Activate virtual env
