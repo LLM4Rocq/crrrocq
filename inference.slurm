@@ -48,11 +48,11 @@ done
 # go into the submission directory 
 cd $WORK/GitHub/crrrocq 
 
-# Run pet-server specifically on NUMA node 0
-numactl --cpunodebind=0 --membind=0 pet-server &
+# Run pet-server 
+pet-server &
 
-# launch inference on node 0
-numactl --cpunodebind=0 --membind=0 python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
+# launch inference 
+python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 
 # Keep the script running until the SLURM job times out
 
