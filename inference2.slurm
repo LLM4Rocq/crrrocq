@@ -21,56 +21,36 @@ pkill pet-server
 # Detect available NUMA nodes and system topology
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Detecting system topology..."
 
-# Check available NUMA nodes more carefully
-echo "Full NUMA hardware info:"
-numactl --hardware
+# Detect GPU to NUMA mapping
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Detecting GPU to NUMA mapping..."
 
-# Get available nodes from /sys filesystem (more reliable)
-if [[ -d /sys/devices/system/node ]]; then
-    AVAILABLE_NODES=$(ls /sys/devices/system/node/ | grep "^node[0-9]" | sed 's/node//' | sort -n | tr '\n' ' ')
-    echo "Available NUMA nodes from /sys: $AVAILABLE_NODES"
-else
-    # Fallback to numactl
-    AVAILABLE_NODES=$(numactl --hardware | grep "available:" | cut -d' ' -f2)
-    echo "Available NUMA nodes from numactl: $AVAILABLE_NODES"
+# Get NUMA affinity for each GPU
+GPU0_NUMA=$(nvidia-smi topo -m | grep "^GPU0" | awk '{print $8}')
+GPU1_NUMA=$(nvidia-smi topo -m | grep "^GPU1" | awk '{print $8}')
+
+echo "GPU 0 (embedding server) -> NUMA node $GPU0_NUMA"
+echo "GPU 1 (main server) -> NUMA node $GPU1_NUMA"
+
+# Validate that we got valid NUMA nodes
+if [[ ! "$GPU0_NUMA" =~ ^[0-9]+$ ]] || [[ ! "$GPU1_NUMA" =~ ^[0-9]+$ ]]; then
+    echo "Warning: Could not detect GPU NUMA mapping, using fallback detection"
+    # Fallback: check sysfs for GPU NUMA nodes
+    GPU0_NUMA=$(cat /sys/class/drm/card0/device/numa_node 2>/dev/null || echo "0")
+    GPU1_NUMA=$(cat /sys/class/drm/card1/device/numa_node 2>/dev/null || echo "1")
+    echo "Fallback: GPU 0 -> NUMA node $GPU0_NUMA, GPU 1 -> NUMA node $GPU1_NUMA"
 fi
 
-# Check total CPUs
-TOTAL_CPUS=$(nproc)
-echo "Total CPUs: $TOTAL_CPUS"
+# Set NUMA commands for optimal placement
+EMBEDDING_NUMA_CMD="numactl --membind=$GPU0_NUMA --cpunodebind=$GPU0_NUMA"
+MAIN_NUMA_CMD="numactl --membind=$GPU1_NUMA --cpunodebind=$GPU1_NUMA"
+PET_NUMA_CMD="numactl --membind=$GPU0_NUMA --cpunodebind=$GPU0_NUMA"  # Same as embedding server
+INFERENCE_NUMA_CMD="numactl --membind=$GPU0_NUMA --cpunodebind=$GPU0_NUMA"  # Same as embedding server
 
-# Validate nodes exist
-VALID_NODES=""
-for node in $AVAILABLE_NODES; do
-    if [[ -d "/sys/devices/system/node/node$node" ]]; then
-        VALID_NODES="$VALID_NODES $node"
-    fi
-done
-VALID_NODES=$(echo $VALID_NODES | xargs)  # trim whitespace
-echo "Valid NUMA nodes: $VALID_NODES"
-
-# Set preferred node (default to 0 if available, otherwise first valid)
-if [[ "$VALID_NODES" == *"0"* ]]; then
-    PREFERRED_NODE=0
-    echo "Will use NUMA node 0"
-elif [[ -n "$VALID_NODES" ]]; then
-    PREFERRED_NODE=$(echo $VALID_NODES | cut -d' ' -f1)
-    echo "Node 0 not available, using node $PREFERRED_NODE"
-else
-    PREFERRED_NODE=""
-    echo "No valid NUMA nodes found"
-fi
-
-# Set NUMA command based on what's available
-if command -v numactl &> /dev/null && [[ -n "$PREFERRED_NODE" ]] && [[ -d "/sys/devices/system/node/node$PREFERRED_NODE" ]]; then
-    # Use only --preferred (allows flexible allocation) or --membind (strict binding)
-    # Start with --preferred as it's less restrictive
-    NUMA_CMD="numactl --preferred=$PREFERRED_NODE"
-    echo "Using NUMA binding: $NUMA_CMD"
-else
-    NUMA_CMD=""
-    echo "NUMA binding not available or invalid, running without binding"
-fi
+echo "NUMA commands configured:"
+echo "  Embedding server: $EMBEDDING_NUMA_CMD"
+echo "  Main server: $MAIN_NUMA_CMD" 
+echo "  pet-server: $PET_NUMA_CMD"
+echo "  Inference: $INFERENCE_NUMA_CMD"
 
 # Activate virtual env
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Activating environment"
@@ -104,9 +84,9 @@ if [[ $GPU_COUNT -lt 2 ]]; then
     exit 1
 fi
 
-# Launch embedding server on GPU 0
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching embedding server on GPU 0..."
-CUDA_VISIBLE_DEVICES=0 python -m sglang.launch_server --model-path $MODEL_EMB --host 0.0.0.0 --port $PORT_EMB --is-embedding > embedding_server.log 2>&1 &
+# Launch embedding server on GPU 0 with NUMA binding
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching embedding server on GPU 0 (NUMA node $GPU0_NUMA)..."
+CUDA_VISIBLE_DEVICES=0 $EMBEDDING_NUMA_CMD python -m sglang.launch_server --model-path $MODEL_EMB --host 0.0.0.0 --port $PORT_EMB --is-embedding > embedding_server.log 2>&1 &
 EMB_PID=$!
 
 # Wait for embedding server to initialize
@@ -119,9 +99,9 @@ if ! kill -0 $EMB_PID 2>/dev/null; then
     exit 1
 fi
 
-# Launch main server on GPU 1
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching main server on GPU 1..."
-CUDA_VISIBLE_DEVICES=1 python -m sglang.launch_server \
+# Launch main server on GPU 1 with NUMA binding
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching main server on GPU 1 (NUMA node $GPU1_NUMA)..."
+CUDA_VISIBLE_DEVICES=1 $MAIN_NUMA_CMD python -m sglang.launch_server \
     --model-path $MODEL \
     --host 0.0.0.0 \
     --port 30000 \
@@ -217,36 +197,34 @@ ps aux | grep -E "(sglang|python.*sglang)" | grep -v grep
 # go into the submission directory 
 cd $WORK/GitHub/crrrocq 
 
-# launch pet-server with NUMA binding if available
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching pet-server..."
-if [[ -n "$NUMA_CMD" ]]; then
-    $NUMA_CMD pet-server > pet_server.log 2>&1 &
-    PET_PID=$!
+# launch pet-server on same NUMA node as embedding server
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching pet-server on NUMA node $GPU0_NUMA (same as embedding server)..."
+$PET_NUMA_CMD pet-server > pet_server.log 2>&1 &
+PET_PID=$!
+
+# Verify pet-server is running and check its location
+sleep 5
+if ps -p $PET_PID > /dev/null; then
+    echo "✓ pet-server running on PID: $PET_PID"
+    echo "  Running on CPU: $(ps -o psr= -p $PET_PID)"
+    echo "  NUMA binding: $(numactl --show $PET_PID 2>/dev/null | grep -E 'nodebind|cpubind' || echo 'No explicit binding')"
     
-    # Verify pet-server is running and check its location
-    sleep 5
-    if ps -p $PET_PID > /dev/null; then
-        echo "pet-server running on PID: $PET_PID"
-        echo "Running on CPU: $(ps -o psr= -p $PET_PID)"
-        echo "NUMA binding: $(numactl --show $PET_PID 2>/dev/null | grep -E 'nodebind|membind' || echo 'No explicit binding')"
+    # Verify it's on the correct NUMA node
+    actual_node=$(numactl --show $PET_PID 2>/dev/null | grep "nodebind:" | awk '{print $2}')
+    if [[ "$actual_node" == "$GPU0_NUMA" ]]; then
+        echo "  ✓ Correctly placed on NUMA node $GPU0_NUMA"
     else
-        echo "pet-server failed to start, check pet_server.log"
-        cat pet_server.log
-        exit 1
+        echo "  ⚠ Expected NUMA node $GPU0_NUMA but got $actual_node"
     fi
 else
-    pet-server > pet_server.log 2>&1 &
-    PET_PID=$!
-    echo "pet-server running on PID: $PET_PID (no NUMA binding)"
+    echo "✗ pet-server failed to start, check pet_server.log"
+    cat pet_server.log
+    exit 1
 fi
 
-# launch inference with NUMA binding if available
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching inference..."
-if [[ -n "$NUMA_CMD" ]]; then
-    $NUMA_CMD python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
-else
-    python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
-fi
+# launch inference on same NUMA node as embedding server
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching inference on NUMA node $GPU0_NUMA (same as embedding server)..."
+$INFERENCE_NUMA_CMD python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 
 # Keep the script running until the SLURM job times out
 wait
