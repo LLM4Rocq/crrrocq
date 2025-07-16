@@ -107,44 +107,72 @@ if [[ ! "$GPU0_NUMA" =~ ^[0-9]+$ ]] || [[ ! "$GPU1_NUMA" =~ ^[0-9]+$ ]]; then
     fi
 fi
 
-echo "Final GPU to NUMA mapping:"
+# Alternative approach: Use actual GPU placement to determine NUMA nodes
+echo "Alternative: Detect GPU NUMA nodes by checking actual GPU processes..."
+
+# Wait a bit for GPU processes to start
+sleep 5
+
+# Find GPU processes and their NUMA placement
+gpu0_process=$(nvidia-smi --query-compute-apps=pid,gpu_uuid --format=csv,noheader,nounits | grep $(nvidia-smi --query-gpu=gpu_uuid --format=csv,noheader,nounits --id=0) | cut -d',' -f1 | head -1)
+gpu1_process=$(nvidia-smi --query-compute-apps=pid,gpu_uuid --format=csv,noheader,nounits | grep $(nvidia-smi --query-gpu=gpu_uuid --format=csv,noheader,nounits --id=1) | cut -d',' -f1 | head -1)
+
+echo "GPU processes: GPU0 PID=$gpu0_process, GPU1 PID=$gpu1_process"
+
+if [[ -n "$gpu0_process" ]]; then
+    actual_gpu0_numa=$(numactl --show $gpu0_process 2>/dev/null | grep "nodebind:" | awk '{print $2}')
+    if [[ -n "$actual_gpu0_numa" && "$actual_gpu0_numa" != "$GPU0_NUMA" ]]; then
+        echo "GPU0 process is actually on NUMA node $actual_gpu0_numa, updating GPU0_NUMA"
+        GPU0_NUMA="$actual_gpu0_numa"
+    fi
+fi
+
+if [[ -n "$gpu1_process" ]]; then
+    actual_gpu1_numa=$(numactl --show $gpu1_process 2>/dev/null | grep "nodebind:" | awk '{print $2}')
+    if [[ -n "$actual_gpu1_numa" && "$actual_gpu1_numa" != "$GPU1_NUMA" ]]; then
+        echo "GPU1 process is actually on NUMA node $actual_gpu1_numa, updating GPU1_NUMA"
+        GPU1_NUMA="$actual_gpu1_numa"
+    fi
+fi
+
+echo "Updated GPU NUMA mapping after checking actual processes:"
 echo "GPU 0 (embedding server) -> NUMA node $GPU0_NUMA"
 echo "GPU 1 (main server) -> NUMA node $GPU1_NUMA"
 
-# Validate nodes exist
-if [[ ! -d "/sys/devices/system/node/node$GPU0_NUMA" ]]; then
-    echo "Warning: NUMA node $GPU0_NUMA does not exist, using node 0"
-    GPU0_NUMA="0"
-fi
-if [[ ! -d "/sys/devices/system/node/node$GPU1_NUMA" ]]; then
-    echo "Warning: NUMA node $GPU1_NUMA does not exist, using node 0"
-    GPU1_NUMA="0"
-fi
-
 # Set NUMA commands for optimal placement (use flexible binding to avoid affinity errors)
-EMBEDDING_NUMA_CMD="numactl --preferred=$GPU0_NUMA"
-MAIN_NUMA_CMD="numactl --preferred=$GPU1_NUMA"
-PET_NUMA_CMD="numactl --preferred=$GPU0_NUMA"  # Same as embedding server
-INFERENCE_NUMA_CMD="numactl --preferred=$GPU0_NUMA"  # Same as embedding server
+if [[ -n "$GPU0_NUMA" && -n "$GPU1_NUMA" ]]; then
+    EMBEDDING_NUMA_CMD="numactl --preferred=$GPU0_NUMA"
+    MAIN_NUMA_CMD="numactl --preferred=$GPU1_NUMA"
+    PET_NUMA_CMD="numactl --preferred=$GPU0_NUMA"  # Same as embedding server
+    INFERENCE_NUMA_CMD="numactl --preferred=$GPU0_NUMA"  # Same as embedding server
 
-echo "NUMA commands configured (using --preferred for flexibility):"
-echo "  Embedding server: $EMBEDDING_NUMA_CMD"
-echo "  Main server: $MAIN_NUMA_CMD" 
-echo "  pet-server: $PET_NUMA_CMD"
-echo "  Inference: $INFERENCE_NUMA_CMD"
-
-# Test NUMA commands before using them
-echo "Testing NUMA commands..."
-if ! $EMBEDDING_NUMA_CMD echo "test" >/dev/null 2>&1; then
-    echo "Warning: NUMA binding for GPU0 node $GPU0_NUMA failed, disabling"
+    echo "NUMA commands configured (using --preferred for flexibility):"
+    echo "  Embedding server: $EMBEDDING_NUMA_CMD"
+    echo "  Main server: $MAIN_NUMA_CMD" 
+    echo "  pet-server: $PET_NUMA_CMD"
+    echo "  Inference: $INFERENCE_NUMA_CMD"
+else
+    echo "NUMA binding disabled - no valid nodes detected"
     EMBEDDING_NUMA_CMD=""
+    MAIN_NUMA_CMD=""
     PET_NUMA_CMD=""
     INFERENCE_NUMA_CMD=""
 fi
 
-if ! $MAIN_NUMA_CMD echo "test" >/dev/null 2>&1; then
-    echo "Warning: NUMA binding for GPU1 node $GPU1_NUMA failed, disabling"
-    MAIN_NUMA_CMD=""
+# Test NUMA commands before using them
+if [[ -n "$EMBEDDING_NUMA_CMD" ]]; then
+    echo "Testing NUMA commands..."
+    if ! $EMBEDDING_NUMA_CMD echo "test" >/dev/null 2>&1; then
+        echo "Warning: NUMA binding for GPU0 node $GPU0_NUMA failed, disabling"
+        EMBEDDING_NUMA_CMD=""
+        PET_NUMA_CMD=""
+        INFERENCE_NUMA_CMD=""
+    fi
+
+    if ! $MAIN_NUMA_CMD echo "test" >/dev/null 2>&1; then
+        echo "Warning: NUMA binding for GPU1 node $GPU1_NUMA failed, disabling"
+        MAIN_NUMA_CMD=""
+    fi
 fi
 
 # Activate virtual env
@@ -322,18 +350,36 @@ PET_PID=$!
 sleep 5
 if ps -p $PET_PID > /dev/null; then
     echo "✓ pet-server running on PID: $PET_PID"
-    echo "  Running on CPU: $(ps -o psr= -p $PET_PID)"
-    echo "  NUMA binding: $(numactl --show $PET_PID 2>/dev/null | grep -E 'nodebind|cpubind' || echo 'No explicit binding')"
+    current_cpu=$(ps -o psr= -p $PET_PID | xargs)
+    echo "  Running on CPU: $current_cpu"
     
-    # Verify it's on the correct NUMA node
-    actual_node=$(numactl --show $PET_PID 2>/dev/null | grep "nodebind:" | awk '{print $2}')
-    if [[ "$actual_node" == "$GPU0_NUMA" ]]; then
-        echo "  ✓ Correctly placed on NUMA node $GPU0_NUMA"
-    else
+    # Get actual NUMA binding
+    actual_numa_info=$(numactl --show $PET_PID 2>/dev/null)
+    echo "  NUMA binding: $(echo "$actual_numa_info" | grep -E 'physcpubind|cpubind|nodebind' | tr '\n' ' ')"
+    
+    # Get actual node
+    actual_node=$(echo "$actual_numa_info" | grep "nodebind:" | awk '{print $2}')
+    
+    if [[ -n "$actual_node" && "$actual_node" != "$GPU0_NUMA" ]]; then
         echo "  ⚠ Expected NUMA node $GPU0_NUMA but got $actual_node"
+        echo "  → Updating GPU0_NUMA to match actual placement: $actual_node"
+        
+        # Update our variables to match reality
+        GPU0_NUMA="$actual_node"
+        
+        # Also update the inference command to match
+        if [[ -n "$actual_node" ]]; then
+            INFERENCE_NUMA_CMD="numactl --preferred=$actual_node"
+            echo "  → Updated inference NUMA command: $INFERENCE_NUMA_CMD"
+        fi
+        
+        echo "  ✓ Now pet-server and inference will be co-located on node $actual_node"
+    else
+        echo "  ✓ Correctly placed on NUMA node $GPU0_NUMA"
     fi
 else
     echo "✗ pet-server failed to start, check pet_server.log"
+    echo "=== pet-server log ==="
     cat pet_server.log
     exit 1
 fi
