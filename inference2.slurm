@@ -121,18 +121,31 @@ fi
 
 # Launch main server on GPU 1
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching main server on GPU 1..."
-CUDA_VISIBLE_DEVICES=1 python -m sglang.launch_server --model-path $MODEL --host 0.0.0.0 --port 30000 > main_server.log 2>&1 &
+CUDA_VISIBLE_DEVICES=1 python -m sglang.launch_server \
+    --model-path $MODEL \
+    --host 0.0.0.0 \
+    --port 30000 \
+    --mem-fraction-static 0.8 \
+    --disable-radix-cache \
+    --max-running-requests 1 > main_server.log 2>&1 &
 MAIN_PID=$!
 
-# Wait for main server to initialize
-sleep 30
+# Wait longer for main server to initialize
+echo "Waiting 60 seconds for main server to fully initialize..."
+sleep 60
 
 # Check if main server is still running
 if ! kill -0 $MAIN_PID 2>/dev/null; then
-    echo "ERROR: Main server died, check main_server.log"
+    echo "ERROR: Main server died during startup, check main_server.log"
+    echo "=== Main Server Log ==="
     cat main_server.log
+    echo "=== GPU Status ==="
+    nvidia-smi
     exit 1
 fi
+
+echo "Main server still running, checking GPU memory usage..."
+nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv
 
 # Wait for server to respond with more robust checking
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for servers to respond..."
@@ -150,28 +163,48 @@ for i in {1..10}; do
         exit 1
     else
         echo "Attempt $i/10: Embedding server not ready, waiting..."
-        sleep 60
+        sleep 30
     fi
 done
 
-# Check main server
+# Check main server with timeout
 echo "Checking main server on port 30000..."
-for i in {1..10}; do
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; then
+for i in {1..15}; do
+    # Use timeout to prevent hanging
+    if timeout 10 curl -s -f http://localhost:30000/v1/models >/dev/null 2>&1; then
         echo "✓ Main server responding on port 30000"
+        # Test actual inference endpoint
+        if timeout 10 curl -s -f http://localhost:30000/health >/dev/null 2>&1; then
+            echo "✓ Main server health check passed"
+        else
+            echo "⚠ Main server responds to /v1/models but not /health"
+        fi
         break
-    elif [[ $i -eq 10 ]]; then
-        echo "✗ Main server not responding after 10 attempts"
-        echo "Server logs:"
-        tail -20 main_server.log
-        echo "Checking if process is still running:"
-        ps aux | grep sglang
-        echo "Checking port usage:"
-        netstat -tlnp | grep :30000
+    elif [[ $i -eq 15 ]]; then
+        echo "✗ Main server not responding after 15 attempts"
+        echo "=== Main Server Log (last 50 lines) ==="
+        tail -50 main_server.log
+        echo "=== Process Status ==="
+        ps aux | grep -E "sglang.*30000" | grep -v grep
+        echo "=== Port Status ==="
+        ss -tlnp | grep :30000
+        echo "=== GPU Memory ==="
+        nvidia-smi --query-gpu=memory.used,memory.total --format=csv
+        
+        # Try to get more detailed connection info
+        echo "=== Testing connection manually ==="
+        timeout 5 telnet localhost 30000 < /dev/null
         exit 1
     else
-        echo "Attempt $i/10: Main server not ready, waiting..."
-        sleep 60
+        echo "Attempt $i/15: Main server not ready, waiting..."
+        # Check if process died
+        if ! kill -0 $MAIN_PID 2>/dev/null; then
+            echo "ERROR: Main server process died!"
+            echo "=== Main Server Log ==="
+            cat main_server.log
+            exit 1
+        fi
+        sleep 20
     fi
 done
 
@@ -185,15 +218,35 @@ ps aux | grep -E "(sglang|python.*sglang)" | grep -v grep
 cd $WORK/GitHub/crrrocq 
 
 # launch pet-server with NUMA binding if available
-
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching pet-server..."
+if [[ -n "$NUMA_CMD" ]]; then
+    $NUMA_CMD pet-server > pet_server.log 2>&1 &
+    PET_PID=$!
+    
+    # Verify pet-server is running and check its location
+    sleep 5
+    if ps -p $PET_PID > /dev/null; then
+        echo "pet-server running on PID: $PET_PID"
+        echo "Running on CPU: $(ps -o psr= -p $PET_PID)"
+        echo "NUMA binding: $(numactl --show $PET_PID 2>/dev/null | grep -E 'nodebind|membind' || echo 'No explicit binding')"
+    else
+        echo "pet-server failed to start, check pet_server.log"
+        cat pet_server.log
+        exit 1
+    fi
+else
+    pet-server > pet_server.log 2>&1 &
+    PET_PID=$!
+    echo "pet-server running on PID: $PET_PID (no NUMA binding)"
+fi
 
 # launch inference with NUMA binding if available
-#echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching inference..."
-#if [[ -n "$NUMA_CMD" ]]; then
-#    $NUMA_CMD python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
-#else
-#python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
-#fi
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching inference..."
+if [[ -n "$NUMA_CMD" ]]; then
+    $NUMA_CMD python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
+else
+    python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
+fi
 
 # Keep the script running until the SLURM job times out
 wait
