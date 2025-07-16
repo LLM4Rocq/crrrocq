@@ -24,20 +24,101 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Detecting system topology..."
 # Detect GPU to NUMA mapping
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Detecting GPU to NUMA mapping..."
 
-# Get NUMA affinity for each GPU
-GPU0_NUMA=$(nvidia-smi topo -m | grep "^GPU0" | awk '{print $8}')
-GPU1_NUMA=$(nvidia-smi topo -m | grep "^GPU1" | awk '{print $8}')
+# Method 1: Parse nvidia-smi topo output more carefully
+GPU0_NUMA=""
+GPU1_NUMA=""
 
+# Get the topo output and parse it line by line
+topo_output=$(nvidia-smi topo -m)
+echo "NVIDIA topology output:"
+echo "$topo_output"
+
+# Parse GPU0 line
+gpu0_line=$(echo "$topo_output" | grep "^GPU0")
+if [[ -n "$gpu0_line" ]]; then
+    # Extract NUMA Affinity column (8th field)
+    GPU0_NUMA=$(echo "$gpu0_line" | awk '{print $8}')
+    echo "Raw GPU0 NUMA from topo: '$GPU0_NUMA'"
+fi
+
+# Parse GPU1 line  
+gpu1_line=$(echo "$topo_output" | grep "^GPU1")
+if [[ -n "$gpu1_line" ]]; then
+    # Extract NUMA Affinity column (8th field)
+    GPU1_NUMA=$(echo "$gpu1_line" | awk '{print $8}')
+    echo "Raw GPU1 NUMA from topo: '$GPU1_NUMA'"
+fi
+
+# Clean up NUMA values (remove any non-digits, take first number if multiple)
+if [[ -n "$GPU0_NUMA" ]]; then
+    GPU0_NUMA=$(echo "$GPU0_NUMA" | grep -o '[0-9]\+' | head -1)
+fi
+if [[ -n "$GPU1_NUMA" ]]; then
+    GPU1_NUMA=$(echo "$GPU1_NUMA" | grep -o '[0-9]\+' | head -1)
+fi
+
+echo "Cleaned GPU NUMA values: GPU0='$GPU0_NUMA', GPU1='$GPU1_NUMA'"
+
+# Method 2: Fallback to sysfs if nvidia-smi parsing failed
+if [[ ! "$GPU0_NUMA" =~ ^[0-9]+$ ]] || [[ ! "$GPU1_NUMA" =~ ^[0-9]+$ ]]; then
+    echo "nvidia-smi parsing failed, using sysfs fallback..."
+    
+    # Try to get PCI bus IDs for each GPU
+    gpu0_pci=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader,nounits --id=0 2>/dev/null | xargs)
+    gpu1_pci=$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader,nounits --id=1 2>/dev/null | xargs)
+    
+    echo "GPU PCI bus IDs: GPU0='$gpu0_pci', GPU1='$gpu1_pci'"
+    
+    # Get NUMA node from PCI device
+    if [[ -n "$gpu0_pci" && -f "/sys/bus/pci/devices/$gpu0_pci/numa_node" ]]; then
+        GPU0_NUMA=$(cat "/sys/bus/pci/devices/$gpu0_pci/numa_node")
+    fi
+    if [[ -n "$gpu1_pci" && -f "/sys/bus/pci/devices/$gpu1_pci/numa_node" ]]; then
+        GPU1_NUMA=$(cat "/sys/bus/pci/devices/$gpu1_pci/numa_node")
+    fi
+    
+    echo "NUMA from sysfs: GPU0='$GPU0_NUMA', GPU1='$GPU1_NUMA'"
+fi
+
+# Method 3: Final fallback - discover available NUMA nodes dynamically
+if [[ ! "$GPU0_NUMA" =~ ^[0-9]+$ ]] || [[ ! "$GPU1_NUMA" =~ ^[0-9]+$ ]]; then
+    echo "All detection methods failed, discovering available NUMA nodes..."
+    
+    # Get list of available NUMA nodes
+    available_nodes=$(ls /sys/devices/system/node/ | grep "^node[0-9]" | sed 's/node//' | sort -n)
+    echo "Available NUMA nodes: $available_nodes"
+    
+    # If we have at least 2 nodes, assign them
+    node_array=($available_nodes)
+    if [[ ${#node_array[@]} -ge 2 ]]; then
+        GPU0_NUMA="${node_array[0]}"
+        GPU1_NUMA="${node_array[1]}"
+        echo "Assigning GPU0 -> node ${node_array[0]}, GPU1 -> node ${node_array[1]}"
+    elif [[ ${#node_array[@]} -eq 1 ]]; then
+        # Only one NUMA node available
+        GPU0_NUMA="${node_array[0]}"
+        GPU1_NUMA="${node_array[0]}"
+        echo "Only one NUMA node available, both GPUs -> node ${node_array[0]}"
+    else
+        # No NUMA nodes found, disable NUMA binding
+        GPU0_NUMA=""
+        GPU1_NUMA=""
+        echo "No NUMA nodes found, disabling NUMA binding"
+    fi
+fi
+
+echo "Final GPU to NUMA mapping:"
 echo "GPU 0 (embedding server) -> NUMA node $GPU0_NUMA"
 echo "GPU 1 (main server) -> NUMA node $GPU1_NUMA"
 
-# Validate that we got valid NUMA nodes
-if [[ ! "$GPU0_NUMA" =~ ^[0-9]+$ ]] || [[ ! "$GPU1_NUMA" =~ ^[0-9]+$ ]]; then
-    echo "Warning: Could not detect GPU NUMA mapping, using fallback detection"
-    # Fallback: check sysfs for GPU NUMA nodes
-    GPU0_NUMA=$(cat /sys/class/drm/card0/device/numa_node 2>/dev/null || echo "0")
-    GPU1_NUMA=$(cat /sys/class/drm/card1/device/numa_node 2>/dev/null || echo "1")
-    echo "Fallback: GPU 0 -> NUMA node $GPU0_NUMA, GPU 1 -> NUMA node $GPU1_NUMA"
+# Validate nodes exist
+if [[ ! -d "/sys/devices/system/node/node$GPU0_NUMA" ]]; then
+    echo "Warning: NUMA node $GPU0_NUMA does not exist, using node 0"
+    GPU0_NUMA="0"
+fi
+if [[ ! -d "/sys/devices/system/node/node$GPU1_NUMA" ]]; then
+    echo "Warning: NUMA node $GPU1_NUMA does not exist, using node 0"
+    GPU1_NUMA="0"
 fi
 
 # Set NUMA commands for optimal placement (use flexible binding to avoid affinity errors)
