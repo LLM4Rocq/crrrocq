@@ -208,12 +208,12 @@ else
 fi
 
 # launch inference with NUMA binding if available
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching inference..."
-if [[ -n "$NUMA_CMD" ]]; then
-    $NUMA_CMD python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
-else
-    python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
-fi
+#echo "[$(date '+%Y-%m-%d %H:%M:%S')] Launching inference..."
+#if [[ -n "$NUMA_CMD" ]]; then
+#    $NUMA_CMD python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
+#else
+python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
+#fi
 
 # Keep the script running until the SLURM job times out
 wait
