@@ -212,7 +212,7 @@ fi
 #if [[ -n "$NUMA_CMD" ]]; then
 #    $NUMA_CMD python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --model $MODEL
 #else
-python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
+#python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 #fi
 
 # Keep the script running until the SLURM job times out
