@@ -63,7 +63,9 @@ fi
 
 # Set NUMA command based on what's available
 if command -v numactl &> /dev/null && [[ -n "$PREFERRED_NODE" ]] && [[ -d "/sys/devices/system/node/node$PREFERRED_NODE" ]]; then
-    NUMA_CMD="numactl --membind=$PREFERRED_NODE --preferred=$PREFERRED_NODE"
+    # Use only --preferred (allows flexible allocation) or --membind (strict binding)
+    # Start with --preferred as it's less restrictive
+    NUMA_CMD="numactl --preferred=$PREFERRED_NODE"
     echo "Using NUMA binding: $NUMA_CMD"
 else
     NUMA_CMD=""
