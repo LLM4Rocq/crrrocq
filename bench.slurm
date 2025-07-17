@@ -172,7 +172,7 @@ sleep 5
 # Run inference
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting inference"
 if [[ "$USE_NUMA" == "true" ]] && [[ "$EMB_NUMA_NODE" =~ ^[0-9]+$ ]]; then
-    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
+    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.benchmark --theorem $THM --file $FILE --workspace $WORKSPACE --beam-size 8
 elif [[ -n "$EMB_CPUS" ]]; then
     taskset -c $EMB_CPUS python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 else
