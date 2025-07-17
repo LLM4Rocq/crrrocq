@@ -6,5 +6,5 @@ DICT_LLM = {
 
 def get_llm(llm_name: str, *args, **kwargs) -> BaseLLM:
     if llm_name not in DICT_LLM:
-        raise ValueError(f"Unknown tool: {llm_name}")
+        raise ValueError(f"Unknown model: {llm_name}")
     return DICT_LLM[llm_name](*args, **kwargs)
