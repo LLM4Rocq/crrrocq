@@ -47,19 +47,19 @@ $ python -m src.inference.inference-cli --theorem coef_prod_XsubC --file poly.v 
 ```
 
 
-## SLURM file is not working
+## SLURM file: `inference2.slurm`
 
-Before you launch the job, you should perhaps modify line 49 with the location of your `crrrocq` repo, then:
+Before you launch the job, you should modify line 156 with the location of your `crrrocq` repo. If you want to prove a given thm, you should change the lines 34-36. Then:
 ```bash
-$ sbatch inference.slurm
+$ sbatch inference2.slurm
 ```
 
 It will: 
 - start a GPU with 2 nodes (H100) for 1h (you can add time up to 2h for more you should change the qos)
-- lauch a sglang server with crrrocq on port 30000
-- lauch a sglang server for the embedding model on port 31000
-- lauch a pet-server
-- once the crrrocq server is up, it run the inference for the theorem `foo` in the `examples/foo.v` file
+- launch a sglang server with crrrocq on port 30000
+- launch a sglang server for the embedding model on port 31000
+- launch a pet-server
+- once the crrrocq server is up, it run the inference for the theorem `foo` in the `examples/foo.v` file (see lines 34-36).
 
 
 Info below is not relevant anymore...
