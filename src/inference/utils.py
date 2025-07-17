@@ -160,6 +160,77 @@ def find_all_statements(json_data: Dict[str, Any]) -> List[str]:
     return list(json_data.keys())
 
 
+def parse_statement_info(statement_name: str) -> Dict[str, str]:
+    """
+    Parse a statement name into its components.
+
+    Expected format: bla.bla.step_0.folder_name.file_name.lemma_name
+    Or: bla.bla.step_0.folder_name.file_name.module_name.other_module.lemma_name
+
+    Args:
+        statement_name: Full statement name
+
+    Returns:
+        Dictionary with folder_name, file_name, module_name (if exists), and lemma_name
+    """
+    parts = statement_name.split(".")
+
+    # Find step_0 index to locate the start of our relevant parts
+    step_0_idx = None
+    for i, part in enumerate(parts):
+        if part.startswith("step_"):
+            step_0_idx = i
+            break
+
+    if step_0_idx is None or step_0_idx + 3 >= len(parts):
+        # Fallback if structure is unexpected
+        return {
+            "folder_name": "",
+            "file_name": "",
+            "module_name": "",
+            "lemma_name": parts[-1] if parts else "",
+        }
+
+    # Extract components
+    folder_name = parts[step_0_idx + 1]
+    file_name = parts[step_0_idx + 2]
+    lemma_name = parts[-1]
+
+    # Check if there are module names between file_name and lemma_name
+    module_parts = parts[
+        step_0_idx + 3 : -1
+    ]  # Everything between file_name and lemma_name
+    module_name = ".".join(module_parts) if module_parts else ""
+
+    return {
+        "folder_name": folder_name,
+        "file_name": file_name,
+        "module_name": module_name,
+        "lemma_name": lemma_name,
+    }
+
+
+def get_parsed_statements(json_data: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Get all statements parsed into their components.
+
+    Args:
+        json_data: The parsed JSON data
+
+    Returns:
+        List of dictionaries with parsed statement information
+    """
+    statements = find_all_statements(json_data)
+    parsed_statements = []
+
+    for statement in statements:
+        parsed_info = parse_statement_info(statement)
+        parsed_info["full_name"] = statement  # Keep the original full name
+        parsed_statements.append(parsed_info)
+
+    return parsed_statements
+
+
 def search_statements_by_keyword(json_data: Dict[str, Any], keyword: str) -> List[str]:
     """
     Find all statements containing a keyword.
@@ -174,32 +245,88 @@ def search_statements_by_keyword(json_data: Dict[str, Any], keyword: str) -> Lis
     return [key for key in json_data.keys() if keyword.lower() in key.lower()]
 
 
+def get_evaluation_theorems(evaluation_json_path: str) -> List[Dict[str, str]]:
+    """
+    Extract all theorems from evaluation.json file with their folder and file information.
+    
+    Args:
+        evaluation_json_path: Path to the evaluation.json file
+        
+    Returns:
+        List of dictionaries containing theorem information:
+        - full_name: Full statement name from JSON
+        - lemma_name: Just the theorem/lemma name
+        - folder_name: Folder containing the theorem
+        - file_name: File containing the theorem
+        - module_name: Module name if present
+        - workspace_path: Constructed workspace path
+    """
+    try:
+        with open(evaluation_json_path, "r", encoding="utf-8") as file:
+            json_data = json.load(file)
+    except FileNotFoundError:
+        print(f"Error: File '{evaluation_json_path}' not found.")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON file: {e}")
+        return []
+    
+    theorems = []
+    
+    for statement_name in json_data.keys():
+        parsed_info = parse_statement_info(statement_name)
+        
+        # Construct workspace path based on folder structure
+        workspace_path = f"/lustre/fsn1/projects/rech/tdm/commun/math-comp/{parsed_info['folder_name']}"
+        
+        theorem_info = {
+            "full_name": statement_name,
+            "lemma_name": parsed_info["lemma_name"],
+            "folder_name": parsed_info["folder_name"],
+            "file_name": parsed_info["file_name"],
+            "module_name": parsed_info["module_name"],
+            "workspace_path": workspace_path
+        }
+        
+        theorems.append(theorem_info)
+    
+    return theorems
+
+
 # Example usage:
 if __name__ == "__main__":
     # Load from file - replace with your actual file path
     file_path = "/Users/lelarge/Recherche/LLM4code/jz_files/crrrocq_files/dataset/evaluation.json"
-
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             json_data = json.load(file)
 
         print(f"Loaded JSON data with {len(json_data)} proofs")
 
-        # Show available statements
+        # Show available statements with parsed information
         print("\nAvailable statements:")
-        statements = find_all_statements(json_data)
-        for i, stmt in enumerate(statements, 1):
-            # Extract just the lemma name from the full path
-            lemma_name = stmt.split(".")[-1]
-            print(f"  {i}. {lemma_name} (full: {stmt})")
+        parsed_statements = get_parsed_statements(json_data)
+
+        for i, stmt_info in enumerate(parsed_statements, 1):
+            module_part = (
+                f" (module: {stmt_info['module_name']})"
+                if stmt_info["module_name"]
+                else ""
+            )
+            print(
+                f"  {i}. {stmt_info['lemma_name']} - {stmt_info['folder_name']}/{stmt_info['file_name']}{module_part}"
+            )
 
         # Example: Extract a specific proof
-        if statements:
+        if parsed_statements:
             # Use the first statement as an example
-            statement_name = statements[0].split(".")[-1]  # Get just the lemma name
-            print(f"\n=== Extracting proof for: {statement_name} ===")
+            first_stmt = parsed_statements[0]
+            print(f"\n=== Extracting proof for: {first_stmt['lemma_name']} ===")
+            print(f"From: {first_stmt['folder_name']}/{first_stmt['file_name']}")
+            if first_stmt["module_name"]:
+                print(f"Module: {first_stmt['module_name']}")
 
-            proof = extract_proof(json_data, statement_name)
+            proof = extract_proof(json_data, first_stmt["lemma_name"])
 
             if proof:
                 print_proof_summary(proof)
@@ -211,11 +338,35 @@ if __name__ == "__main__":
             else:
                 print("Proof not found")
 
+        # Example: Show statements grouped by folder
+        print("\n=== Statements grouped by folder ===")
+        from collections import defaultdict
+
+        by_folder = defaultdict(list)
+        for stmt in parsed_statements:
+            by_folder[stmt["folder_name"]].append(stmt)
+
+        for folder, stmts in by_folder.items():
+            print(f"\n{folder}:")
+            for stmt in stmts:
+                module_part = (
+                    f" (module: {stmt['module_name']})" if stmt["module_name"] else ""
+                )
+                print(f"  - {stmt['file_name']}: {stmt['lemma_name']}{module_part}")
+
         # Example: Search for proofs containing specific keywords
         print("\n=== Searching for proofs containing 'orthogonal' ===")
         orthogonal_proofs = search_statements_by_keyword(json_data, "orthogonal")
         for proof_name in orthogonal_proofs:
-            print(f"  - {proof_name}")
+            parsed_info = parse_statement_info(proof_name)
+            module_part = (
+                f" (module: {parsed_info['module_name']})"
+                if parsed_info["module_name"]
+                else ""
+            )
+            print(
+                f"  - {parsed_info['lemma_name']} from {parsed_info['folder_name']}/{parsed_info['file_name']}{module_part}"
+            )
 
     except FileNotFoundError:
         print(f"Error: File '{file_path}' not found. Please check the file path.")
