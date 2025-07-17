@@ -45,7 +45,7 @@ class FaissIndex(CosimIndex):
             embedding = element["embedding"]
             self.all_fqn.append(qualid_name)
             self.all_constants.append(element)
-            self.all_embeddings.append(embedding.unsqueeze(0))
+            self.all_embeddings.append(embedding)
         self.all_embeddings = torch.cat(self.all_embeddings, dim=0).to(torch.float32).numpy()
         d = self.all_embeddings.shape[1]
         faiss.normalize_L2(self.all_embeddings)
@@ -65,15 +65,19 @@ class FaissIndex(CosimIndex):
             filename = string_to_filename(qualid_name) + '.pt'
             export_path = os.path.join(self.cache_path, filename)
             if not os.path.exists(export_path):
-                to_do.append((export_path, element))
+                to_do.append((export_path, element, qualid_name))
             else:
                 cache_element = torch.load(export_path)
                 self.content[qualid_name]['embedding'] = cache_element['embedding']
-        for export_path, element in tqdm(to_do):
-            embedding = self.model.generate(element['docstring'])
-            embedding = embedding.detach().clone().cpu()
-            element['embedding'] = embedding
-            torch.save({'embedding': embedding}, export_path)
+        for export_path, element, qualid_name in tqdm(to_do):
+            try:
+                embedding = self.model.generate(element['docstring'])
+                embedding = embedding.detach().clone().cpu()
+                element['embedding'] = embedding
+                torch.save({'embedding': embedding}, export_path)
+            except Exception as e:
+                del self.content[qualid_name]
+                print(e)
 
     def query(self, query: str, top_k=10) -> List[Tuple[float, str, str]]:
         query_embedding = self.model.generate(query).detach().clone().cpu().to(torch.float32)

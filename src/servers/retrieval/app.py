@@ -20,11 +20,19 @@ while not os.path.exists(config['ip_path']):
     time.sleep(20)
 
 with open(config['ip_path'], 'r') as file:
-    ip = file.read()
+    ip = file.read().strip()
     base_url = f"http://{ip}/v1"
 
 embedding = OpenAIEmbedding(config['model_name'], base_url=base_url)
 index = FaissIndex(embedding, content=dictionary, cache_path=config['cache_path'])
+index_is_loaded = True
+
+@app.route('/health', methods=['GET'])
+def health():
+    if index_is_loaded:
+        return "OK", 200
+    else:
+        return "Index not loaded", 500
 
 @app.route('/query', methods=['POST'])
 def query():

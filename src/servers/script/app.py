@@ -20,6 +20,14 @@ pytanques = [Pytanque("127.0.0.1", config['pet_server_start_port'] + k) for k in
 for pet in pytanques:
     pet.connect()
 
+pet_loaded = True
+
+@app.route('/health', methods=['GET'])
+def health():
+    if pet_loaded:
+        return "OK", 200
+    else:
+        return "Pet servers not ready", 500
 
 @app.route('/login', methods=['GET'])
 def login():
