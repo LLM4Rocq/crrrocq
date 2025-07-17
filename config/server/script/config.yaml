@@ -1,0 +1,2 @@
+num_pet_server: 16
+pet_server_start_port: 8765
