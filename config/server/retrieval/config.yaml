@@ -1,3 +1,4 @@
 cache_path: "/lustre/fsn1/projects/rech/tdm/commun/cache/"
 docstrings_path: "/lustre/fsn1/projects/rech/tdm/commun/dataset/docstrings.json"
-model_name: "Qwen/Qwen3-Embedding-4B"
+ip_path: "/lustre/fsn1/projects/rech/tdm/commun/sglang_ip.txt"
+model_name: "/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b"

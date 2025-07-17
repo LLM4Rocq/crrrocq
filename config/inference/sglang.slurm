@@ -52,7 +52,7 @@ until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | 
 done
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] SGlang ready."
-echo $HEAD_NODE > /lustre/fsn1/projects/rech/tdm/commun/retrieval_ip.txt
+echo $HEAD_NODE > /lustre/fsn1/projects/rech/tdm/commun/sglang_ip.txt
 
 EOF
 
