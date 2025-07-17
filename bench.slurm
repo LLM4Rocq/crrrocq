@@ -31,10 +31,11 @@ export TMPDIR=$JOBSCRATCH
 
 MODEL=/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/
 MODEL_EMB=/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b
-WORKSPACE=/lustre/fsn1/projects/rech/tdm/commun/math-comp/algebra
-THM=coef_prod_XsubC
-FILE=poly.v
+EVALUATION_JSON=/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json
+OUTPUT_FILE=benchmark_results_$(date +%Y%m%d_%H%M%S).json
 PORT_EMB=31000
+MAX_WORKERS=4
+MAX_THEOREMS=10  # Adjust based on your needs
 
 # Function to detect GPU-CPU topology automatically
 detect_gpu_topology() {
@@ -169,20 +170,33 @@ PET_PID=$!
 # Give pet-server time to start
 sleep 5
 
-# Run inference
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting inference"
+# Run benchmark
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting benchmark with $MAX_WORKERS workers on $MAX_THEOREMS theorems"
 if [[ "$USE_NUMA" == "true" ]] && [[ "$EMB_NUMA_NODE" =~ ^[0-9]+$ ]]; then
-    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.benchmark --theorem $THM --file $FILE --workspace $WORKSPACE --beam-size 8 --eval
+    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.benchmark \
+        --evaluation-json $EVALUATION_JSON \
+        --max-workers $MAX_WORKERS \
+        --max-theorems $MAX_THEOREMS \
+        --output-file $OUTPUT_FILE \
+        --verbose
 elif [[ -n "$EMB_CPUS" ]]; then
-    taskset -c $EMB_CPUS python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
+    taskset -c $EMB_CPUS python -m src.inference.benchmark \
+        --evaluation-json $EVALUATION_JSON \
+        --max-workers $MAX_WORKERS \
+        --max-theorems $MAX_THEOREMS \
+        --output-file $OUTPUT_FILE \
+        --verbose
 else
-    python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
+    python -m src.inference.benchmark \
+        --evaluation-json $EVALUATION_JSON \
+        --max-workers $MAX_WORKERS \
+        --max-theorems $MAX_THEOREMS \
+        --output-file $OUTPUT_FILE \
+        --verbose
 fi
 
-# If you want to run additional inferences, you can do them here
-# [Same CPU binding logic as above]
-
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Inference completed"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Benchmark completed"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Results saved to: $OUTPUT_FILE"
 
 # Log final resource usage
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Resource usage summary:"

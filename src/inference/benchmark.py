@@ -1,13 +1,213 @@
 import argparse
+import asyncio
+import json
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Any, Optional
+import time
+from dataclasses import dataclass
+
 from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool
 from .llm import VLLM
-from .agent import MathProofAgent
-from .utils import extract_proof, get_proof_tactics
-import json
+from .agent import MathProofAgent, Status
+from .utils import extract_proof, get_proof_tactics, get_evaluation_theorems
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
+
+
+@dataclass
+class BenchmarkResult:
+    """Result of a theorem proving attempt."""
+
+    theorem_name: str
+    full_name: str
+    workspace_path: str
+    file_name: str
+    success: bool
+    proof_tactics: List[str]
+    error_message: Optional[str] = None
+    execution_time: float = 0.0
+
+
+def prove_single_theorem(theorem_info: Dict[str, str], args) -> BenchmarkResult:
+    """
+    Prove a single theorem synchronously.
+
+    Args:
+        theorem_info: Dictionary containing theorem information from get_evaluation_theorems
+        args: Command line arguments with configuration
+
+    Returns:
+        BenchmarkResult with the proof attempt result
+    """
+    start_time = time.time()
+
+    try:
+        # Setup Pytanque for this theorem
+        pet = Pytanque(args.host, args.port)
+        pet.connect()
+        pet.set_workspace(False, theorem_info["workspace_path"])
+
+        # Setup tools
+        search_tool = SearchTool(
+            index_path=args.index_cache_path,
+            model=args.model_embedding,
+            api_url=args.embedding_api,
+            docstrings_path=args.docstrings_path,
+        )
+
+        script_tool = ScriptTool(
+            pet=pet,
+            workspace=theorem_info["workspace_path"],
+            file=theorem_info["file_name"],
+            theorem=theorem_info["lemma_name"],
+        )
+
+        have_tool = HaveTool(
+            pet=pet,
+            workspace=theorem_info["workspace_path"],
+            file=theorem_info["file_name"],
+            theorem=theorem_info["lemma_name"],
+        )
+
+        # Setup LLM
+        llm = VLLM(
+            api_url=args.llm_url,
+            model=args.model,
+            temperature=args.temperature,
+            verbose=args.verbose,
+        )
+
+        # Create agent and run proof
+        agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
+        status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
+
+        execution_time = time.time() - start_time
+
+        return BenchmarkResult(
+            theorem_name=theorem_info["lemma_name"],
+            full_name=theorem_info["full_name"],
+            workspace_path=theorem_info["workspace_path"],
+            file_name=theorem_info["file_name"],
+            success=status.success,
+            proof_tactics=status.proof,
+            execution_time=execution_time,
+        )
+
+    except Exception as e:
+        execution_time = time.time() - start_time
+        return BenchmarkResult(
+            theorem_name=theorem_info["lemma_name"],
+            full_name=theorem_info["full_name"],
+            workspace_path=theorem_info["workspace_path"],
+            file_name=theorem_info["file_name"],
+            success=False,
+            proof_tactics=[],
+            error_message=str(e),
+            execution_time=execution_time,
+        )
+
+
+async def run_benchmark_async(
+    theorems: List[Dict[str, str]],
+    args,
+    max_workers: int = 4,
+    max_theorems: Optional[int] = None,
+) -> List[BenchmarkResult]:
+    """
+    Run theorem proving benchmark asynchronously on multiple theorems.
+
+    Args:
+        theorems: List of theorem information dictionaries
+        args: Command line arguments with configuration
+        max_workers: Maximum number of concurrent workers
+        max_theorems: Maximum number of theorems to process (None for all)
+
+    Returns:
+        List of BenchmarkResult objects
+    """
+    # Limit theorems if specified
+    if max_theorems is not None:
+        theorems = theorems[:max_theorems]
+
+    print(f"Starting benchmark on {len(theorems)} theorems with {max_workers} workers")
+
+    # Create event loop and thread pool
+    loop = asyncio.get_event_loop()
+    results = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        futures = [
+            loop.run_in_executor(executor, prove_single_theorem, theorem, args)
+            for theorem in theorems
+        ]
+
+        # Collect results as they complete
+        for i, future in enumerate(asyncio.as_completed(futures)):
+            result = await future
+            results.append(result)
+
+            # Progress reporting
+            print(
+                f"[{i+1}/{len(theorems)}] {result.theorem_name}: "
+                f"{'SUCCESS' if result.success else 'FAILED'} "
+                f"({result.execution_time:.2f}s)"
+            )
+
+            if result.error_message:
+                print(f"  Error: {result.error_message}")
+
+    return results
+
+
+def print_benchmark_summary(results: List[BenchmarkResult]):
+    """Print a summary of benchmark results."""
+    total = len(results)
+    successful = sum(1 for r in results if r.success)
+    failed = total - successful
+
+    total_time = sum(r.execution_time for r in results)
+    avg_time = total_time / total if total > 0 else 0
+
+    print(f"\n=== BENCHMARK SUMMARY ===")
+    print(f"Total theorems: {total}")
+    print(f"Successful: {successful} ({successful/total*100:.1f}%)")
+    print(f"Failed: {failed} ({failed/total*100:.1f}%)")
+    print(f"Total time: {total_time:.2f}s")
+    print(f"Average time per theorem: {avg_time:.2f}s")
+
+    if failed > 0:
+        print(f"\nFailed theorems:")
+        for result in results:
+            if not result.success:
+                print(f"  - {result.theorem_name} ({result.file_name})")
+                if result.error_message:
+                    print(f"    Error: {result.error_message}")
+
+
+def save_benchmark_results(results: List[BenchmarkResult], output_path: str):
+    """Save benchmark results to JSON file."""
+    results_data = []
+    for result in results:
+        results_data.append(
+            {
+                "theorem_name": result.theorem_name,
+                "full_name": result.full_name,
+                "workspace_path": result.workspace_path,
+                "file_name": result.file_name,
+                "success": result.success,
+                "proof_tactics": result.proof_tactics,
+                "error_message": result.error_message,
+                "execution_time": result.execution_time,
+            }
+        )
+
+    with open(output_path, "w") as f:
+        json.dump(results_data, f, indent=2)
+
+    print(f"Results saved to {output_path}")
 
 
 def main():
@@ -75,13 +275,72 @@ def main():
 
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 
+    parser.add_argument("--check", action="store_true", help="Check proof is valid")
+
+    # New benchmark arguments
     parser.add_argument(
-        "--eval", action="store_true", help="Running on evaluation dataset"
+        "--benchmark",
+        action="store_true",
+        help="Run benchmark on all theorems from evaluation.json",
+    )
+
+    parser.add_argument(
+        "--evaluation-json",
+        type=str,
+        default="/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json",
+        help="Path to evaluation.json file",
+    )
+
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=4,
+        help="Maximum number of concurrent workers for benchmark",
+    )
+
+    parser.add_argument(
+        "--max-theorems",
+        type=int,
+        default=None,
+        help="Maximum number of theorems to process (None for all)",
+    )
+
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        default="benchmark_results.json",
+        help="Output file for benchmark results",
     )
 
     args = parser.parse_args()
 
-    # Setup Pytanque
+    # Handle benchmark mode
+    if args.benchmark:
+        # Load theorems from evaluation.json
+        theorems = get_evaluation_theorems(args.evaluation_json)
+
+        if not theorems:
+            print("No theorems found in evaluation.json. Exiting.")
+            return
+
+        print(f"Found {len(theorems)} theorems for benchmarking")
+
+        # Run benchmark asynchronously
+        results = asyncio.run(
+            run_benchmark_async(
+                theorems,
+                args,
+                max_workers=args.max_workers,
+                max_theorems=args.max_theorems,
+            )
+        )
+
+        # Print and save results
+        print_benchmark_summary(results)
+        save_benchmark_results(results, args.output_file)
+        return
+
+    # Setup Pytanque for single theorem mode
     pet = Pytanque(args.host, args.port)
     pet.connect()
     pet.set_workspace(False, str(args.workspace))
@@ -103,7 +362,7 @@ def main():
         theorem=args.theorem,
     )
 
-    if args.eval:
+    if args.check:
         try:
             file_path = "/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json"
             with open(file_path, "r", encoding="utf-8") as file:
