@@ -30,7 +30,6 @@ srun --export=ALL bash -lc '
 
 sleep 10
 echo $HEAD_NODE > /lustre/fsn1/projects/rech/tdm/commun/pet_ip.txt
-cd src/servers/script
 
 gunicorn -w 9 -b 0.0.0.0:5000 app:app
 
