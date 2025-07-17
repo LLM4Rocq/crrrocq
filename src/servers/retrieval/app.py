@@ -19,7 +19,7 @@ with open(config['docstrings_path'], 'r') as file:
 while not os.path.exists(config['ip_path']):
     time.sleep(20)
 
-with open(config['ip_path'], 'r') as file:
+with open(os.environ['EMBED_IP_PATH'], 'r') as file:
     ip = file.read().strip()
     base_url = f"http://{ip}/v1"
 
