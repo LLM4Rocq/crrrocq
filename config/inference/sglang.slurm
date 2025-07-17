@@ -45,14 +45,22 @@ sleep 60
 srun --overlap --nodes=1 --nodelist=$HEAD_NODE\
      sh <<'EOF'
 
-until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; do
+until curl -s -o /dev/null -w "%{http_code}" http://localhost:$EMBED_PORT/v1/models | grep -q "200"; do
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
+    sleep 60
+done
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Embedding ready."
+echo $HEAD_NODE:$EMBED_PORT > $EMBED_IP_PATH
+
+until curl -s -o /dev/null -w "%{http_code}" http://localhost:$MODEL_PORT/v1/models | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
     sleep 60
 done
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] SGlang ready."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Model ready."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] SGLang ready."
 echo $HEAD_NODE:$MODEL_PORT > $MODEL_IP_PATH
-echo $HEAD_NODE:$EMBED_PORT > $EMBED_IP_PATH
+
 
 EOF
 

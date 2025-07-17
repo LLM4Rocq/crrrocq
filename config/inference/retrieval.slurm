@@ -16,7 +16,7 @@ conda deactivate
 cd $SCRATCH/crrrocq
 
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
-FLASK_PORT=5000
+FLASK_PORT=5001
 HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n 1)
 
 # srun --export=ALL bash -lc '
@@ -31,6 +31,6 @@ until curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health
     sleep 20
 done
 
-echo $HEAD_NODE:$FLASK_PORT > $RETRIEVAL_PATH
+echo $HEAD_NODE:$FLASK_PORT > $RETRIEVAL_IP_PATH
 
 wait
