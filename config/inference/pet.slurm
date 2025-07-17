@@ -16,6 +16,7 @@ conda deactivate
 
 source /lustre/fswork/projects/rech/tdm/commun/.opam/opam-init/init.sh
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
+cd $SCRATCH/crrrocq
 
 HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n 1)
 FLASK_PORT=5000
@@ -32,7 +33,7 @@ srun --export=ALL bash -lc '
 
 sleep 10
 
-gunicorn -w 9 -b 0.0.0.0:$FLASK_PORT src.servers.script.app:app
+gunicorn -w 9 -b 0.0.0.0:$FLASK_PORT src.servers.script.app:app &
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for pet server to respond..."
     sleep 20
