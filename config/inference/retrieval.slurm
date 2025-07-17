@@ -16,7 +16,7 @@ conda deactivate
 cd $SCRATCH/crrrocq
 
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
-
+FLASK_PORT=5000
 HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n 1)
 
 # srun --export=ALL bash -lc '
@@ -25,8 +25,12 @@ HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n 1)
 # 
 # sleep 60
 
-echo $HEAD_NODE > /lustre/fsn1/projects/rech/tdm/commun/retrieval_ip.txt
+gunicorn -w 8 -b 0.0.0.0:$FLASK_PORT src.servers.retrieval.app:app &
+until curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health | grep -q "200"; do
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for retrieval server to respond..."
+    sleep 20
+done
 
-gunicorn -w 8 -b 0.0.0.0:5001 src.servers.retrieval.app:app
+echo $HEAD_NODE:$FLASK_PORT > $RETRIEVAL_PATH
 
 wait

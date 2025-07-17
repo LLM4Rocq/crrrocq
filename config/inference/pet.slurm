@@ -18,6 +18,8 @@ source /lustre/fswork/projects/rech/tdm/commun/.opam/opam-init/init.sh
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
 
 HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n 1)
+FLASK_PORT=5000
+
 export BASE_PORT=8765
 
 srun --export=ALL bash -lc '
@@ -29,8 +31,13 @@ srun --export=ALL bash -lc '
 ' &
 
 sleep 10
-echo $HEAD_NODE > /lustre/fsn1/projects/rech/tdm/commun/pet_ip.txt
 
-gunicorn -w 9 -b 0.0.0.0:5000 app:app
+gunicorn -w 9 -b 0.0.0.0:$FLASK_PORT app:app
+until curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health | grep -q "200"; do
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for retrieval server to respond..."
+    sleep 20
+done
+
+echo $HEAD_NODE:$FLASK_PORT > $PET_IP_PATH
 
 wait
