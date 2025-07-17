@@ -57,7 +57,7 @@ def main():
     )
     parser.add_argument(
         "--index-cache-path",
-        default="/lustre/fsn1/projects/rech/tdm/uuz44ie/data/index",
+        default="/lustre/fsn1/projects/rech/tdm/commun/cache/index",
         help="Index cache path",
     )
 

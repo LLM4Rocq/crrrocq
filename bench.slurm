@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=infer-test         # name of the job
+#SBATCH --job-name=bench-test         # name of the job
 #SBATCH --nodes=1                     # number of nodes
 #SBATCH --ntasks-per-node=1           # number of MPI tasks per node
 #SBATCH --hint=nomultithread          # reservation of physical cores (no hyperthreading)
-#SBATCH --output=infer-test%j.out  # name of output file
-#SBATCH --error=infer-test%j.err   # name of error file
+#SBATCH --output=bench-test%j.out  # name of output file
+#SBATCH --error=bench-test%j.err   # name of error file
 #SBATCH --constraint=h100             # h100 gpus
 #SBATCH --nodes=1                     # number of nodes
 #SBATCH --gres=gpu:2                  # number of gpus/node
@@ -31,9 +31,9 @@ export TMPDIR=$JOBSCRATCH
 
 MODEL=/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/
 MODEL_EMB=/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b
-WORKSPACE=examples
-THM=foo
-FILE=foo.v
+WORKSPACE=/lustre/fsn1/projects/rech/tdm/commun/math-comp/algebra
+THM=coef_prod_XsubC
+FILE=poly.v
 PORT_EMB=31000
 
 # Function to detect GPU-CPU topology automatically
@@ -172,7 +172,7 @@ sleep 5
 # Run inference
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting inference"
 if [[ "$USE_NUMA" == "true" ]] && [[ "$EMB_NUMA_NODE" =~ ^[0-9]+$ ]]; then
-    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.benchmark --theorem $THM --file $FILE --workspace $WORKSPACE --beam-size 8
+    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.benchmark --theorem $THM --file $FILE --workspace $WORKSPACE --beam-size 8 --eval
 elif [[ -n "$EMB_CPUS" ]]; then
     taskset -c $EMB_CPUS python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 else
