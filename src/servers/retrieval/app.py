@@ -8,7 +8,7 @@ from src.embedding.models.openai import OpenAIEmbedding
 
 app = Flask(__name__)
 
-with open('src/servers/retrieval/config.yaml', 'r') as file:
+with open('config/server/retrieval/config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 with open(config['docstrings_path'], 'r') as file:
@@ -30,4 +30,4 @@ def query():
         return str(e), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', port=config['port'])

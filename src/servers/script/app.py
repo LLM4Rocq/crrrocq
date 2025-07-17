@@ -6,10 +6,10 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-with open('config.yaml', 'r') as file:
+with open('config/server/script/config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
-with open('thm_filename.json', 'r') as file:
+with open('config/server/script/thm_filename.json', 'r') as file:
     thm_filename = json.load(file)
 
 # Global index to balance load across pet servers
