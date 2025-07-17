@@ -49,28 +49,30 @@ detect_gpu_topology() {
         # Get CPU affinity for each GPU
         nvidia-smi topo -m > /tmp/gpu_topology.txt
         
-        # Parse CPU affinity for GPU0 and GPU1
-        GPU0_CPUS=$(nvidia-smi topo -m | grep "GPU0" | awk '{print $8}')
-        GPU1_CPUS=$(nvidia-smi topo -m | grep "GPU1" | awk '{print $8}')
+        # Parse CPU affinity for GPU0 and GPU1 - skip header row
+        GPU0_CPUS=$(nvidia-smi topo -m | grep "^GPU0" | awk '{print $8}')
+        GPU1_CPUS=$(nvidia-smi topo -m | grep "^GPU1" | awk '{print $8}')
         
-        # Get NUMA affinity - extract field 9 for both GPUs
-        GPU0_NUMA=$(nvidia-smi topo -m | grep "GPU0" | awk '{print $9}')
-        GPU1_NUMA=$(nvidia-smi topo -m | grep "GPU1" | awk '{print $9}')
+        # Get NUMA affinity - extract field 9 for both GPUs, skip header row
+        GPU0_NUMA=$(nvidia-smi topo -m | grep "^GPU0" | awk '{print $9}')
+        GPU1_NUMA=$(nvidia-smi topo -m | grep "^GPU1" | awk '{print $9}')
         
         echo "GPU0 CPU affinity: $GPU0_CPUS, NUMA: $GPU0_NUMA"
         echo "GPU1 CPU affinity: $GPU1_CPUS, NUMA: $GPU1_NUMA"
         
-        # If NUMA info is available and valid, use it
-        if [[ "$GPU0_NUMA" =~ ^[0-9]+$ ]] && [[ "$GPU1_NUMA" =~ ^[0-9]+$ ]]; then
+        # If NUMA info is available and valid (numeric), use it
+        if [[ "$GPU0_NUMA" =~ ^[0-9]+$ ]] && [[ "$GPU1_NUMA" =~ ^[0-9]+$ ]] && [[ "$GPU0_NUMA" != "N/A" ]] && [[ "$GPU1_NUMA" != "N/A" ]]; then
             EMB_NUMA_NODE=$GPU0_NUMA  # Embedding server uses GPU0
             MAIN_NUMA_NODE=$GPU1_NUMA # Main server uses GPU1
             USE_NUMA=true
             echo "Using NUMA nodes: Main=$MAIN_NUMA_NODE, Embedding=$EMB_NUMA_NODE"
         else
-            echo "NUMA info not available, using CPU ranges"
+            echo "NUMA info not available or invalid, using CPU ranges"
             USE_NUMA=false
-            EMB_CPUS=$GPU0_CPUS
-            MAIN_CPUS=$GPU1_CPUS
+            # Clean up CPU ranges - remove any non-numeric characters except digits, commas, and hyphens
+            EMB_CPUS=$(echo "$GPU0_CPUS" | grep -o '[0-9,-]*')
+            MAIN_CPUS=$(echo "$GPU1_CPUS" | grep -o '[0-9,-]*')
+            echo "Using CPU ranges: Main=$MAIN_CPUS, Embedding=$EMB_CPUS"
         fi
     else
         echo "nvidia-smi not available, using fallback CPU allocation"
@@ -125,7 +127,7 @@ EMB_PID=$!
 
 # Wait for main server to be ready
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for main server to be ready..."
-MAX_RETRIES=30
+MAX_RETRIES=60  # Increased from 30 to 60 (10 minutes total)
 RETRY_COUNT=0
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; do
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
