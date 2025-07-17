@@ -1,4 +1,4 @@
-ID=$RANDOM_$(date '+%Y-%m-%d %H:%M:%S')
+ID=$RANDOM_$(date '+%Y_%m_%d_%H_%M_%S')
 
 export RETRIEVAL_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/retrieval_ip_$ID.txt
 export PET_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/pet_ip_$ID.txt

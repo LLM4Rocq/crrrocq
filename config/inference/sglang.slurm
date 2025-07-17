@@ -42,8 +42,8 @@ sleep 60
 
 # This logic (wait/run) should probably be implemented in the python script for inference...
 
-srun --overlap --nodes=1 --nodelist=$HEAD_NODE\
-     sh <<'EOF'
+# srun --overlap --nodes=1 --nodelist=$HEAD_NODE\
+#      sh <<'EOF'
 
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:$EMBED_PORT/v1/models | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
