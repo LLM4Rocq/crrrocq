@@ -47,14 +47,14 @@ srun --overlap --nodes=1 --nodelist=$HEAD_NODE\
 
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:$EMBED_PORT/v1/models | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
-    sleep 60
+    sleep 20
 done
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Embedding ready."
 echo $HEAD_NODE:$EMBED_PORT > $EMBED_IP_PATH
 
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:$MODEL_PORT/v1/models | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
-    sleep 60
+    sleep 20
 done
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Model ready."
