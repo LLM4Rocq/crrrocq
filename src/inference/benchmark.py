@@ -222,7 +222,7 @@ def main():
     )
     parser.add_argument("--file", type=str, default="foo.v", help="Coq file name")
     parser.add_argument(
-        "--theorem", type=str, required=True, help="Name of the theorem to prove"
+        "--theorem", type=str, required=False, help="Name of the theorem to prove"
     )
     parser.add_argument(
         "--host", type=str, default="127.0.0.1", help="Pytanque server host"
