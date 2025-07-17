@@ -61,9 +61,6 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Model ready."
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] SGLang ready."
 echo $HEAD_NODE:$MODEL_PORT > $MODEL_IP_PATH
 
-
-EOF
-
 # Keep the script running until the SLURM job times out
 
 wait

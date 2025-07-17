@@ -32,9 +32,9 @@ srun --export=ALL bash -lc '
 
 sleep 10
 
-gunicorn -w 9 -b 0.0.0.0:$FLASK_PORT app:app
+gunicorn -w 9 -b 0.0.0.0:$FLASK_PORT src.servers.script.app:app
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health | grep -q "200"; do
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for retrieval server to respond..."
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for pet server to respond..."
     sleep 20
 done
 
