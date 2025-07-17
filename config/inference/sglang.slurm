@@ -26,9 +26,9 @@ HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n 1)
 NCCL_INIT_ADDR="${HEAD_NODE}:8000"
 export SGLANG_HOST_IP="${HEAD_NODE}"
 
-MODEL="/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/"
+MODEL_PATH="/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/"
 MODEL_PORT=30000
-EMBED_MODEL="/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b"
+EMBED_PATH="/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b"
 EMBED_PORT=30001
 
 unset http_proxy
@@ -36,8 +36,8 @@ unset HTTP_PROXY
 unset https_proxy
 unset HTTPS_PROXY
 
-python -m sglang.launch_server --tp-size 4 --model-path $MODEL --host 0.0.0.0 --port $MODEL_PORT &
-python -m sglang.launch_server --tp-size 4 --model-path $MODEL_EMB --host 0.0.0.0 --port $PORT_EMB --is-embedding &
+python -m sglang.launch_server --tp-size $TP_SIZE --mem-fraction-static 0.7 --model-path $MODEL_PATH --host 0.0.0.0 --port $MODEL_PORT &
+python -m sglang.launch_server --tp-size $TP_SIZE --mem-fraction-static 0.29 --model-path $EMBED_PATH --host 0.0.0.0 --port $EMBED_PORT  --is-embedding &
 
 sleep 60
 
