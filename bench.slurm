@@ -35,7 +35,7 @@ EVALUATION_JSON=/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json
 OUTPUT_FILE=benchmark_results_$(date +%Y%m%d_%H%M%S).json
 PORT_EMB=31000
 MAX_WORKERS=4
-MAX_THEOREMS=10  # Adjust based on your needs
+MAX_THEOREMS=150  # Adjust based on your needs
 
 # Function to detect GPU-CPU topology automatically
 detect_gpu_topology() {
