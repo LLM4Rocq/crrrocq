@@ -9,7 +9,7 @@ app = Flask(__name__)
 with open('config/server/script/config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
-with open('config/server/script/thm_filename.json', 'r') as file:
+with open(config['thm_paths'], 'r') as file:
     thm_filename = json.load(file)
 
 # Global index to balance load across pet servers
@@ -66,9 +66,10 @@ def start_thm():
         thm_name = data['name']
         login_idx = data['login']
 
-        filepath = thm_filename[thm_name]
-
+        entry = thm_filename[thm_name]
+        filepath, line, character = entry['filepath'], entry['position']['line'], entry['position']['character']
         worker = pytanques[login_idx]
+        worker.get_state_at_pos(filepath, line, character, 0)
         state = worker.start(file=filepath, thm=thm_name)
         goals = worker.goals(state)
         goals_json = [goal.to_json() for goal in goals]

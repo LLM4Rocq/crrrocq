@@ -1,2 +1,3 @@
 num_pet_server: 4
 pet_server_start_port: 8765
+thm_paths: "/lustre/fsn1/projects/rech/tdm/commun/dataset/filename.json"
