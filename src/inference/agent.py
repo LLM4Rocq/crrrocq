@@ -47,7 +47,7 @@ class MathAgent:
         for tool_name, tool_config in config['tools'].items():
             self.tools[tool_name] = get_tool(tool_name, **tool_config)
         self.instruct = self.build_instruct()
-        self.llm = get_llm(config['llm_kind'])(**config['llm_config'])
+        self.llm = get_llm(config['llm_kind'], **config['llm_config'])
 
     def duplicate(self, reset_blocks=False) -> Any:
         """Duplicate current agent."""

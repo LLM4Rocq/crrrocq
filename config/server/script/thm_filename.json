@@ -1,5 +1,5 @@
 {
-    "amc12_2000_p20": "/home/theo/Documents/github/crrrocq/examples/amc12_2000_p20.v",
-    "foo": "/home/theo/Documents/github/crrrocq/examples/foo.v",
-    "foofoo": "/home/theo/Documents/github/crrrocq/examples/foofoo.v"
+    "amc12_2000_p20": "examples/amc12_2000_p20.v",
+    "foo": "examples/foo.v",
+    "foofoo": "examples/foofoo.v"
 }
