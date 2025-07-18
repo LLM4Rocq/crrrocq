@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any, Optional, Tuple
 import time
 from dataclasses import dataclass
+import threading
 
 from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool, ThreadLocalSearchTool
