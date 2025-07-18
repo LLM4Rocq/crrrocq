@@ -16,7 +16,7 @@ with open('config/server/retrieval/config.yaml', 'r') as file:
 with open(config['docstrings_path'], 'r') as file:
     dictionary = json.load(file)
 
-while not os.path.exists(config['ip_path']):
+while not os.path.exists(os.environ['EMBED_IP_PATH']):
     time.sleep(20)
 
 with open(os.environ['EMBED_IP_PATH'], 'r') as file:
