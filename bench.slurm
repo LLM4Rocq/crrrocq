@@ -196,7 +196,7 @@ else
 fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Benchmark completed"
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Results saved to: $OUTPUT_FILE"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Results not saved to: $OUTPUT_FILE"
 
 # Log final resource usage
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Resource usage summary:"

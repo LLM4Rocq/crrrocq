@@ -44,6 +44,7 @@ class VLLM(LLM):
         verbose: bool = True,
         log_dir: str = "llm_logs",
         log_to_console: bool = False,
+        session_name: str = None,
     ):
         self.api_url = api_url
         self.model = model
@@ -53,9 +54,12 @@ class VLLM(LLM):
         self.max_tokens = max_tokens
         self.verbose = verbose
 
-        # Initialize the LLM logger
+        # Initialize the LLM logger with session name
         self.logger = LLMLogger(
-            log_dir=log_dir, enabled=True, log_to_console=log_to_console or verbose
+            log_dir=log_dir,
+            enabled=True,
+            log_to_console=log_to_console or verbose,
+            session_name=session_name,
         )
 
     def build_prompt(
@@ -204,6 +208,14 @@ class VLLM(LLM):
             # Return empty strings in case of error
             return [""] * len(prompts)
 
+    def finalize_session(self) -> None:
+        """Finalize the logging session."""
+        self.logger.finalize_session()
+
+    def get_session_log_path(self) -> str:
+        """Get the path to the current session log file."""
+        return self.logger.get_session_path()
+
 
 class ThreadLocalVLLM:
     """
@@ -223,7 +235,7 @@ class ThreadLocalVLLM:
         self._instance_count = 0
         self._lock = threading.Lock()
 
-    def _get_instance(self) -> VLLM:
+    def _get_instance(self, session_name: str = None) -> VLLM:
         """Get or create a VLLM instance for the current thread."""
         if not hasattr(self.local, "vllm"):
             with self._lock:
@@ -233,28 +245,55 @@ class ThreadLocalVLLM:
             thread_name = threading.current_thread().name
             print(f"Creating VLLM instance #{instance_id} for thread {thread_name}")
 
+            # Create without session name initially
             self.local.vllm = VLLM(**self.vllm_config)
             self.local.instance_id = instance_id
 
+        # If session name is provided, create a new logger for this session
+        if session_name and hasattr(self.local, "vllm"):
+            llm = self.local.vllm
+            # Create a new logger with the specific session name
+            from .llm_logger import LLMLogger
+
+            llm.logger = LLMLogger(
+                log_dir="bench_logs",
+                enabled=llm.logger.enabled,
+                log_to_console=llm.logger.log_to_console,
+                session_name=session_name,
+            )
+
         return self.local.vllm
 
-    def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        stop_sequences: Optional[List[str]] = None,
+        session_name: str = None,
+    ) -> str:
         """Generate a completion using the thread-local VLLM instance."""
-        llm = self._get_instance()
+        llm = self._get_instance(session_name)
         return llm.generate(prompt, stop_sequences)
 
     def generate_batch(
-        self, prompts: List[str], stop_sequences: Optional[List[str]] = None
+        self,
+        prompts: List[str],
+        stop_sequences: Optional[List[str]] = None,
+        session_name: str = None,
     ) -> List[str]:
         """Generate completions for multiple prompts using the thread-local VLLM instance."""
-        llm = self._get_instance()
+        llm = self._get_instance(session_name)
         return llm.generate_batch(prompts, stop_sequences)
 
     def build_prompt(
-        self, goals: str, coq_tag: str, context: str = "", goals_tag: str = "GOALS"
+        self,
+        goals: str,
+        coq_tag: str,
+        context: str = "",
+        goals_tag: str = "GOALS",
+        session_name: str = None,
     ) -> str:
         """Build the initial prompt for the LLM."""
-        llm = self._get_instance()
+        llm = self._get_instance(session_name)
         return llm.build_prompt(goals, coq_tag, context, goals_tag)
 
     def build_prompt_with_feedback(
@@ -267,9 +306,10 @@ class ThreadLocalVLLM:
         previous_attempts: List[str] = None,
         context: str = "",
         goals_tag: str = "GOALS",
+        session_name: str = None,
     ) -> str:
         """Build a prompt that includes feedback from previous proof attempts."""
-        llm = self._get_instance()
+        llm = self._get_instance(session_name)
         return llm.build_prompt_with_feedback(
             goals,
             coq_tag,

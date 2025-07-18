@@ -9,7 +9,7 @@ class LLMLogger:
     """
     Simple logger specifically for LLM prompts and responses.
 
-    This logger saves each interaction in a separate JSON file for easy analysis.
+    This logger accumulates all interactions in a single JSON file for a proof session.
     """
 
     def __init__(
@@ -17,6 +17,7 @@ class LLMLogger:
         log_dir: str = "llm_logs",
         enabled: bool = True,
         log_to_console: bool = False,
+        session_name: str = None,
     ):
         """
         Initialize the LLM logger.
@@ -25,14 +26,41 @@ class LLMLogger:
             log_dir: Directory to store log files
             enabled: Whether logging is enabled
             log_to_console: Whether to also print logs to console
+            session_name: Name for this proof session (used in filename)
         """
         self.log_dir = log_dir
         self.enabled = enabled
         self.log_to_console = log_to_console
+        
+        # Create session-specific filename
+        if session_name:
+            self.log_filename = f"proof_session_{session_name}.json"
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.log_filename = f"proof_session_{timestamp}.json"
+            
+        self.log_path = os.path.join(log_dir, self.log_filename)
+        
+        # Initialize the session log data
+        self.session_data = {
+            "session_start": datetime.now().isoformat(),
+            "session_name": session_name or "unnamed",
+            "interactions": []
+        }
 
         # Create log directory if it doesn't exist
         if enabled:
             os.makedirs(log_dir, exist_ok=True)
+            # Initialize the log file
+            self._write_session_data()
+
+    def _write_session_data(self) -> None:
+        """Write the current session data to the log file."""
+        if not self.enabled:
+            return
+            
+        with open(self.log_path, "w") as f:
+            json.dump(self.session_data, f, indent=2)
 
     def log_interaction(
         self,
@@ -42,35 +70,37 @@ class LLMLogger:
         prefix: str = "",
     ) -> None:
         """
-        Log a single LLM interaction.
+        Log a single LLM interaction to the session file.
 
         Args:
             prompt: The prompt sent to the LLM
             response: The response from the LLM
             metadata: Optional metadata to include in the log
-            prefix: Optional prefix for the log filename
+            prefix: Optional prefix (kept for compatibility but not used)
         """
         if not self.enabled:
             return
 
         # Create a timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        timestamp = datetime.now().isoformat()
 
-        # Create log data
-        log_data = {"timestamp": timestamp, "prompt": prompt, "response": response}
+        # Create interaction data
+        interaction_data = {
+            "timestamp": timestamp,
+            "prompt": prompt,
+            "response": response,
+            "interaction_type": "single"
+        }
 
         # Add metadata if provided
         if metadata:
-            log_data["metadata"] = metadata
+            interaction_data["metadata"] = metadata
 
-        # Create log filename with optional prefix
-        filename = f"{prefix}_" if prefix else ""
-        filename += f"llm_interaction_{timestamp}.json"
-
-        # Write to log file
-        log_path = os.path.join(self.log_dir, filename)
-        with open(log_path, "w") as f:
-            json.dump(log_data, f, indent=2)
+        # Add to session data
+        self.session_data["interactions"].append(interaction_data)
+        
+        # Write updated session data to file
+        self._write_session_data()
 
         # Print to console if enabled
         if self.log_to_console:
@@ -87,23 +117,25 @@ class LLMLogger:
         prefix: str = "",
     ) -> None:
         """
-        Log a batch of LLM interactions.
+        Log a batch of LLM interactions to the session file.
 
         Args:
             prompts: The prompts sent to the LLM
             responses: The responses from the LLM
             metadata: Optional metadata to include in the log
-            prefix: Optional prefix for the log filename
+            prefix: Optional prefix (kept for compatibility but not used)
         """
         if not self.enabled:
             return
 
         # Create a timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        timestamp = datetime.now().isoformat()
 
-        # Create log data
-        log_data = {
+        # Create batch interaction data
+        batch_interaction_data = {
             "timestamp": timestamp,
+            "interaction_type": "batch",
+            "batch_size": len(prompts),
             "interactions": [
                 {"prompt": p, "response": r} for p, r in zip(prompts, responses)
             ],
@@ -111,19 +143,36 @@ class LLMLogger:
 
         # Add metadata if provided
         if metadata:
-            log_data["metadata"] = metadata
+            batch_interaction_data["metadata"] = metadata
 
-        # Create log filename with optional prefix
-        filename = f"{prefix}_" if prefix else ""
-        filename += f"llm_batch_interaction_{timestamp}.json"
-
-        # Write to log file
-        log_path = os.path.join(self.log_dir, filename)
-        with open(log_path, "w") as f:
-            json.dump(log_data, f, indent=2)
+        # Add to session data
+        self.session_data["interactions"].append(batch_interaction_data)
+        
+        # Write updated session data to file
+        self._write_session_data()
 
         # Print to console if enabled
         if self.log_to_console:
             print(f"\n=== LLM Batch Interaction at {timestamp} ===")
             print(f"Number of interactions: {len(prompts)}")
             print("=" * 50)
+
+    def finalize_session(self) -> None:
+        """
+        Finalize the session by adding end timestamp and final write.
+        """
+        if not self.enabled:
+            return
+            
+        self.session_data["session_end"] = datetime.now().isoformat()
+        self.session_data["total_interactions"] = len(self.session_data["interactions"])
+        self._write_session_data()
+
+    def get_session_path(self) -> str:
+        """
+        Get the path to the current session log file.
+        
+        Returns:
+            Path to the session log file
+        """
+        return self.log_path

@@ -77,8 +77,11 @@ def run_single_proof_with_mixed_tools(
             have_tool=have_tool,  # Fresh instance (thread-safe)
         )
 
-        # Run the proof
-        status = agent.run_proof(beam_size=beam_size, verbose=verbose)
+        # Set the session name for this theorem
+        theorem_session_name = f"{theorem}_{theorem_id}"
+        
+        # Run the proof with session name
+        status = agent.run_proof(beam_size=beam_size, verbose=verbose, session_name=theorem_session_name)
 
         print(f"Theorem {theorem_id}: Completed with status {status}")
 
@@ -273,12 +276,6 @@ def main():
     parser.add_argument("--check", action="store_true", help="Check proof is valid")
 
     # New benchmark arguments
-    parser.add_argument(
-        "--benchmark",
-        action="store_true",
-        help="Run benchmark on all theorems from evaluation.json",
-    )
-
     parser.add_argument(
         "--evaluation-json",
         type=str,
