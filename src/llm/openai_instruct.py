@@ -8,7 +8,7 @@ from .base import BaseLLM
 class OpenAIInstructLLM(BaseLLM):
     """Class for LLM providers compatible with OpenAI API."""
 
-    def __init__(self, model_name: str, generation_parameters: dict={}, base_url="http://127.0.0.1:30000/v1", api_key="None"):
+    def __init__(self, model_name: str="", generation_parameters: dict={}, base_url="http://127.0.0.1:30000/v1", api_key="None"):
         super().__init__()
         self.model_name = model_name
         self.generation_parameters = generation_parameters
