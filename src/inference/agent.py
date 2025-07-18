@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Union, Tuple
 from dataclasses import dataclass
 import re
+import json
 from copy import deepcopy
 
 from ..tools.base import ToolError
@@ -44,7 +45,7 @@ class MathAgent:
         self.tools = {}
         self.blocks = []
         for tool_name, tool_config in config['tools'].items():
-            self.tools[tool_name] = get_tool(tool_name)(**tool_config)
+            self.tools[tool_name] = get_tool(tool_name, **tool_config)
         self.instruct = self.build_instruct()
         self.llm = get_llm(config['llm_kind'])(**config['llm_config'])
 
@@ -68,23 +69,8 @@ class MathAgent:
 
     def build_instruct(self) -> str:
         """Build the prompt for the LLM."""
-        # Get available tools with their descriptions
-        tool_descriptions = "\n".join(
-            [
-                f"<{tool.tag}> {tool.description} </{tool.tag}>"
-                for tool in self.tools.values()
-            ]
-        )
-
-        # Build instructions for tool usage with proper tags
-        tool_instructions = "\n".join(
-            [
-                f"{tool.instruction}"
-                for tool in self.tools.values()
-            ]
-        )
-        prompt = self.config("prompt_template").format(tool_descriptions=tool_descriptions, tool_instructions=tool_instructions)
-        return prompt
+        with open(self.config['prompt_path'], 'r') as file:
+            return json.load(file)['instruction']
 
     def build_blocks(self) -> str:
         """Agregate blocks into string."""
@@ -128,7 +114,7 @@ class MathAgent:
                 try:
                     self.blocks += new_blocks
                     last_block = new_blocks[-1]
-                    result = self.tools[last_block['kind']](last_block['content'], agent=self, **self.config['tools_param'])
+                    result = self.tools[last_block['kind']].run(last_block['content'], agent=self, **self.config['tools_param'])
                     self.blocks.append({"kind": "result", "content": deepcopy(result)})
                     break
                 except ToolError as e:
