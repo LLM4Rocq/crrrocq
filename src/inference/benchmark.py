@@ -31,6 +31,7 @@ def run_single_proof_with_mixed_tools(
     theorem_id: int,
     tool_configs: Dict[str, Dict[str, Any]],
     beam_size: int = 1,
+    num_attempt: int = 1,
     verbose: bool = False,
     **agent_kwargs,
 ) -> Dict[str, Any]:
@@ -79,9 +80,14 @@ def run_single_proof_with_mixed_tools(
 
         # Set the session name for this theorem
         theorem_session_name = f"{theorem}_{theorem_id}"
-        
+
         # Run the proof with session name
-        status = agent.run_proof(beam_size=beam_size, verbose=verbose, session_name=theorem_session_name)
+        status = agent.run_proof(
+            beam_size=beam_size,
+            num_attempt=num_attempt,
+            verbose=verbose,
+            session_name=theorem_session_name,
+        )
 
         print(f"Theorem {theorem_id}: Completed with status {status}")
 
@@ -118,6 +124,7 @@ def run_parallel_proofs_with_mixed_tools(
     tool_configs: Dict[str, Dict[str, Any]],
     max_workers: int = 4,
     beam_size: int = 1,
+    num_attempt: int = 1,
     verbose: bool = False,
     **agent_kwargs,
 ) -> List[Dict[str, Any]]:
@@ -157,6 +164,7 @@ def run_parallel_proofs_with_mixed_tools(
                 theorem_file,
                 theorem_id,
                 get_tool_configs_copy(),
+                num_attempt,
                 **agent_kwargs,
             ): theorem_id
             for theorem_id, (theorem, theorem_file) in enumerate(theorems)
@@ -341,6 +349,7 @@ def main():
         shared_search_tool=shared_search_tool,
         tool_configs=tool_configs,
         max_workers=4,
+        num_attempt=16,
     )
 
     # Show results

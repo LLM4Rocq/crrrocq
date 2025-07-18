@@ -91,7 +91,14 @@ class ToolHandler:
         # Define a constant for the result tag
         self.RESULT_TAG = "result"
 
-    def process_with_tools(self, llm: LLM, prompt: str, beam_size: int = 1, session_name: str = None) -> Status:
+    def process_with_tools(
+        self,
+        llm: LLM,
+        prompt: str,
+        beam_size: int = 1,
+        num_attempt: int = 1,
+        session_name: str = None,
+    ) -> Status:
         """
         Process LLM generation with tool support using beam search.
 
@@ -119,6 +126,7 @@ class ToolHandler:
 
         # Track which beams are active
         active_indices = list(range(beam_size))
+        counters = [num_attempt] * beam_size
 
         # Create a list of stop sequences from tool tags
         stop_sequences = [f"</{tool.tag}>" for tool in self.tools.values()]
@@ -129,7 +137,9 @@ class ToolHandler:
             active_prompts = [all_prompts[i] for i in active_indices]
 
             # Generate responses only for active beams
-            responses = llm.generate_batch(active_prompts, stop_sequences, session_name=session_name)
+            responses = llm.generate_batch(
+                active_prompts, stop_sequences, session_name=session_name
+            )
 
             # New set of active indices for the next iteration
             new_active_indices = []
@@ -144,7 +154,7 @@ class ToolHandler:
                 # Check if there's a tool call in the new response only
                 tool_call = self.parser.extract_next_tool_call(response)
 
-                print("response:", response)
+                # print("response:", response)
 
                 print("tool_call:", tool_call)
 
@@ -186,7 +196,12 @@ class ToolHandler:
                             new_active_indices.append(idx)
                     else:
                         # Proof failed, discard this beam (don't add to new_active_indices)
-                        continue
+                        counters[idx] -= 1
+                        if counters[idx] <= 0:
+                            continue
+                        else:
+                            all_prompts[idx] += f"<result>\n Script error\n</result>"
+                            new_active_indices.append(idx)
 
             # Update active indices for next iteration
             active_indices = new_active_indices
@@ -271,7 +286,13 @@ When tactics fail:
 """
         return prompt
 
-    def run_proof(self, beam_size: int = 1, verbose: bool = False, session_name: str = None) -> Status:
+    def run_proof(
+        self,
+        beam_size: int = 1,
+        num_attempt: int = 1,
+        verbose: bool = False,
+        session_name: str = None,
+    ) -> Status:
         """
         Run the proof using beam search.
 
@@ -287,6 +308,12 @@ When tactics fail:
         prompt = self.build_prompt()
 
         # Generate response with tool support using beam search
-        response = self.tool_handler.process_with_tools(self.llm, prompt, beam_size, session_name=session_name)
+        response = self.tool_handler.process_with_tools(
+            self.llm,
+            prompt,
+            beam_size,
+            num_attempt=num_attempt,
+            session_name=session_name,
+        )
 
         return response
