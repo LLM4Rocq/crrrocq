@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import time
 from dataclasses import dataclass
 import threading
+import concurrent.futures
 
 from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool, ThreadLocalSearchTool
