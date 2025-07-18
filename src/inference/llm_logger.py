@@ -96,8 +96,8 @@ class LLMLogger:
         if metadata:
             interaction_data["metadata"] = metadata
 
-        # Add to session data
-        self.session_data["interactions"].append(interaction_data)
+        # Keep only the last interaction
+        self.session_data["interactions"] = [interaction_data]
         
         # Write updated session data to file
         self._write_session_data()
@@ -145,8 +145,8 @@ class LLMLogger:
         if metadata:
             batch_interaction_data["metadata"] = metadata
 
-        # Add to session data
-        self.session_data["interactions"].append(batch_interaction_data)
+        # Keep only the last interaction
+        self.session_data["interactions"] = [batch_interaction_data]
         
         # Write updated session data to file
         self._write_session_data()

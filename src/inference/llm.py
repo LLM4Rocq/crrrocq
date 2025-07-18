@@ -265,7 +265,7 @@ class ThreadLocalVLLM:
 
             llm.logger = LLMLogger(
                 log_dir="bench16_logs",
-                enabled=llm.logger.enabled,
+                enabled=True,
                 log_to_console=True,
                 session_name=session_name,
             )
