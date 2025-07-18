@@ -55,6 +55,11 @@ def main():
 
     with open(args.config_file, 'r') as file:
         config = yaml.safe_load(file)
+    
+    config['llm']['base_url'] = f"http://{os.environ['MODEL_IP_PATH']}/v1"
+    config['tools']['search']['base_url'] = f"http://{os.environ['RETRIEVAL_IP_PATH']}"
+    config['tools']['script']['base_url'] = f"http://{os.environ['PET_IP_PATH']}"
+
     with open(args.thms_file, 'r') as file:
         thm_names = yaml.safe_load(file)
 
