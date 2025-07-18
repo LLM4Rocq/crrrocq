@@ -49,22 +49,22 @@ def run_single_proof_with_mixed_tools(
 
         # Setup Pytanque
         pet_config = tool_configs["pet"]
-        pet = Pytanque(pet_config.host, pet_config.port)
+        pet = Pytanque(pet_config["host"], pet_config["port"])
         pet.connect()
-        pet.set_workspace(False, str(pet_config.workspace))
+        pet.set_workspace(False, str(pet_config["workspace"]))
 
         # Create fresh instances for other tools (if not thread-safe)
         # script_config = tool_configs["script"]
         script_tool = ScriptTool(
             pet=pet,
-            workspace=pet_config.workspace,
+            workspace=pet_config["workspace"],
             file=theorem_file,
             theorem=theorem,
         )
 
         have_tool = HaveTool(
             pet=pet,
-            workspace=pet_config.workspace,
+            workspace=pet_config["workspace"],
             file=theorem_file,
             theorem=theorem,
         )
