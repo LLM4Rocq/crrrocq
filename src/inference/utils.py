@@ -204,7 +204,7 @@ def parse_statement_info(statement_name: str) -> Dict[str, str]:
 
     return {
         "folder_name": folder_name,
-        "file_name": file_name,
+        "file_name": f"{file_name}.v",
         "module_name": module_name,
         "lemma_name": lemma_name,
     }
@@ -248,10 +248,10 @@ def search_statements_by_keyword(json_data: Dict[str, Any], keyword: str) -> Lis
 def get_evaluation_theorems(evaluation_json_path: str) -> List[Dict[str, str]]:
     """
     Extract all theorems from evaluation.json file with their folder and file information.
-    
+
     Args:
         evaluation_json_path: Path to the evaluation.json file
-        
+
     Returns:
         List of dictionaries containing theorem information:
         - full_name: Full statement name from JSON
@@ -270,26 +270,26 @@ def get_evaluation_theorems(evaluation_json_path: str) -> List[Dict[str, str]]:
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON file: {e}")
         return []
-    
+
     theorems = []
-    
+
     for statement_name in json_data.keys():
         parsed_info = parse_statement_info(statement_name)
-        
+
         # Construct workspace path based on folder structure
         workspace_path = f"/lustre/fsn1/projects/rech/tdm/commun/math-comp/{parsed_info['folder_name']}"
-        
+
         theorem_info = {
             "full_name": statement_name,
             "lemma_name": parsed_info["lemma_name"],
             "folder_name": parsed_info["folder_name"],
             "file_name": parsed_info["file_name"],
             "module_name": parsed_info["module_name"],
-            "workspace_path": workspace_path
+            "workspace_path": workspace_path,
         }
-        
+
         theorems.append(theorem_info)
-    
+
     return theorems
 
 

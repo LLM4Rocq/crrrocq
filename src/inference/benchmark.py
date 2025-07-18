@@ -7,223 +7,198 @@ import time
 from dataclasses import dataclass
 
 from pytanque import Pytanque
-from .tools import SearchTool, ScriptTool, HaveTool
-from .llm import VLLM
+from .tools import SearchTool, ScriptTool, HaveTool, ThreadLocalSearchTool
+from .llm import VLLM, ThreadLocalVLLM
 from .agent import MathProofAgent, Status
-from .utils import extract_proof, get_proof_tactics, get_evaluation_theorems
+from .utils import extract_proof, get_proof_tactics, get_evaluation_theorems, get_parsed_statements
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
 
 
-@dataclass
-class BenchmarkResult:
-    """Result of a theorem proving attempt."""
-
-    theorem_name: str
-    full_name: str
-    workspace_path: str
-    file_name: str
-    success: bool
-    proof_tactics: List[str]
-    error_message: Optional[str] = None
-    execution_time: float = 0.0
-
-
-def prove_single_theorem(theorem_info: Dict[str, str], args) -> BenchmarkResult:
+def run_single_proof_with_mixed_tools(
+    shared_llm: ThreadLocalVLLM,
+    shared_search_tool: ThreadLocalSearchTool,
+    theorem: str,
+    theorem_file: str,
+    theorem_id: int,
+    tool_configs: Dict[str, Dict[str, Any]],
+    beam_size: int = 1,
+    verbose: bool = False,
+    **agent_kwargs,
+) -> Dict[str, Any]:
     """
-    Prove a single theorem synchronously.
-
-    Args:
-        theorem_info: Dictionary containing theorem information from get_evaluation_theorems
-        args: Command line arguments with configuration
-
-    Returns:
-        BenchmarkResult with the proof attempt result
+    Run a single proof with mixed tool sharing strategy:
+    - LLM: Thread-local (shared)
+    - SearchTool: Thread-local (shared)
+    - Other tools: Fresh instances per thread
     """
-    start_time = time.time()
+    thread_name = threading.current_thread().name
+    print(f"Theorem {theorem_id}: Starting proof on thread {thread_name}")
 
     try:
-        # Setup Pytanque for this theorem
-        pet = Pytanque(args.host, args.port)
+        # Use shared thread-local SearchTool
+        search_tool = shared_search_tool
+
+        # Setup Pytanque
+        pet_config = tool_configs["pet"]
+        pet = Pytanque(pet_config.host, pet_config.port)
         pet.connect()
-        pet.set_workspace(False, theorem_info["workspace_path"])
+        pet.set_workspace(False, str(pet_config.workspace))
 
-        # Setup tools
-        search_tool = SearchTool(
-            index_path=args.index_cache_path,
-            model=args.model_embedding,
-            api_url=args.embedding_api,
-            docstrings_path=args.docstrings_path,
-        )
-
+        # Create fresh instances for other tools (if not thread-safe)
+        # script_config = tool_configs["script"]
         script_tool = ScriptTool(
             pet=pet,
-            workspace=theorem_info["workspace_path"],
-            file=theorem_info["file_name"],
-            theorem=theorem_info["lemma_name"],
+            workspace=pet_config.workspace,
+            file=theorem_file,
+            theorem=theorem,
         )
 
         have_tool = HaveTool(
             pet=pet,
-            workspace=theorem_info["workspace_path"],
-            file=theorem_info["file_name"],
-            theorem=theorem_info["lemma_name"],
+            workspace=pet_config.workspace,
+            file=theorem_file,
+            theorem=theorem,
         )
 
-        # Setup LLM
-        llm = VLLM(
-            api_url=args.llm_url,
-            model=args.model,
-            temperature=args.temperature,
-            verbose=args.verbose,
+        # Create MathProofAgent with mixed tool strategy
+        agent = MathProofAgent(
+            llm=shared_llm,  # Thread-local LLM (shared)
+            search_tool=search_tool,  # Thread-local SearchTool (shared)
+            script_tool=script_tool,  # Fresh instance (thread-safe)
+            have_tool=have_tool,  # Fresh instance (thread-safe)
         )
 
-        # Create agent and run proof
-        agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
-        status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
+        # Run the proof
+        status = agent.run_proof(beam_size=beam_size, verbose=verbose)
 
-        execution_time = time.time() - start_time
+        print(f"Theorem {theorem_id}: Completed with status {status}")
 
-        return BenchmarkResult(
-            theorem_name=theorem_info["lemma_name"],
-            full_name=theorem_info["full_name"],
-            workspace_path=theorem_info["workspace_path"],
-            file_name=theorem_info["file_name"],
-            success=status.success,
-            proof_tactics=status.proof,
-            execution_time=execution_time,
-        )
+        return {
+            "theorem_id": theorem_id,
+            "theorem": theorem,
+            "status": status,
+            "success": status.success,
+            "thread": thread_name,
+            "tools_strategy": {
+                "llm": "thread_local",
+                "search": "thread_local",
+                "script": "fresh_instance",
+                "have": "fresh_instance",
+            },
+        }
 
     except Exception as e:
-        execution_time = time.time() - start_time
-        return BenchmarkResult(
-            theorem_name=theorem_info["lemma_name"],
-            full_name=theorem_info["full_name"],
-            workspace_path=theorem_info["workspace_path"],
-            file_name=theorem_info["file_name"],
-            success=False,
-            proof_tactics=[],
-            error_message=str(e),
-            execution_time=execution_time,
-        )
+        print(f"Theorem {theorem_id}: Failed with error: {e}")
+        return {
+            "theorem_id": theorem_id,
+            "theorem": theorem,
+            "status": "error",
+            "success": False,
+            "error": str(e),
+            "thread": thread_name,
+        }
 
 
-async def run_benchmark_async(
-    theorems: List[Dict[str, str]],
-    args,
+def run_parallel_proofs_with_mixed_tools(
+    theorems: List[str],
+    shared_llm: ThreadLocalVLLM,
+    shared_search_tool: ThreadLocalSearchTool,
+    tool_configs: Dict[str, Dict[str, Any]],
     max_workers: int = 4,
-    max_theorems: Optional[int] = None,
-) -> List[BenchmarkResult]:
+    beam_size: int = 1,
+    verbose: bool = False,
+    **agent_kwargs,
+) -> List[Dict[str, Any]]:
     """
-    Run theorem proving benchmark asynchronously on multiple theorems.
+    Run multiple proofs in parallel with mixed tool sharing strategy.
 
     Args:
-        theorems: List of theorem information dictionaries
-        args: Command line arguments with configuration
-        max_workers: Maximum number of concurrent workers
-        max_theorems: Maximum number of theorems to process (None for all)
+        theorems: List of theorems to prove
+        shared_llm: ThreadLocalVLLM instance
+        shared_search_tool: ThreadLocalSearchTool instance
+        tool_configs: Configuration for other tools (script, have)
+        max_workers: Maximum number of concurrent threads
+        **agent_kwargs: Additional arguments for MathProofAgent
 
     Returns:
-        List of BenchmarkResult objects
+        List of proof results
     """
-    # Limit theorems if specified
-    if max_theorems is not None:
-        theorems = theorems[:max_theorems]
+    print(
+        f"Starting parallel proof of {len(theorems)} theorems with {max_workers} workers"
+    )
+    print(f"Using thread-local LLM and SearchTool, fresh instances for other tools")
 
-    print(f"Starting benchmark on {len(theorems)} theorems with {max_workers} workers")
-
-    # Create event loop and thread pool
-    loop = asyncio.get_event_loop()
     results = []
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
-        futures = [
-            loop.run_in_executor(executor, prove_single_theorem, theorem, args)
-            for theorem in theorems
-        ]
+    # Make a copy of tool_configs for each thread
+    def get_tool_configs_copy():
+        return {tool_type: config.copy() for tool_type, config in tool_configs.items()}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all proof tasks
+        future_to_theorem = {
+            executor.submit(
+                run_single_proof_with_mixed_tools,
+                shared_llm,
+                shared_search_tool,
+                theorem,
+                theorem_file,
+                theorem_id,
+                get_tool_configs_copy(),
+                **agent_kwargs,
+            ): theorem_id
+            for theorem_id, (theorem, theorem_file) in enumerate(theorems)
+        }
 
         # Collect results as they complete
-        for i, future in enumerate(asyncio.as_completed(futures)):
-            result = await future
-            results.append(result)
+        for future in concurrent.futures.as_completed(future_to_theorem):
+            theorem_id = future_to_theorem[future]
+            try:
+                result = future.result()
+                results.append(result)
 
-            # Progress reporting
-            print(
-                f"[{i+1}/{len(theorems)}] {result.theorem_name}: "
-                f"{'SUCCESS' if result.success else 'FAILED'} "
-                f"({result.execution_time:.2f}s)"
-            )
+                # Log progress
+                success_count = sum(1 for r in results if r["success"])
+                print(
+                    f"Progress: {len(results)}/{len(theorems)} completed, {success_count} successful"
+                )
 
-            if result.error_message:
-                print(f"  Error: {result.error_message}")
+            except Exception as e:
+                print(f"Theorem {theorem_id}: Unexpected error: {e}")
+                results.append(
+                    {
+                        "theorem_id": theorem_id,
+                        "theorem": theorems[theorem_id],
+                        "status": "unexpected_error",
+                        "success": False,
+                        "error": str(e),
+                    }
+                )
+
+    # Sort results by theorem_id to maintain order
+    results.sort(key=lambda x: x["theorem_id"])
 
     return results
 
+def get_theorems(file_path: str) -> List[(str], str)]:
+    with open(file_path, "r", encoding="utf-8") as file:
+        json_data = json.load(file)
 
-def print_benchmark_summary(results: List[BenchmarkResult]):
-    """Print a summary of benchmark results."""
-    total = len(results)
-    successful = sum(1 for r in results if r.success)
-    failed = total - successful
+    print(f"Loaded JSON data with {len(json_data)} proofs")
+    theorems = []
 
-    total_time = sum(r.execution_time for r in results)
-    avg_time = total_time / total if total > 0 else 0
+    parsed_statements = get_parsed_statements(json_data)
 
-    print(f"\n=== BENCHMARK SUMMARY ===")
-    print(f"Total theorems: {total}")
-    print(f"Successful: {successful} ({successful/total*100:.1f}%)")
-    print(f"Failed: {failed} ({failed/total*100:.1f}%)")
-    print(f"Total time: {total_time:.2f}s")
-    print(f"Average time per theorem: {avg_time:.2f}s")
-
-    if failed > 0:
-        print(f"\nFailed theorems:")
-        for result in results:
-            if not result.success:
-                print(f"  - {result.theorem_name} ({result.file_name})")
-                if result.error_message:
-                    print(f"    Error: {result.error_message}")
-
-
-def save_benchmark_results(results: List[BenchmarkResult], output_path: str):
-    """Save benchmark results to JSON file."""
-    results_data = []
-    for result in results:
-        results_data.append(
-            {
-                "theorem_name": result.theorem_name,
-                "full_name": result.full_name,
-                "workspace_path": result.workspace_path,
-                "file_name": result.file_name,
-                "success": result.success,
-                "proof_tactics": result.proof_tactics,
-                "error_message": result.error_message,
-                "execution_time": result.execution_time,
-            }
-        )
-
-    with open(output_path, "w") as f:
-        json.dump(results_data, f, indent=2)
-
-    print(f"Results saved to {output_path}")
-
+    for stmt_info in parsed_statements:
+        theorems.append( ({stmt_info['lemma_name']}, {stmt_info['folder_name']}/{stmt_info['file_name']}))
+    return theorems
 
 def main():
     """Main entry point for the inference CLI."""
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Coq Proof Assistant CLI")
-    parser.add_argument(
-        "--workspace",
-        type=str,
-        default="examples",
-        help="Path to the workspace directory",
-    )
-    parser.add_argument("--file", type=str, default="foo.v", help="Coq file name")
-    parser.add_argument(
-        "--theorem", type=str, required=False, help="Name of the theorem to prove"
-    )
     parser.add_argument(
         "--host", type=str, default="127.0.0.1", help="Pytanque server host"
     )
@@ -314,123 +289,52 @@ def main():
 
     args = parser.parse_args()
 
-    # Handle benchmark mode
-    if args.benchmark:
-        # Load theorems from evaluation.json
-        theorems = get_evaluation_theorems(args.evaluation_json)
-
-        if not theorems:
-            print("No theorems found in evaluation.json. Exiting.")
-            return
-
-        print(f"Found {len(theorems)} theorems for benchmarking")
-
-        # Run benchmark asynchronously
-        results = asyncio.run(
-            run_benchmark_async(
-                theorems,
-                args,
-                max_workers=args.max_workers,
-                max_theorems=args.max_theorems,
-            )
-        )
-
-        # Print and save results
-        print_benchmark_summary(results)
-        save_benchmark_results(results, args.output_file)
-        return
-
-    # Setup Pytanque for single theorem mode
-    pet = Pytanque(args.host, args.port)
-    pet.connect()
-    pet.set_workspace(False, str(args.workspace))
-
-    # Setup tools
-    # embedding_model = Qwen3Embedding4b(args.embedding_device)
-
-    search_tool = SearchTool(
-        index_path=args.index_cache_path,
-        model=args.model_embedding,
-        api_url=args.embedding_api,
-        docstrings_path=args.docstrings_path,
-    )
-
-    script_tool = ScriptTool(
-        pet=pet,
-        workspace=args.workspace,
-        file=args.file,
-        theorem=args.theorem,
-    )
-
-    if args.check:
-        try:
-            file_path = "/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json"
-            with open(file_path, "r", encoding="utf-8") as file:
-                json_data = json.load(file)
-
-            print(f"Loaded JSON data with {len(json_data)} proofs")
-
-            statement_name = args.theorem
-            print(f"\n=== Extracting proof for: {statement_name} ===")
-
-            proof = extract_proof(json_data, statement_name)
-
-            if proof:
-                print("\nTactics used:")
-                tactics = get_proof_tactics(proof)
-                for tactic in tactics:
-                    if tactic:  # Only show non-empty tactics
-                        print(f"  - {tactic}")
-                        checking_proof = script_tool.run(tactic)
-            else:
-                print("Proof not found")
-
-            print(f"Proof checking status: {checking_proof}")
-            del script_tool
-
-        except FileNotFoundError:
-            print(f"Error: File '{file_path}' not found. Please check the file path.")
-
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON file: {e}")
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-
-    script_tool = ScriptTool(
-        pet=pet,
-        workspace=args.workspace,
-        file=args.file,
-        theorem=args.theorem,
-    )
-
-    have_tool = HaveTool(
-        pet=pet,
-        workspace=args.workspace,
-        file=args.file,
-        theorem=args.theorem,
-    )
-
-    # Setup LLM
-    llm = VLLM(
+    # Initialize thread-local LLM
+    shared_llm = ThreadLocalVLLM(
         api_url=args.llm_url,
         model=args.model,
         temperature=args.temperature,
         verbose=args.verbose,
     )
 
-    # Create agent and run proof with specified beam size
-    agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
-    status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
+    # Initialize thread-local SearchTool
+    shared_search_tool = ThreadLocalSearchTool(
+        index_path=args.index_cache_path,
+        model=args.model_embedding,
+        api_url=args.embedding_api,
+        docstrings_path=args.docstrings_path,
+    )
 
-    # Print results
-    if status.success:
-        print("Proof completed successfully!")
-    else:
-        print("Proof incomplete.")
+    # Configure other tools (only script and have now)
+    tool_configs = {
+        "pet": {
+            "host": args.host,
+            "port": args.port,
+            "workspace": str(args.workspace),
+        },
+    }
 
-    print("\nProof tactics:")
-    for tactic in status.proof:
-        print(f"  {tactic}")
+    theorems = get_theorems(args.evaluation_json)
+    theorems = theorems[: args.max_theorems] if args.max_theorems else theorems
+
+    # Run parallel proofs
+    results = run_parallel_proofs_with_mixed_tools(
+        theorems=theorems,
+        shared_llm=shared_llm,
+        shared_search_tool=shared_search_tool,
+        tool_configs=tool_configs,
+        max_workers=4
+    )
+
+    # Show results
+    print(f"\n=== Results ===")
+    print(f"Total VLLM instances: {shared_llm.instance_count}")
+    print(f"Total SearchTool instances: {shared_search_tool.instance_count}")
+    
+    success_count = sum(1 for r in results if r['success'])
+    print(f"Successful proofs: {success_count}/{len(results)}")
+
+
 
 
 if __name__ == "__main__":

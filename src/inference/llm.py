@@ -1,8 +1,10 @@
 import json
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Union, Tuple, Callable
 import requests
 from dataclasses import dataclass
+import concurrent.futures
+import threading
 
 from .llm_logger import LLMLogger
 from .prompts import tactic_prompts
@@ -35,7 +37,7 @@ class VLLM(LLM):
         self,
         api_url: str,
         model: str,
-        temperature: float = 1.0,
+        temperature: float = 1,
         top_p: float = 0.9,
         top_k: int = 40,
         max_tokens: int = 16384,
@@ -201,3 +203,85 @@ class VLLM(LLM):
             print(f"Error in generate_batch: {e}")
             # Return empty strings in case of error
             return [""] * len(prompts)
+
+
+class ThreadLocalVLLM:
+    """
+    Thread-safe wrapper for VLLM that creates one instance per thread.
+    Perfect for scenarios with multiple sequential LLM calls within each thread.
+    """
+
+    def __init__(self, **vllm_config):
+        """
+        Initialize the thread-local VLLM wrapper.
+
+        Args:
+            **vllm_config: Configuration parameters to pass to VLLM constructor
+        """
+        self.vllm_config = vllm_config
+        self.local = threading.local()
+        self._instance_count = 0
+        self._lock = threading.Lock()
+
+    def _get_instance(self) -> VLLM:
+        """Get or create a VLLM instance for the current thread."""
+        if not hasattr(self.local, "vllm"):
+            with self._lock:
+                self._instance_count += 1
+                instance_id = self._instance_count
+
+            thread_name = threading.current_thread().name
+            print(f"Creating VLLM instance #{instance_id} for thread {thread_name}")
+
+            self.local.vllm = VLLM(**self.vllm_config)
+            self.local.instance_id = instance_id
+
+        return self.local.vllm
+
+    def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:
+        """Generate a completion using the thread-local VLLM instance."""
+        llm = self._get_instance()
+        return llm.generate(prompt, stop_sequences)
+
+    def generate_batch(
+        self, prompts: List[str], stop_sequences: Optional[List[str]] = None
+    ) -> List[str]:
+        """Generate completions for multiple prompts using the thread-local VLLM instance."""
+        llm = self._get_instance()
+        return llm.generate_batch(prompts, stop_sequences)
+
+    def build_prompt(
+        self, goals: str, coq_tag: str, context: str = "", goals_tag: str = "GOALS"
+    ) -> str:
+        """Build the initial prompt for the LLM."""
+        llm = self._get_instance()
+        return llm.build_prompt(goals, coq_tag, context, goals_tag)
+
+    def build_prompt_with_feedback(
+        self,
+        goals: str,
+        coq_tag: str,
+        response: str = "",
+        success: bool = False,
+        current_proof: str = "",
+        previous_attempts: List[str] = None,
+        context: str = "",
+        goals_tag: str = "GOALS",
+    ) -> str:
+        """Build a prompt that includes feedback from previous proof attempts."""
+        llm = self._get_instance()
+        return llm.build_prompt_with_feedback(
+            goals,
+            coq_tag,
+            response,
+            success,
+            current_proof,
+            previous_attempts,
+            context,
+            goals_tag,
+        )
+
+    @property
+    def instance_count(self) -> int:
+        """Get the total number of VLLM instances created."""
+        return self._instance_count
