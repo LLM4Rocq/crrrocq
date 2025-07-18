@@ -16,4 +16,4 @@ conda deactivate
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
 cd $SCRATCH/crrrocq
 
-python -m inference.script
+python -m script.inference

@@ -45,9 +45,9 @@ def main():
         default=256
     )
     parser.add_argument(
-        "--thms-file",
+        "--evaluation-file",
         type=str,
-        default="config/server/script/thm_filename.json"
+        default="/lustre/fsn1/projects/rech/tdm/commun/dataset/new_evaluation.json"
     )
     parser.add_argument(
         "--log-dir",
@@ -72,7 +72,7 @@ def main():
     config['tools']['search']['base_url'] = f"http://{retrieval_ip}"
     config['tools']['script']['base_url'] = f"http://{pet_ip}"
 
-    with open(args.thms_file, 'r') as file:
+    with open(args.evaluation_file, 'r') as file:
         thm_names = yaml.safe_load(file)
 
     shutil.copyfile(args.config_file, os.path.join(folder_path, 'config.yaml'))
