@@ -188,7 +188,7 @@ def run_parallel_proofs_with_mixed_tools(
     return results
 
 
-def get_theorems(file_path: str) -> List[(str, str)]:
+def get_theorems(file_path: str) -> List[Tuple[str, str]]:
     with open(file_path, "r", encoding="utf-8") as file:
         json_data = json.load(file)
 
@@ -200,8 +200,8 @@ def get_theorems(file_path: str) -> List[(str, str)]:
     for stmt_info in parsed_statements:
         theorems.append(
             (
-                {stmt_info["lemma_name"]},
-                {stmt_info["folder_name"]} / {stmt_info["file_name"]},
+                stmt_info["lemma_name"],
+                f"{stmt_info['folder_name']}/{stmt_info['file_name']}",
             )
         )
     return theorems
