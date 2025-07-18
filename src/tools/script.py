@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from src.servers.script.client import PetClient, State, Goal, ClientError
+from src.servers.script.client import PetClient, State, Goals, ClientError
 from .base import BaseTool, ToolError
 
 class ScriptTool(BaseTool):
@@ -26,12 +26,13 @@ class ScriptTool(BaseTool):
         """
         self.state = {"pet_state": state, "login": self.client.login, "goals": goals}
 
-    def start_thm(self, thm_name: str):
+    def start_thm(self, thm_name: str) -> str:
         """
         Initialize tool to start proving the given theorem
         """
         state, goals = self.client.start_thm(thm_name)
         self._update_state(state, goals)
+        return goals[0]['pp']
 
     @property
     def instruction(self) -> str:

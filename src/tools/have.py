@@ -1,9 +1,8 @@
 from typing import Tuple
 from copy import deepcopy
 
-from src.servers.script.client import PetClient, State, Goal, ClientError
+from src.servers.script.client import PetClient, State, Goals, ClientError
 from .base import BaseTool, ToolError
-from ..inference.agent import MathAgent, MathAgentError
 
 class HaveTool(BaseTool):
     """Tool for interacting with the Coq theorem prover."""
@@ -22,7 +21,7 @@ class HaveTool(BaseTool):
     def tag(self) -> str:
         return "have"
 
-    def run(self, have: str, agent: MathAgent=None, **kwargs) -> str:
+    def run(self, have: str, agent=None, **kwargs) -> str:
         """
         Duplicate the current agent
         """
@@ -36,6 +35,6 @@ class HaveTool(BaseTool):
             new_agent.transfertools(agent)
             goals = new_agent.tools['script'].goals
             return "The goal to prove is:\n" + goals[0]['pp']
-        except MathAgentError as e:
+        except Exception as e:
             raise ToolError(e.message) from e
         
