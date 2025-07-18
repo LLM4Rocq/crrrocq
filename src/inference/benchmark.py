@@ -200,6 +200,12 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Coq Proof Assistant CLI")
     parser.add_argument(
+        "--workspace",
+        type=str,
+        default="/lustre/fsn1/projects/rech/tdm/commun/math-comp",
+        help="Path to the workspace directory",
+    )
+    parser.add_argument(
         "--host", type=str, default="127.0.0.1", help="Pytanque server host"
     )
     parser.add_argument("--port", type=int, default=8765, help="Pytanque server port")
