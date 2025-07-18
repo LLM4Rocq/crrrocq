@@ -32,7 +32,7 @@ def main():
     parser.add_argument(
         "--config-file",
         type=str,
-        default="config/inference.yaml"
+        default="config/inference/inference.yaml"
     )
     parser.add_argument(
         "--pass-k",
@@ -47,18 +47,30 @@ def main():
     parser.add_argument(
         "--thms-file",
         type=str,
-        default="export/benchmark/thm_names.json"
+        default="config/server/script/thm_filename.json"
+    )
+    parser.add_argument(
+        "--log-dir",
+        type=str,
+        default="agent_logs"
     )
     args = parser.parse_args()
 
     folder_path = os.path.join(args.log_dir, datetime.now() .strftime("logs_%m_%d_%H_%M_%S"))
-
+    os.makedirs(folder_path, exist_ok=True)
     with open(args.config_file, 'r') as file:
         config = yaml.safe_load(file)
     
-    config['llm']['base_url'] = f"http://{os.environ['MODEL_IP_PATH']}/v1"
-    config['tools']['search']['base_url'] = f"http://{os.environ['RETRIEVAL_IP_PATH']}"
-    config['tools']['script']['base_url'] = f"http://{os.environ['PET_IP_PATH']}"
+    with open(os.environ['MODEL_IP_PATH'], 'r') as file:
+        model_ip = file.read().strip()
+    with open(os.environ['RETRIEVAL_IP_PATH'], 'r') as file:
+        retrieval_ip = file.read().strip()
+    with open(os.environ['PET_IP_PATH'], 'r') as file:
+        pet_ip = file.read().strip()
+
+    config['llm_config']['base_url'] = f"http://{model_ip}/v1"
+    config['tools']['search']['base_url'] = f"http://{retrieval_ip}"
+    config['tools']['script']['base_url'] = f"http://{pet_ip}"
 
     with open(args.thms_file, 'r') as file:
         thm_names = yaml.safe_load(file)
