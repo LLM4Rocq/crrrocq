@@ -10,7 +10,7 @@
 #SBATCH --nodes=1                     # number of nodes
 #SBATCH --gres=gpu:2                  # number of gpus/node
 #SBATCH --cpus-per-task=48            # total CPUs available
-#SBATCH --time=01:00:00               # maximum execution time requested (HH:MM:SS)
+#SBATCH --time=02:00:00               # maximum execution time requested (HH:MM:SS)
 #SBATCH --account=tdm@h100            # account
 #SBATCH --qos=qos_gpu_h100-dev
 
