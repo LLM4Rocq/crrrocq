@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import time
 from dataclasses import dataclass
 
