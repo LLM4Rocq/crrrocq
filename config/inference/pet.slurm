@@ -9,7 +9,7 @@
 #SBATCH --account=tdm@cpu
 #SBATCH --qos=qos_cpu-dev
 #SBATCH --hint=nomultithread
-#SBATCH --time=02:00:00
+#SBATCH --time=01:00:00
 
 module purge
 conda deactivate

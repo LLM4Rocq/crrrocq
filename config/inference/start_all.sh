@@ -1,9 +1,9 @@
 ID=$RANDOM_$(date '+%Y_%m_%d_%H_%M_%S')
 
-export RETRIEVAL_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/retrieval_ip_$ID.txt
-export PET_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/pet_ip_$ID.txt
-export MODEL_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/model_ip_$ID.txt
-export EMBED_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/embed_ip_$ID.txt
+export RETRIEVAL_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/retrieval_ip_$ID.txt
+export PET_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/pet_ip_$ID.txt
+export MODEL_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/model_ip_$ID.txt
+export EMBED_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/embed_ip_$ID.txt
 
 rm -f $RETRIEVAL_IP_PATH
 rm -f $PET_IP_PATH
@@ -23,6 +23,8 @@ while [ ! -f "$RETRIEVAL_IP_PATH" ] || [ ! -f "$PET_IP_PATH" ]; do
     sleep 20
 done
 
-
-
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Everything ready."
+
+sbatch --export=ALL agent.slurm
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Agent started."
