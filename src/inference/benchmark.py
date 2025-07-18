@@ -10,7 +10,12 @@ from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool, ThreadLocalSearchTool
 from .llm import VLLM, ThreadLocalVLLM
 from .agent import MathProofAgent, Status
-from .utils import extract_proof, get_proof_tactics, get_evaluation_theorems, get_parsed_statements
+from .utils import (
+    extract_proof,
+    get_proof_tactics,
+    get_evaluation_theorems,
+    get_parsed_statements,
+)
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
@@ -182,7 +187,8 @@ def run_parallel_proofs_with_mixed_tools(
 
     return results
 
-def get_theorems(file_path: str) -> List[(str], str)]:
+
+def get_theorems(file_path: str) -> List[(str, str)]:
     with open(file_path, "r", encoding="utf-8") as file:
         json_data = json.load(file)
 
@@ -192,8 +198,14 @@ def get_theorems(file_path: str) -> List[(str], str)]:
     parsed_statements = get_parsed_statements(json_data)
 
     for stmt_info in parsed_statements:
-        theorems.append( ({stmt_info['lemma_name']}, {stmt_info['folder_name']}/{stmt_info['file_name']}))
+        theorems.append(
+            (
+                {stmt_info["lemma_name"]},
+                {stmt_info["folder_name"]} / {stmt_info["file_name"]},
+            )
+        )
     return theorems
+
 
 def main():
     """Main entry point for the inference CLI."""
@@ -329,18 +341,16 @@ def main():
         shared_llm=shared_llm,
         shared_search_tool=shared_search_tool,
         tool_configs=tool_configs,
-        max_workers=4
+        max_workers=4,
     )
 
     # Show results
     print(f"\n=== Results ===")
     print(f"Total VLLM instances: {shared_llm.instance_count}")
     print(f"Total SearchTool instances: {shared_search_tool.instance_count}")
-    
-    success_count = sum(1 for r in results if r['success'])
+
+    success_count = sum(1 for r in results if r["success"])
     print(f"Successful proofs: {success_count}/{len(results)}")
-
-
 
 
 if __name__ == "__main__":
