@@ -125,13 +125,21 @@ class VLLM(LLM):
 
         return prompt
 
-    def generate(self, prompt: str, stop_sequences: Optional[List[str]] = None) -> str:
+    def generate(
+        self,
+        prompt: str,
+        stop_sequences: Optional[List[str]] = None,
+        session_name: str = None,
+    ) -> str:
         """Generate a completion using VLLM's OpenAI-compatible API."""
         responses = self.generate_batch([prompt], stop_sequences)
         return responses[0] if responses else ""
 
     def generate_batch(
-        self, prompts: List[str], stop_sequences: Optional[List[str]] = None
+        self,
+        prompts: List[str],
+        stop_sequences: Optional[List[str]] = None,
+        session_name: str = None,
     ) -> List[str]:
         """
         Generate completions for multiple prompts.
