@@ -159,6 +159,7 @@ class LLMLogger:
         if self.log_to_console:
             print(f"\n=== LLM Batch Interaction at {timestamp} ===")
             print(f"Number of interactions: {len(prompts)}")
+            print(self.session_data["interactions"])
             print("=" * 50)
 
     def finalize_session(self) -> None:
