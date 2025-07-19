@@ -69,8 +69,8 @@ def start_thm():
         entry = thm_filename[thm_name]
         filepath, line, character = entry['filepath'], entry['position']['line'], entry['position']['character']
         worker = pytanques[login_idx]
-        worker.get_state_at_pos(filepath, line, character, 0)
-        state = worker.start(file=filepath, thm=thm_name)
+        state = worker.get_state_at_pos(filepath, line, character, 0)
+        # state = worker.start(file=filepath, thm=thm_name)
         goals = worker.goals(state)
         goals_json = [goal.to_json() for goal in goals]
         output = {"state": state.to_json(), "goals": goals_json}
