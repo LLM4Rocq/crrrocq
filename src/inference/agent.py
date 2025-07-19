@@ -19,7 +19,7 @@ class MathAgentError(Exception):
 def parse_output(output: str, max_len=2, kinds=['search', 'think', 'script', 'have']):
     """Parse LLM output into list of blocks {"kind":..., "content":...}"""
     pattern = re.compile(
-        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*<\/",
+        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*(<\/|\z)",
         re.DOTALL | re.MULTILINE,
     )
     result = []
