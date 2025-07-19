@@ -42,7 +42,7 @@ class VLLM(LLM):
         top_k: int = 40,
         max_tokens: int = 16384,
         verbose: bool = True,
-        log_dir: str = "llm_logs",
+        log_dir: str = "bench16_logs",
         log_to_console: bool = False,
         session_name: str = None,
     ):
