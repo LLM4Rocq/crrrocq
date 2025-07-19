@@ -136,6 +136,6 @@ class MathAgent:
                 ]
                 if all(match_subgoals):
                     return
-            if not self.tools['script'].goals:
+            if not self.tools['script'].state['goals']:
                 return
         raise MathAgentError("Reach max depth without generating a complete proof.")
