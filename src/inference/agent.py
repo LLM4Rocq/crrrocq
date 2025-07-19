@@ -118,8 +118,10 @@ class MathAgent:
                 try:
                     self.blocks += new_blocks
                     last_block = new_blocks[-1]
-                    result = self.tools[last_block['kind']].run(last_block['content'], agent=self, **self.config['tools_param'])
-                    self.blocks.append({"kind": "result", "content": deepcopy(result)})
+                    # TODO: Add a dummy "think" tool
+                    if last_block['kind'] in self.tools:
+                        result = self.tools[last_block['kind']].run(last_block['content'], agent=self, **self.config['tools_param'])
+                        self.blocks.append({"kind": "result", "content": deepcopy(result)})
                     break
                 except ToolError as e:
                     self.logs.append({"status": "error", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(new_blocks)})
