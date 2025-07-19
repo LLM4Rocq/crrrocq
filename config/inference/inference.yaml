@@ -5,7 +5,7 @@ llm_config:
   api_key: "None"
   generation_parameters:
     temperature: 0.6
-    max_tokens: 512
+    max_tokens: 16384
     stop:
       - "</search>"
       - "</script>"
