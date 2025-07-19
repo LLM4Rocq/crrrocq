@@ -31,21 +31,21 @@ class LLMLogger:
         self.log_dir = log_dir
         self.enabled = enabled
         self.log_to_console = log_to_console
-        
+
         # Create session-specific filename
         if session_name:
             self.log_filename = f"proof_session_{session_name}.json"
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.log_filename = f"proof_session_{timestamp}.json"
-            
+
         self.log_path = os.path.join(log_dir, self.log_filename)
-        
+
         # Initialize the session log data
         self.session_data = {
             "session_start": datetime.now().isoformat(),
             "session_name": session_name or "unnamed",
-            "interactions": []
+            "interactions": [],
         }
 
         # Create log directory if it doesn't exist
@@ -58,7 +58,7 @@ class LLMLogger:
         """Write the current session data to the log file."""
         if not self.enabled:
             return
-            
+
         with open(self.log_path, "w") as f:
             json.dump(self.session_data, f, indent=2)
 
@@ -89,7 +89,7 @@ class LLMLogger:
             "timestamp": timestamp,
             "prompt": prompt,
             "response": response,
-            "interaction_type": "single"
+            "interaction_type": "single",
         }
 
         # Add metadata if provided
@@ -98,7 +98,7 @@ class LLMLogger:
 
         # Keep only the last interaction
         self.session_data["interactions"] = [interaction_data]
-        
+
         # Write updated session data to file
         self._write_session_data()
 
@@ -147,7 +147,9 @@ class LLMLogger:
 
         # Keep only the last interaction
         self.session_data["interactions"] = [batch_interaction_data]
-        
+
+        print(f"Log data {batch_interaction_data}")
+
         # Write updated session data to file
         self._write_session_data()
 
@@ -163,7 +165,7 @@ class LLMLogger:
         """
         if not self.enabled:
             return
-            
+
         self.session_data["session_end"] = datetime.now().isoformat()
         self.session_data["total_interactions"] = len(self.session_data["interactions"])
         self._write_session_data()
@@ -171,7 +173,7 @@ class LLMLogger:
     def get_session_path(self) -> str:
         """
         Get the path to the current session log file.
-        
+
         Returns:
             Path to the session log file
         """
