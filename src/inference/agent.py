@@ -46,7 +46,7 @@ class MathAgent:
         self.blocks = []
         for tool_name, tool_config in config['tools'].items():
             self.tools[tool_name] = get_tool(tool_name, **tool_config)
-        self.instruct = self.build_instruct()
+        self.instruct = None
         self.llm = get_llm(config['llm_kind'], **config['llm_config'])
 
     def duplicate(self, reset_blocks=False) -> Any:
@@ -65,9 +65,10 @@ class MathAgent:
     def start_thm(self, thm_name):
         """Intialize agent to prove theorem."""
         assert "script" in self.tools, "Missing script tool."
-        self.tools["script"].start_thm(thm_name)
+        initial_goal = self.tools["script"].start_thm(thm_name)
+        self.instruct = self.load_instruct().format(initial_goal=initial_goal)
 
-    def build_instruct(self) -> str:
+    def load_instruct(self) -> str:
         """Build the prompt for the LLM."""
         with open(self.config['prompt_path'], 'r') as file:
             return json.load(file)['instruction']
@@ -99,6 +100,7 @@ class MathAgent:
             num_retry_parse = 0
             num_retry_tool = 0
             while True:
+                assert self.instruct, "Need to start a theorem"
                 messages = [
                     {"role": "user", "content": self.instruct},
                     {"role": "assistant", "content": self.build_blocks()}
