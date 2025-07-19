@@ -148,7 +148,7 @@ class LLMLogger:
         # Keep only the last interaction
         self.session_data["interactions"] = [batch_interaction_data]
 
-        print(f"Log data {batch_interaction_data['interactions']["response"][:200]}...")
+        print(f"Log data {batch_interaction_data['interactions']["response"]}")
 
         # Write updated session data to file
         self._write_session_data()
