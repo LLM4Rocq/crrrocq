@@ -51,8 +51,8 @@ def run_single_proof_with_mixed_tools(
         # print(search_config)
         search_tool = SearchTool(
             index_path=search_config["index_path"],
-            model=search_config["model_embedding"],
-            api_url=search_config["embedding_api"],
+            model=search_config["model"],
+            api_url=search_config["api_url"],
             docstrings_path=search_config["docstrings_path"],
         )
 
@@ -80,7 +80,7 @@ def run_single_proof_with_mixed_tools(
 
         llm_config = tool_configs["script"]
         llm = VLLM(
-            api_url=llm_config["llm_url"],
+            api_url=llm_config["api_url"],
             model=llm_config["model"],
             temperature=llm_config["temperature"],
             verbose=llm_config["verbose"],
