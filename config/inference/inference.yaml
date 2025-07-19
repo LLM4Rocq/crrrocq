@@ -18,3 +18,4 @@ max_retry:
   search: 2
   have: 16
   script: 32
+max_depth: 128
