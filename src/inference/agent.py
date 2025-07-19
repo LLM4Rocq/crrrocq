@@ -19,7 +19,7 @@ class MathAgentError(Exception):
 def parse_output(output: str, max_len=2, kinds=['search', 'think', 'script', 'have']):
     """Parse LLM output into list of blocks {"kind":..., "content":...}"""
     pattern = re.compile(
-        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*<\/\1>",
+        r"<(?P<kind>\w+)>\s*(?P<content>.*?)\s*<\/",
         re.DOTALL | re.MULTILINE,
     )
     result = []
@@ -105,6 +105,10 @@ class MathAgent:
                 ]
 
                 output = self.llm.generate(messages)
+                # TODO: for the moment, HF apply chat template require non empty assistant content for continuation
+                if not self.blocks:
+                    output = "<think>\n" + output
+
                 try:
                     new_blocks = parse_output(output)
                 except ParsingBlockError as e:
