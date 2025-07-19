@@ -46,13 +46,13 @@ def run_single_proof_with_mixed_tools(
 
     try:
         # Use shared thread-local SearchTool
-        #search_tool = shared_search_tool
+        # search_tool = shared_search_tool
         search_config = tool_configs["search"]
         search_tool = SearchTool(
-        index_path=search_config["index_cache_path"],
-        model=search_config["model_embedding"],
-        api_url=search_config["embedding_api"],
-        docstrings_path=search_config["docstrings_path"],
+            index_path=search_config["index_cache_path"],
+            model=search_config["model_embedding"],
+            api_url=search_config["embedding_api"],
+            docstrings_path=search_config["docstrings_path"],
         )
 
         # Setup Pytanque
@@ -79,17 +79,15 @@ def run_single_proof_with_mixed_tools(
 
         llm_config = tool_configs["script"]
         llm = VLLM(
-        api_url=llm_config["llm_url"],
-        model=llm_config["model"],
-        temperature=llm_config["temperature"],
-        verbose=llm_config["verbose"],
+            api_url=llm_config["llm_url"],
+            model=llm_config["model"],
+            temperature=llm_config["temperature"],
+            verbose=llm_config["verbose"],
         )
-
-
 
         # Create MathProofAgent with mixed tool strategy
         agent = MathProofAgent(
-            llm=llm #shared_llm,  # Thread-local LLM (shared)
+            llm=llm,  # shared_llm,  # Thread-local LLM (shared)
             search_tool=search_tool,  # Thread-local SearchTool (shared)
             script_tool=script_tool,  # Fresh instance (thread-safe)
             have_tool=have_tool,  # Fresh instance (thread-safe)
