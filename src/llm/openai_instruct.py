@@ -30,4 +30,4 @@ class OpenAIInstructLLM(BaseLLM):
             **self.generation_parameters,
             **kwargs
         )
-        return response
+        return response.choices[0].text
