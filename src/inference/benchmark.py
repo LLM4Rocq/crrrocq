@@ -48,9 +48,9 @@ def run_single_proof_with_mixed_tools(
         # Use shared thread-local SearchTool
         # search_tool = shared_search_tool
         search_config = tool_configs["search"]
-        print(search_config)
+        # print(search_config)
         search_tool = SearchTool(
-            index_path=search_config["index_cache_path"],
+            index_path=search_config["index_path"],
             model=search_config["model_embedding"],
             api_url=search_config["embedding_api"],
             docstrings_path=search_config["docstrings_path"],
