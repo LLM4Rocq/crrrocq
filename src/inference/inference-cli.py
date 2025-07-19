@@ -161,7 +161,9 @@ def main():
 
     # Create agent and run proof with specified beam size
     agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
-    status = agent.run_proof(beam_size=args.beam_size, verbose=args.verbose)
+    status = agent.run_proof(
+        beam_size=args.beam_size, verbose=args.verbose, num_attempt=8
+    )
 
     # Print results
     if status.success:
