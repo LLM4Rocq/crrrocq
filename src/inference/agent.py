@@ -120,7 +120,8 @@ class MathAgent:
                     last_block = new_blocks[-1]
                     # TODO: Add a dummy "think" tool
                     if last_block['kind'] in self.tools:
-                        result = self.tools[last_block['kind']].run(last_block['content'], agent=self, **self.config['tools_param'])
+                        tool_name = last_block['kind']
+                        result = self.tools[tool_name].run(last_block['content'], agent=self, **self.config['tools'][tool_name])
                         self.blocks.append({"kind": "result", "content": deepcopy(result)})
                     break
                 except ToolError as e:
