@@ -114,91 +114,6 @@ class SearchTool(Tool):
         return {"content": output}
 
 
-class ThreadLocalSearchTool:
-    """
-    Thread-safe wrapper for SearchTool that creates one instance per thread.
-    This avoids the overhead of loading FAISS index and docstrings multiple times.
-    """
-
-    def __init__(self, index_path: str, model: str, api_url: str, docstrings_path: str):
-        """
-        Initialize the thread-local SearchTool wrapper.
-
-        Args:
-            index_path: Path to FAISS index file
-            model: Model name for embeddings
-            api_url: API URL for embeddings
-            docstrings_path: Path to docstrings JSON file
-        """
-        self.index_path = index_path
-        self.model = model
-        self.api_url = api_url
-        self.docstrings_path = docstrings_path
-
-        # Thread-local storage for SearchTool instances
-        self.local = threading.local()
-
-        # Instance tracking
-        self._instance_count = 0
-        self._lock = threading.Lock()
-
-    def _get_instance(self) -> "SearchTool":
-        """Get or create a SearchTool instance for the current thread."""
-        if not hasattr(self.local, "search_tool"):
-            with self._lock:
-                self._instance_count += 1
-                instance_id = self._instance_count
-
-            thread_name = threading.current_thread().name
-            print(
-                f"Creating SearchTool instance #{instance_id} for thread {thread_name}"
-            )
-
-            # Create the actual SearchTool instance
-            self.local.search_tool = SearchTool(
-                index_path=self.index_path,
-                model=self.model,
-                api_url=self.api_url,
-                docstrings_path=self.docstrings_path,
-            )
-            self.local.instance_id = instance_id
-
-        return self.local.search_tool
-
-    # Delegate all SearchTool methods and properties
-    @property
-    def name(self) -> str:
-        return "search"
-
-    @property
-    def description(self) -> str:
-        return "Query for relevant existing theorems and lemmas"
-
-    @property
-    def instruction(self) -> str:
-        return """### 🔍 Search Block  
-**Purpose**: Discover relevant theorems and lemmas
-- Query the theorem database with natural language descriptions
-- Find existing results that support your proof strategy
-- Identify patterns, equivalences, and useful properties
-- **Best Practice**: Be specific in your search queries
-"""
-
-    @property
-    def tag(self) -> str:
-        return "search"
-
-    def run(self, input_text: str, top_k: int = 10) -> str:
-        """Execute a search and return results using the thread-local instance."""
-        search_tool = self._get_instance()
-        return search_tool.run(input_text, top_k)
-
-    @property
-    def instance_count(self) -> int:
-        """Get the total number of SearchTool instances created."""
-        return self._instance_count
-
-
 class ScriptTool(Tool):
     """Tool for interacting with the Coq theorem prover."""
 
@@ -247,15 +162,14 @@ class ScriptTool(Tool):
         Execute Coq tactics and return the result.
 
         Args:
-            input_text: String containing Coq tactics, one per line
+            input_text: String containing Coq tactics to be executed.
 
         Returns:
             Dictionary with status ('success' or 'error'), goal or error message
         """
         # Split the input into individual tactics
-        tactics = [
-            input_text
-        ]  # [tac.strip() for tac in input_text.split("\n") if tac.strip()]
+        # [tac.strip() for tac in input_text.split("\n") if tac.strip()]
+        tactics = [input_text]
 
         try:
             # Execute the tactics

@@ -95,9 +95,8 @@ class ToolHandler:
         self,
         llm: LLM,
         prompt: str,
-        beam_size: int = 1,
         num_attempt: int = 1,
-        session_name: str = None,
+        max_iterations: int = 100,
     ) -> Status:
         """
         Process LLM generation with tool support using beam search.
@@ -113,101 +112,60 @@ class ToolHandler:
         Returns:
             Status object with success flag and proof steps
         """
-        # Initialize fixed-size arrays for all beams
-        all_prompts = [prompt] * beam_size
-
-        # Create deep copies of the Coq prover tool for each beam
-        if "coq-prover" in self.tools:
-            all_coq_tools = [
-                self.tools["coq-prover"].deepcopy() for _ in range(beam_size)
-            ]
-        else:
-            all_coq_tools = [None] * beam_size
-
-        # Track which beams are active
-        active_indices = list(range(beam_size))
-        counters = [num_attempt] * beam_size
 
         # Create a list of stop sequences from tool tags
         stop_sequences = [f"</{tool.tag}>" for tool in self.tools.values()]
 
-        # Continue as long as there are active beams
-        while active_indices:
-            # Collect only the active prompts for the LLM
-            active_prompts = [all_prompts[i] for i in active_indices]
+        n_iterations = 0
+        active_prompt = [prompt]
+        counter = num_attempt
 
-            # Generate responses only for active beams
-            responses = llm.generate_batch(
-                active_prompts, stop_sequences, session_name=session_name
-            )
+        while n_iterations < max_iterations:
+            responses = llm.generate_batch(active_prompt, stop_sequences)
+            n_iterations += 1
 
-            # New set of active indices for the next iteration
-            new_active_indices = []
+            response = responses[0]  # Assuming we only have one active prompt
 
-            # Process each response for active beams
-            for idx_pos, idx in enumerate(active_indices):
-                response = responses[idx_pos]
+            new_prompt = prompt + response
 
-                # Update the full prompt for this beam
-                all_prompts[idx] += response
+            # Check if there's a tool call in the new response only
+            tool_call = self.parser.extract_next_tool_call(response)
 
-                # Check if there's a tool call in the new response only
-                tool_call = self.parser.extract_next_tool_call(response)
+            if not tool_call:
+                break
 
-                # print("response:", response)
+            tool_name, tool_input, start_pos, end_pos = tool_call
 
-                print("tool_call:", tool_call)
+            current_tool = self.tools[tool_name]
 
-                if not tool_call:
-                    # No tool call found, this beam is done
-                    continue
+            # Execute the tool
+            tool_result = current_tool.run(tool_input)
 
-                tool_name, tool_input, start_pos, end_pos = tool_call
-
-                # Use the corresponding tool instance for this beam
-                if tool_name == "coq-prover":
-                    current_tool = all_coq_tools[idx]
-                else:
-                    current_tool = self.tools[tool_name]
-
-                # Execute the tool
-                tool_result = current_tool.run(tool_input)
-
-                # Format the tool result
-                if tool_name == "search":
-                    # Keep this beam active
-                    all_prompts[
-                        idx
-                    ] += f"<{self.RESULT_TAG}>\n{tool_result['content']}\n</{self.RESULT_TAG}>"
-                    new_active_indices.append(idx)
-                elif tool_name == "coq-prover":
-                    if tool_result["status"] == "success":
-                        if tool_result["is_complete"]:
-                            # Proof is complete, return success immediately
-                            return Status(success=True, proof=current_tool.env.proof)
-                        else:
-                            # Proof is progressing, keep this beam active
-                            result_text = (
-                                f"The goal to prove is:\n{tool_result['goal']}"
-                            )
-                            all_prompts[
-                                idx
-                            ] += f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
-                            new_active_indices.append(idx)
+            # Format the tool result
+            if tool_name == "search":
+                new_prompt += f"<{self.RESULT_TAG}>\n{tool_result['content']}\n</{self.RESULT_TAG}>"
+                prompt = new_prompt
+            elif tool_name == "coq-prover" or tool_name == "have-prover":
+                if tool_result["status"] == "success":
+                    if tool_result["is_complete"]:
+                        # Proof is complete, return success immediately
+                        return Status(success=True, proof=current_tool.env.proof)
                     else:
-                        # Proof failed, discard this beam (don't add to new_active_indices)
-                        counters[idx] -= 1
-                        if counters[idx] <= 0:
-                            continue
-                        else:
-                            all_prompts[idx] += f"<result>\n Script error\n</result>"
-                            new_active_indices.append(idx)
+                        # Proof is progressing
+                        result_text = f"The goal to prove is:\n{tool_result['goal']}"
+                        new_prompt += (
+                            f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
+                        )
+                        prompt = new_prompt
+                else:
+                    # Proof failed,
+                    counter -= 1
+                    if counter <= 0:
+                        break
+                    # else: # retry with the same prompt
+                    # new_prompt += f"<result>\n script error\n</result>"
 
-            # Update active indices for next iteration
-            active_indices = new_active_indices
-
-        # If we've reached here, no beam succeeded
-        return Status(success=False, proof=[])
+        return Status(success=False, proof=current_tool.env.proof)
 
 
 # ===============================================
@@ -290,8 +248,8 @@ When tactics fail:
         self,
         beam_size: int = 1,
         num_attempt: int = 1,
+        max_iterations: int = 100,
         verbose: bool = False,
-        session_name: str = None,
     ) -> Status:
         """
         Run the proof using beam search.
@@ -313,7 +271,7 @@ When tactics fail:
             prompt,
             beam_size,
             num_attempt=num_attempt,
-            session_name=session_name,
+            max_iterations=max_iterations,
         )
 
         return response

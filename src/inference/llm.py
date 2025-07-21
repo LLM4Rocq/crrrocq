@@ -30,8 +30,8 @@ class LLM(ABC):
         pass
 
 
-class VLLM(LLM):
-    """Implementation of LLM using VLLM's OpenAI-compatible API."""
+class API_LLM(LLM):
+    """Implementation of LLM using OpenAI-compatible API."""
 
     def __init__(
         self,
@@ -42,7 +42,7 @@ class VLLM(LLM):
         top_k: int = 40,
         max_tokens: int = 16384,
         verbose: bool = True,
-        log_dir: str = "bench16_logs",
+        log_dir: str = "llm_logs",
         log_to_console: bool = False,
         session_name: str = None,
     ):
@@ -53,6 +53,7 @@ class VLLM(LLM):
         self.top_k = top_k
         self.max_tokens = max_tokens
         self.verbose = verbose
+        self.session_name = session_name
 
         # Initialize the LLM logger with session name
         self.logger = LLMLogger(
@@ -129,7 +130,6 @@ class VLLM(LLM):
         self,
         prompt: str,
         stop_sequences: Optional[List[str]] = None,
-        session_name: str = None,
     ) -> str:
         """Generate a completion using VLLM's OpenAI-compatible API."""
         responses = self.generate_batch([prompt], stop_sequences)
@@ -139,7 +139,6 @@ class VLLM(LLM):
         self,
         prompts: List[str],
         stop_sequences: Optional[List[str]] = None,
-        session_name: str = None,
     ) -> List[str]:
         """
         Generate completions for multiple prompts.
@@ -223,113 +222,3 @@ class VLLM(LLM):
     def get_session_log_path(self) -> str:
         """Get the path to the current session log file."""
         return self.logger.get_session_path()
-
-
-class ThreadLocalVLLM:
-    """
-    Thread-safe wrapper for VLLM that creates one instance per thread.
-    Perfect for scenarios with multiple sequential LLM calls within each thread.
-    """
-
-    def __init__(self, **vllm_config):
-        """
-        Initialize the thread-local VLLM wrapper.
-
-        Args:
-            **vllm_config: Configuration parameters to pass to VLLM constructor
-        """
-        self.vllm_config = vllm_config
-        self.local = threading.local()
-        self._instance_count = 0
-        self._lock = threading.Lock()
-
-    def _get_instance(self, session_name: str = None) -> VLLM:
-        """Get or create a VLLM instance for the current thread."""
-        if not hasattr(self.local, "vllm"):
-            with self._lock:
-                self._instance_count += 1
-                instance_id = self._instance_count
-
-            thread_name = threading.current_thread().name
-            print(f"Creating VLLM instance #{instance_id} for thread {thread_name}")
-
-            # Create without session name initially
-            self.local.vllm = VLLM(**self.vllm_config)
-            self.local.instance_id = instance_id
-
-        # If session name is provided, create a new logger for this session
-        if session_name and hasattr(self.local, "vllm"):
-            llm = self.local.vllm
-            # Create a new logger with the specific session name
-            from .llm_logger import LLMLogger
-
-            llm.logger = LLMLogger(
-                log_dir="bench16_logs",
-                enabled=True,
-                log_to_console=True,
-                session_name=session_name,
-            )
-
-        return self.local.vllm
-
-    def generate(
-        self,
-        prompt: str,
-        stop_sequences: Optional[List[str]] = None,
-        session_name: str = None,
-    ) -> str:
-        """Generate a completion using the thread-local VLLM instance."""
-        llm = self._get_instance(session_name)
-        return llm.generate(prompt, stop_sequences)
-
-    def generate_batch(
-        self,
-        prompts: List[str],
-        stop_sequences: Optional[List[str]] = None,
-        session_name: str = None,
-    ) -> List[str]:
-        """Generate completions for multiple prompts using the thread-local VLLM instance."""
-        llm = self._get_instance(session_name)
-        return llm.generate_batch(prompts, stop_sequences)
-
-    def build_prompt(
-        self,
-        goals: str,
-        coq_tag: str,
-        context: str = "",
-        goals_tag: str = "GOALS",
-        session_name: str = None,
-    ) -> str:
-        """Build the initial prompt for the LLM."""
-        llm = self._get_instance(session_name)
-        return llm.build_prompt(goals, coq_tag, context, goals_tag)
-
-    def build_prompt_with_feedback(
-        self,
-        goals: str,
-        coq_tag: str,
-        response: str = "",
-        success: bool = False,
-        current_proof: str = "",
-        previous_attempts: List[str] = None,
-        context: str = "",
-        goals_tag: str = "GOALS",
-        session_name: str = None,
-    ) -> str:
-        """Build a prompt that includes feedback from previous proof attempts."""
-        llm = self._get_instance(session_name)
-        return llm.build_prompt_with_feedback(
-            goals,
-            coq_tag,
-            response,
-            success,
-            current_proof,
-            previous_attempts,
-            context,
-            goals_tag,
-        )
-
-    @property
-    def instance_count(self) -> int:
-        """Get the total number of VLLM instances created."""
-        return self._instance_count

@@ -34,7 +34,7 @@ class LLMLogger:
 
         # Create session-specific filename
         if session_name:
-            self.log_filename = f"proof_session_{session_name}.json"
+            self.log_filename = f"proof_{session_name}.json"
         else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.log_filename = f"proof_session_{timestamp}.json"

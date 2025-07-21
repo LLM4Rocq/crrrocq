@@ -1,9 +1,9 @@
 import argparse
 from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool
-from .llm import VLLM
+from .llm import API_LLM
 from .agent import MathProofAgent
-from .utils import extract_proof, get_proof_tactics
+from .utils import extract_proof, get_proof_tactics, make_session_name
 import json
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
@@ -36,12 +36,6 @@ def main():
         type=str,
         default="/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/",
         help="LLM model name",
-    )
-    parser.add_argument(
-        "--beam-size",
-        type=int,
-        default=1,
-        help="Number of parallel paths to explore (beam search width)",
     )
     parser.add_argument(
         "--temperature",
@@ -150,19 +144,21 @@ def main():
         file=args.file,
         theorem=args.theorem,
     )
-
+    session_name = make_session_name(args.theorem)
     # Setup LLM
-    llm = VLLM(
+    llm = API_LLM(
         api_url=args.llm_url,
         model=args.model,
         temperature=args.temperature,
         verbose=args.verbose,
+        log_dir= "llm_logs"
+        session_name=session_name,
     )
 
     # Create agent and run proof with specified beam size
     agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
     status = agent.run_proof(
-        beam_size=args.beam_size, verbose=args.verbose, num_attempt=8
+        beam_size=args.beam_size, verbose=args.verbose, num_attempt=1
     )
 
     # Print results

@@ -1,6 +1,22 @@
 import json
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from datetime import datetime
+
+
+def make_session_name(theorem_name: str) -> str:
+    """
+    Generate a session name based on the theorem name.
+
+    Args:
+        theorem_name: The name of the theorem to base the session on
+
+    Returns:
+        A formatted session name string
+    """
+    # Use current timestamp to ensure uniqueness
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"{theorem_name}_{timestamp}"
 
 
 @dataclass
