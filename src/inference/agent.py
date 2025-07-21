@@ -144,7 +144,7 @@ class ToolHandler:
             # Format the tool result
             if tool_name == "search":
                 new_prompt += f"<{self.RESULT_TAG}>\n{tool_result['content']}\n</{self.RESULT_TAG}>"
-                prompt = new_prompt
+                active_prompt = [new_prompt]
             elif tool_name == "coq-prover" or tool_name == "have-prover":
                 if tool_result["status"] == "success":
                     if tool_result["is_complete"]:
@@ -156,7 +156,7 @@ class ToolHandler:
                         new_prompt += (
                             f"<{self.RESULT_TAG}>\n{result_text}\n</{self.RESULT_TAG}>"
                         )
-                        prompt = new_prompt
+                        active_prompt = [new_prompt]
                 else:
                     # Proof failed,
                     counter -= 1
