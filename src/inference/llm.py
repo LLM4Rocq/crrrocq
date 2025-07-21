@@ -192,14 +192,6 @@ class API_LLM(LLM):
             ]
             # llm_responses = [choice["text"] for choice in data["choices"]]
 
-            # Log the interaction
-            metadata = {
-                "model": self.model,
-                "temperature": self.temperature,
-                "max_tokens": self.max_tokens,
-                "stop_sequences": stop_sequences,
-            }
-
             # Log the batch interaction
             self.logger.log_batch_interaction(
                 prompts=prompts,
@@ -217,7 +209,14 @@ class API_LLM(LLM):
 
     def finalize_session(self) -> None:
         """Finalize the logging session."""
-        self.logger.finalize_session()
+        # Log the interaction
+        metadata = {
+            "model": self.model,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "stop_sequences": stop_sequences,
+        }
+        self.logger.finalize_session(metadata=metadata)
 
     def get_session_log_path(self) -> str:
         """Get the path to the current session log file."""
