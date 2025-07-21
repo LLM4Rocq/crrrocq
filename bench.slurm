@@ -36,7 +36,7 @@ LOG_DIR=bench_$(date +%Y%m%d_%H%M%S)
 PORT_EMB=31000
 MAX_WORKERS=16
 MAX_THEOREMS=150  # Adjust based on your needs
-NUM_ATTEMPT=32
+NUM_ATTEMPT=${NUM_ATTEMPT:-32}
 MAX_ITERATIONS=100
 
 # Function to detect GPU-CPU topology automatically
