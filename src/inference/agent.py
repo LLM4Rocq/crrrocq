@@ -246,7 +246,6 @@ When tactics fail:
 
     def run_proof(
         self,
-        beam_size: int = 1,
         num_attempt: int = 1,
         max_iterations: int = 100,
         verbose: bool = False,
@@ -267,9 +266,8 @@ When tactics fail:
 
         # Generate response with tool support using beam search
         response = self.tool_handler.process_with_tools(
-            self.llm,
-            prompt,
-            beam_size,
+            llm=self.llm,
+            prompt=prompt,
             num_attempt=num_attempt,
             max_iterations=max_iterations,
         )
