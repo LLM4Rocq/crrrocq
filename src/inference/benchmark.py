@@ -361,9 +361,6 @@ def main():
 
     # Show results
     print(f"\n=== Results ===")
-    print(f"Total VLLM instances: {shared_llm.instance_count}")
-    print(f"Total SearchTool instances: {shared_search_tool.instance_count}")
-
     success_count = sum(1 for r in results if r["success"])
     print(f"Successful proofs: {success_count}/{len(results)}")
 

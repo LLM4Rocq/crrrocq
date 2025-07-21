@@ -166,7 +166,7 @@ class ToolHandler:
                         new_prompt += f"<result>\nscript error\n</result>"
                         active_prompt = [new_prompt]
 
-        llm.finalize_session(stop_sequences)
+        llm.finalize_session(num_attempt, max_iterations, stop_sequences)
         return Status(success=False, proof=[])
 
 

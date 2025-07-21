@@ -206,13 +206,15 @@ class API_LLM(LLM):
             # Return empty strings in case of error
             return [""] * len(prompts)
 
-    def finalize_session(self, stop_sequences) -> None:
+    def finalize_session(self, num_attempt, max_iterations, stop_sequences) -> None:
         """Finalize the logging session."""
         # Log the interaction
         metadata = {
             "model": self.model,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
+            "num_attempts": num_attempt,
+            "max_iterations": max_iterations,
             "stop_sequences": stop_sequences,
         }
         self.logger.finalize_session(metadata=metadata)
