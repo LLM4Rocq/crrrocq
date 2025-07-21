@@ -179,7 +179,7 @@ if [[ "$USE_NUMA" == "true" ]] && [[ "$EMB_NUMA_NODE" =~ ^[0-9]+$ ]]; then
         --evaluation-json $EVALUATION_JSON \
         --max-workers $MAX_WORKERS \
         --max-theorems $MAX_THEOREMS \
-        --num_attempt $NUM_ATTEMPT \
+        --num-attempt $NUM_ATTEMPT \
         --max-iterations $MAX_ITERATIONS \
         --log-dir $LOG_DIR \
         --verbose
@@ -188,7 +188,7 @@ elif [[ -n "$EMB_CPUS" ]]; then
         --evaluation-json $EVALUATION_JSON \
         --max-workers $MAX_WORKERS \
         --max-theorems $MAX_THEOREMS \
-        --num_attempt $NUM_ATTEMPT \
+        --num-attempt $NUM_ATTEMPT \
         --max-iterations $MAX_ITERATIONS \
         --log-dir $LOG_DIR \
         --verbose
@@ -197,14 +197,13 @@ else
         --evaluation-json $EVALUATION_JSON \
         --max-workers $MAX_WORKERS \
         --max-theorems $MAX_THEOREMS \
-        --num_attempt $NUM_ATTEMPT \
+        --num-attempt $NUM_ATTEMPT \
         --max-iterations $MAX_ITERATIONS \
         --log-dir $LOG_DIR \
         --verbose
 fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Benchmark completed"
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Results not saved to: $OUTPUT_FILE"
 
 # Log final resource usage
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Resource usage summary:"
