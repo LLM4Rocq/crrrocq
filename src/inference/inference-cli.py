@@ -151,7 +151,7 @@ def main():
         model=args.model,
         temperature=args.temperature,
         verbose=args.verbose,
-        log_dir= "llm_logs"
+        log_dir="llm_logs",
         session_name=session_name,
     )
 
