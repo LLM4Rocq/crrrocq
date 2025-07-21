@@ -162,10 +162,10 @@ class ToolHandler:
                     counter -= 1
                     if counter <= 0:
                         break
-                    else: 
-                    new_prompt += f"<result>\nscript error\n</result>"
-                    active_prompt = [new_prompt]
-                    
+                    else:
+                        new_prompt += f"<result>\nscript error\n</result>"
+                        active_prompt = [new_prompt]
+
         llm.finalize_session(stop_sequences)
         return Status(success=False, proof=[])
 
