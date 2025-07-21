@@ -32,10 +32,12 @@ export TMPDIR=$JOBSCRATCH
 MODEL=/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/
 MODEL_EMB=/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b
 EVALUATION_JSON=/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json
-OUTPUT_FILE=benchmark_results_$(date +%Y%m%d_%H%M%S).json
+LOG_DIR=bench_$(date +%Y%m%d_%H%M%S)
 PORT_EMB=31000
-MAX_WORKERS=4
-MAX_THEOREMS=150  # Adjust based on your needs
+MAX_WORKERS=8
+MAX_THEOREMS=16  # Adjust based on your needs
+NUM_ATTEMPT=8
+MAX_ITERATIONS=100
 
 # Function to detect GPU-CPU topology automatically
 detect_gpu_topology() {
@@ -177,21 +179,27 @@ if [[ "$USE_NUMA" == "true" ]] && [[ "$EMB_NUMA_NODE" =~ ^[0-9]+$ ]]; then
         --evaluation-json $EVALUATION_JSON \
         --max-workers $MAX_WORKERS \
         --max-theorems $MAX_THEOREMS \
-        --output-file $OUTPUT_FILE \
+        --num_attempt $NUM_ATTEMPT \
+        --max-iterations $MAX_ITERATIONS \
+        --log-dir $LOG_DIR \
         --verbose
 elif [[ -n "$EMB_CPUS" ]]; then
     taskset -c $EMB_CPUS python -m src.inference.benchmark \
         --evaluation-json $EVALUATION_JSON \
         --max-workers $MAX_WORKERS \
         --max-theorems $MAX_THEOREMS \
-        --output-file $OUTPUT_FILE \
+        --num_attempt $NUM_ATTEMPT \
+        --max-iterations $MAX_ITERATIONS \
+        --log-dir $LOG_DIR \
         --verbose
 else
     python -m src.inference.benchmark \
         --evaluation-json $EVALUATION_JSON \
         --max-workers $MAX_WORKERS \
         --max-theorems $MAX_THEOREMS \
-        --output-file $OUTPUT_FILE \
+        --num_attempt $NUM_ATTEMPT \
+        --max-iterations $MAX_ITERATIONS \
+        --log-dir $LOG_DIR \
         --verbose
 fi
 

@@ -9,29 +9,28 @@ import threading
 import concurrent.futures
 
 from pytanque import Pytanque
-from .tools import SearchTool, ScriptTool, HaveTool, ThreadLocalSearchTool
-from .llm import VLLM, ThreadLocalVLLM
+from .tools import SearchTool, ScriptTool, HaveTool
+from .llm import API_LLM
 from .agent import MathProofAgent, Status
 from .utils import (
     extract_proof,
     get_proof_tactics,
     get_evaluation_theorems,
     get_parsed_statements,
+    make_session_name,
 )
 
 # from src.embedding.models.qwen_embedding import Qwen3Embedding4b
 # from src.embedding.index.cosim_index import FaissIndex
 
 
-def run_single_proof_with_mixed_tools(
-    shared_llm: ThreadLocalVLLM,
-    shared_search_tool: ThreadLocalSearchTool,
+def run_single_proof(
     theorem: str,
     theorem_file: str,
     theorem_id: int,
     tool_configs: Dict[str, Dict[str, Any]],
-    beam_size: int = 1,
     num_attempt: int = 1,
+    max_iterations: int = 100,
     verbose: bool = False,
     **agent_kwargs,
 ) -> Dict[str, Any]:
@@ -45,10 +44,8 @@ def run_single_proof_with_mixed_tools(
     print(f"Theorem {theorem_id}: Starting proof on thread {thread_name}")
 
     try:
-        # Use shared thread-local SearchTool
-        # search_tool = shared_search_tool
+
         search_config = tool_configs["search"]
-        # print(search_config)
         search_tool = SearchTool(
             index_path=search_config["index_path"],
             model=search_config["model"],
@@ -62,8 +59,6 @@ def run_single_proof_with_mixed_tools(
         pet.connect()
         pet.set_workspace(False, str(pet_config["workspace"]))
 
-        # Create fresh instances for other tools (if not thread-safe)
-        # script_config = tool_configs["script"]
         script_tool = ScriptTool(
             pet=pet,
             workspace=pet_config["workspace"],
@@ -78,12 +73,17 @@ def run_single_proof_with_mixed_tools(
             theorem=theorem,
         )
 
-        llm_config = tool_configs["script"]
-        llm = VLLM(
+        # Set the session name for this theorem
+        theorem_session_name = f"{theorem}_{theorem_id}"
+
+        llm_config = tool_configs["llm"]
+        llm = API_LLM(
             api_url=llm_config["api_url"],
             model=llm_config["model"],
             temperature=llm_config["temperature"],
             verbose=llm_config["verbose"],
+            log_dir=llm_config["log_dir"],
+            session_name=make_session_name(theorem_session_name),
         )
 
         # Create MathProofAgent with mixed tool strategy
@@ -94,15 +94,11 @@ def run_single_proof_with_mixed_tools(
             have_tool=have_tool,  # Fresh instance (thread-safe)
         )
 
-        # Set the session name for this theorem
-        theorem_session_name = f"{theorem}_{theorem_id}"
-
         # Run the proof with session name
         status = agent.run_proof(
-            beam_size=beam_size,
             num_attempt=num_attempt,
+            max_iterations=max_iterations,
             verbose=verbose,
-            session_name=theorem_session_name,
         )
 
         print(f"Theorem {theorem_id}: Completed with status {status}")
@@ -113,12 +109,6 @@ def run_single_proof_with_mixed_tools(
             "status": status,
             "success": status.success,
             "thread": thread_name,
-            "tools_strategy": {
-                "llm": "thread_local",
-                "search": "thread_local",
-                "script": "fresh_instance",
-                "have": "fresh_instance",
-            },
         }
 
     except Exception as e:
@@ -133,14 +123,12 @@ def run_single_proof_with_mixed_tools(
         }
 
 
-def run_parallel_proofs_with_mixed_tools(
+def run_parallel_proofs(
     theorems: List[str],
-    shared_llm: ThreadLocalVLLM,
-    shared_search_tool: ThreadLocalSearchTool,
     tool_configs: Dict[str, Dict[str, Any]],
     max_workers: int = 4,
-    beam_size: int = 1,
     num_attempt: int = 1,
+    max_iterations: int = 100,
     verbose: bool = False,
     **agent_kwargs,
 ) -> List[Dict[str, Any]]:
@@ -173,14 +161,14 @@ def run_parallel_proofs_with_mixed_tools(
         # Submit all proof tasks
         future_to_theorem = {
             executor.submit(
-                run_single_proof_with_mixed_tools,
-                shared_llm,
-                shared_search_tool,
+                run_single_proof,
                 theorem,
                 theorem_file,
                 theorem_id,
                 get_tool_configs_copy(),
                 num_attempt,
+                max_iterations,
+                verbose,
                 **agent_kwargs,
             ): theorem_id
             for theorem_id, (theorem, theorem_file) in enumerate(theorems)
@@ -260,18 +248,11 @@ def main():
         help="LLM model name",
     )
     parser.add_argument(
-        "--beam-size",
-        type=int,
-        default=1,
-        help="Number of parallel paths to explore (beam search width)",
-    )
-    parser.add_argument(
         "--temperature",
         type=float,
         default=0.6,
         help="Temperature for the LLM generation",
     )
-
     parser.add_argument(
         "--docstrings-path",
         default="/lustre/fsn1/projects/rech/tdm/commun/dataset/docstrings.json",
@@ -322,29 +303,27 @@ def main():
     )
 
     parser.add_argument(
-        "--output-file",
+        "--num-attempt",
+        type=int,
+        default=8,
+        help="Number of attempts to prove each theorem",
+    )
+
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=100,
+        help="Maximum number of iterations for each proof attempt",
+    )
+
+    parser.add_argument(
+        "--log-dir",
         type=str,
-        default="benchmark_results.json",
-        help="Output file for benchmark results",
+        default="bench_logs",
+        help="Directory to store logs",
     )
 
     args = parser.parse_args()
-
-    # Initialize thread-local LLM
-    shared_llm = ThreadLocalVLLM(
-        api_url=args.llm_url,
-        model=args.model,
-        temperature=args.temperature,
-        verbose=args.verbose,
-    )
-
-    # Initialize thread-local SearchTool
-    shared_search_tool = ThreadLocalSearchTool(
-        index_path=args.index_cache_path,
-        model=args.model_embedding,
-        api_url=args.embedding_api,
-        docstrings_path=args.docstrings_path,
-    )
 
     # Configure other tools (only script and have now)
     tool_configs = {
@@ -353,11 +332,12 @@ def main():
             "port": args.port,
             "workspace": str(args.workspace),
         },
-        "script": {
+        "llm": {
             "api_url": args.llm_url,
             "model": args.model,
             "temperature": args.temperature,
             "verbose": args.verbose,
+            "log_dir": args.log_dir,
         },
         "search": {
             "index_path": args.index_cache_path,
@@ -373,11 +353,10 @@ def main():
     # Run parallel proofs
     results = run_parallel_proofs_with_mixed_tools(
         theorems=theorems,
-        shared_llm=shared_llm,
-        shared_search_tool=shared_search_tool,
         tool_configs=tool_configs,
-        max_workers=4,
-        num_attempt=16,
+        max_workers=args.max_workers,
+        num_attempt=args.num_attempt,
+        max_iterations=args.max_iterations,
     )
 
     # Show results
