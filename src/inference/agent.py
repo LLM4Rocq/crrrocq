@@ -164,7 +164,7 @@ class ToolHandler:
                         break
                     # else: # retry with the same prompt
                     # new_prompt += f"<result>\n script error\n</result>"
-
+        llm.finalize_session()
         return Status(success=False, proof=current_tool.env.proof)
 
 

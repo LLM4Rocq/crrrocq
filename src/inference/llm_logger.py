@@ -66,7 +66,6 @@ class LLMLogger:
         self,
         prompts: list[str],
         responses: list[str],
-        metadata: Optional[dict] = None,
         prefix: str = "",
     ) -> None:
         """
@@ -94,10 +93,6 @@ class LLMLogger:
             ],
         }
 
-        # Add metadata if provided
-        if metadata:
-            batch_interaction_data["metadata"] = metadata
-
         # Keep only the last interaction
         self.session_data["interactions"].append(batch_interaction_data)
 
@@ -115,12 +110,16 @@ class LLMLogger:
             # print(self.session_data["interactions"])
             print("=" * 50)
 
-    def finalize_session(self) -> None:
+    def finalize_session(self, metadata: Optional[dict] = None) -> None:
         """
         Finalize the session by adding end timestamp and final write.
         """
         if not self.enabled:
             return
+
+        # Add metadata if provided
+        if metadata:
+            self.session_data["metadata"] = metadata
 
         self.session_data["session_end"] = datetime.now().isoformat()
         self.session_data["total_interactions"] = len(self.session_data["interactions"])
