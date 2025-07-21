@@ -126,7 +126,7 @@ class ToolHandler:
 
             # Assuming we only have one active prompt
             response = responses[0]
-            new_prompt = [active_prompt][0] + response
+            new_prompt = active_prompt[0] + response
 
             # Check if there's a tool call in the new response only
             tool_call = self.parser.extract_next_tool_call(response)
