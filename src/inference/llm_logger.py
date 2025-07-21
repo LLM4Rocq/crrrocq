@@ -62,53 +62,6 @@ class LLMLogger:
         with open(self.log_path, "w") as f:
             json.dump(self.session_data, f, indent=2)
 
-    def log_interaction(
-        self,
-        prompt: str,
-        response: str,
-        metadata: Optional[dict] = None,
-        prefix: str = "",
-    ) -> None:
-        """
-        Log a single LLM interaction to the session file.
-
-        Args:
-            prompt: The prompt sent to the LLM
-            response: The response from the LLM
-            metadata: Optional metadata to include in the log
-            prefix: Optional prefix (kept for compatibility but not used)
-        """
-        if not self.enabled:
-            return
-
-        # Create a timestamp
-        timestamp = datetime.now().isoformat()
-
-        # Create interaction data
-        interaction_data = {
-            "timestamp": timestamp,
-            "prompt": prompt,
-            "response": response,
-            "interaction_type": "single",
-        }
-
-        # Add metadata if provided
-        if metadata:
-            interaction_data["metadata"] = metadata
-
-        # Keep only the last interaction
-        self.session_data["interactions"] = [interaction_data]
-
-        # Write updated session data to file
-        self._write_session_data()
-
-        # Print to console if enabled
-        if self.log_to_console:
-            print(f"\n=== LLM Interaction at {timestamp} ===")
-            print(f"Prompt: {prompt[:200]}...")
-            print(f"Response: {response[:200]}...")
-            print("=" * 50)
-
     def log_batch_interaction(
         self,
         prompts: list[str],
@@ -146,11 +99,11 @@ class LLMLogger:
             batch_interaction_data["metadata"] = metadata
 
         # Keep only the last interaction
-        self.session_data["interactions"] = [batch_interaction_data]
+        self.session_data["interactions"].append(batch_interaction_data)
 
-        print(
-            f"Log data {batch_interaction_data['interactions'][0]['response'][:200]}..."
-        )
+        # print(
+        #    f"Log data {batch_interaction_data['interactions'][0]['response'][:200]}..."
+        # )
 
         # Write updated session data to file
         self._write_session_data()
@@ -159,7 +112,7 @@ class LLMLogger:
         if self.log_to_console:
             print(f"\n=== LLM Batch Interaction at {timestamp} ===")
             print(f"Number of interactions: {len(prompts)}")
-            print(self.session_data["interactions"])
+            # print(self.session_data["interactions"])
             print("=" * 50)
 
     def finalize_session(self) -> None:
