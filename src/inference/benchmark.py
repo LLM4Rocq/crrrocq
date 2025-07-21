@@ -351,7 +351,7 @@ def main():
     theorems = theorems[: args.max_theorems] if args.max_theorems else theorems
 
     # Run parallel proofs
-    results = run_parallel_proofs_with_mixed_tools(
+    results = run_parallel_proofs(
         theorems=theorems,
         tool_configs=tool_configs,
         max_workers=args.max_workers,
