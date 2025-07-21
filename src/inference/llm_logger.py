@@ -66,7 +66,7 @@ class LLMLogger:
         self,
         prompts: list[str],
         responses: list[str],
-        prefix: str = "",
+        # prefix: str = "",
     ) -> None:
         """
         Log a batch of LLM interactions to the session file.

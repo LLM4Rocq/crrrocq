@@ -196,8 +196,7 @@ class API_LLM(LLM):
             self.logger.log_batch_interaction(
                 prompts=prompts,
                 responses=llm_responses,
-                metadata=metadata,
-                prefix=self.model.split("/")[-1],  # Use model name as prefix
+                # prefix=self.model.split("/")[-1],  # Use model name as prefix
             )
 
             return llm_responses
@@ -207,7 +206,7 @@ class API_LLM(LLM):
             # Return empty strings in case of error
             return [""] * len(prompts)
 
-    def finalize_session(self) -> None:
+    def finalize_session(self, stop_sequences) -> None:
         """Finalize the logging session."""
         # Log the interaction
         metadata = {
