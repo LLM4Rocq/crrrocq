@@ -118,7 +118,7 @@ detect_gpu_topology
 
 # Start main server on 3 GPUs (GPU1, GPU2, GPU3)
 start_server_with_binding "main" "1-3" \
-    "python -m sglang.launch_server --model-path $MODEL --base-gpu-id 1 --num-gpus 3 --host 0.0.0.0" \
+    "python -m sglang.launch_server --model-path $MODEL --base-gpu-id 1 --tp-size 3 --host 0.0.0.0" \
     "$MAIN_CPUS" "$MAIN_NUMA_NODE"
 MAIN_PID=$!
 
