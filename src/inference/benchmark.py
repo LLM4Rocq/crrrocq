@@ -86,15 +86,13 @@ def run_single_proof(
             session_name=make_session_name(theorem_session_name),
         )
 
-        # Create MathProofAgent with mixed tool strategy
         agent = MathProofAgent(
-            llm=llm,  # shared_llm,  # Thread-local LLM (shared)
-            search_tool=search_tool,  # Thread-local SearchTool (shared)
-            script_tool=script_tool,  # Fresh instance (thread-safe)
-            have_tool=have_tool,  # Fresh instance (thread-safe)
+            llm=llm,
+            search_tool=search_tool,
+            script_tool=script_tool,
+            have_tool=have_tool,
         )
 
-        # Run the proof with session name
         status = agent.run_proof(
             num_attempt=num_attempt,
             max_iterations=max_iterations,
@@ -363,6 +361,14 @@ def main():
     print(f"\n=== Results ===")
     success_count = sum(1 for r in results if r["success"])
     print(f"Successful proofs: {success_count}/{len(results)}")
+
+    output_file_path = os.path.join(args.log_dir, "benchmark_results.json")
+    try:
+        with open(output_file_path, "w", encoding="utf-8") as output_file:
+            json.dump(results, output_file, indent=2, ensure_ascii=False)
+        print(f"Results saved to {output_file_path}")
+    except Exception as e:
+        print(f"Failed to save results to {output_file_path}: {e}")
 
 
 if __name__ == "__main__":
