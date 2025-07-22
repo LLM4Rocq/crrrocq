@@ -74,7 +74,7 @@ def run_single_proof(
         )
 
         # Set the session name for this theorem
-        theorem_session_name = f"{theorem}_{theorem_id}"
+        theorem_session_name = f"{theorem_file}_{theorem}_{theorem_id}"
 
         llm_config = tool_configs["llm"]
         llm = API_LLM(

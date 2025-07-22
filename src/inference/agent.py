@@ -149,6 +149,13 @@ class ToolHandler:
                 if tool_result["status"] == "success":
                     if tool_result["is_complete"]:
                         # Proof is complete, return success immediately
+                        llm.finalize_session(
+                            num_attempt,
+                            max_iterations,
+                            stop_sequences,
+                            success=True,
+                            proof=current_tool.env.proof,
+                        )
                         return Status(success=True, proof=current_tool.env.proof)
                     else:
                         # Proof is progressing
@@ -162,6 +169,7 @@ class ToolHandler:
                     counter -= 1
                     if counter <= 0:
                         break
+                    # else prompt is not modified, nothing to do!
                     # else:
                     #    new_prompt += f"<result>\nscript error\n</result>"
                     #    active_prompt = [new_prompt]
