@@ -90,6 +90,7 @@ python -m src.inference.benchmark \
         --num-attempt $NUM_ATTEMPT \
         --max-iterations $MAX_ITERATIONS \
         --log-dir $LOG_DIR \
+        --num-full-attempt $NUM_FULL_ATTEMPT \
         --verbose
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Benchmark completed"
