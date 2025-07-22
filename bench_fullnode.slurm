@@ -4,15 +4,15 @@
 #SBATCH --nodes=1                     # number of nodes
 #SBATCH --ntasks-per-node=1           # number of MPI tasks per node
 #SBATCH --hint=nomultithread          # reservation of physical cores (no hyperthreading)
-#SBATCH --output=bench-fn%j.out     # name of output file
-#SBATCH --error=bench-fn%j.err      # name of error file
+#SBATCH --output=/lustre/fsn1/projects/rech/tdm/uuz44ie/experiments-crrrocq/bench-fn%j.out     # name of output file
+#SBATCH --error=/lustre/fsn1/projects/rech/tdm/uuz44ie/experiments-crrrocq/bench-fn%j.err      # name of error file
 #SBATCH --constraint=h100             # h100 gpus
 #SBATCH --nodes=1                     # number of nodes
 #SBATCH --gres=gpu:4                  # number of gpus/node 
 #SBATCH --cpus-per-task=48            # total CPUs available
-#SBATCH --time=02:00:00               # maximum execution time requested (HH:MM:SS)
+#SBATCH --time=20:00:00               # maximum execution time requested (HH:MM:SS)
 #SBATCH --account=tdm@h100            # account
-#SBATCH --qos=qos_gpu_h100-dev
+
 
 # clean out the modules loaded in interactive and inherited by default
 module purge
