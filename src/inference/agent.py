@@ -83,7 +83,7 @@ class MathAgent:
             [
                 f"<{block['kind']}>\n{block['content']}\n</{block['kind']}>"
                 for block in self.blocks
-            ]
+            ] + ['<think>\n']
         )
         return output
 
@@ -107,10 +107,6 @@ class MathAgent:
                 ]
 
                 output = self.llm.generate(messages)
-                # TODO: for the moment, HF apply chat template require non empty assistant content for continuation
-                if not self.blocks:
-                    output = "<think>\n" + output
-
                 try:
                     new_blocks = parse_output(output)
                 except ParsingBlockError as e:
@@ -118,13 +114,14 @@ class MathAgent:
                     num_retry_parse += 1
                     continue
                 try:
-                    self.blocks += new_blocks
+                    self.blocks += new_blocks[:-1]
                     last_block = new_blocks[-1]
                     # TODO: Add a dummy "think" tool
                     if last_block['kind'] in self.tools:
                         tool_name = last_block['kind']
                         result = self.tools[tool_name].run(last_block['content'], agent=self, **self.config['tools'][tool_name])
                         self.blocks.append({"kind": "result", "content": deepcopy(result)})
+                    self.blocks.append(last_block)
                     break
                 except ToolError as e:
                     self.logs.append({"status": "error", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(new_blocks)})
