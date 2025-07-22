@@ -76,8 +76,6 @@ class MathAgent:
     def build_blocks(self) -> str:
         """Agregate blocks into string."""
         # TODO: for the moment, HF apply chat template require non empty assistant content for continuation
-        if not self.blocks:
-            return "<think>\n"
         
         output = "\n".join(
             [
@@ -106,7 +104,7 @@ class MathAgent:
                     {"role": "assistant", "content": self.build_blocks()}
                 ]
 
-                output = self.llm.generate(messages)
+                output = '\n<think>\n' + self.llm.generate(messages)
                 try:
                     new_blocks = parse_output(output)
                 except ParsingBlockError as e:
