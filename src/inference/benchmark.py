@@ -71,7 +71,8 @@ def run_single_proof(
         )
 
         # Set the session name for this theorem
-        theorem_session_name = f"{theorem_file[:-2]}_{theorem}_{theorem_id}"
+        theorem_base_name = os.path.splitext(theorem_file)[0]
+        theorem_session_name = f"{theorem_base_name}_{theorem}_{theorem_id}"
 
         llm_config = tool_configs["llm"]
         llm = API_LLM(
