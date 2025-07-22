@@ -7,6 +7,10 @@ from .base import BaseTool, ToolError
 class HaveTool(BaseTool):
     """Tool for interacting with the Coq theorem prover."""
 
+    def __init__(self, state=None):
+        super().__init__()
+        self.state = state
+
     @property
     def instruction(self) -> str:
         return """### 🎯 Have Block

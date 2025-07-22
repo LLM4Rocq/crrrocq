@@ -83,6 +83,8 @@ class MathAgent:
                 for block in self.blocks
             ]
         )
+        if not self.blocks:
+            return "<think>\n"
         return output
 
     def export_result(self):
@@ -94,6 +96,7 @@ class MathAgent:
         """
         assert "script" in self.tools, "Missing script tool."
         curr_depth = 0
+        last_failed = ""
         while curr_depth < self.config['max_depth']:
             num_retry_parse = 0
             num_retry_tool = 0
@@ -106,8 +109,14 @@ class MathAgent:
                     {"role": "user", "content": self.instruct},
                     {"role": "assistant", "content": blocks_aggregated}
                 ]
-                if not self.blocks or self.blocks[-1]['kind']=='think':
-                    output = '\n<think>\n' + self.llm.generate(messages)
+                prepend = ''
+                if not last_failed:
+                    prepend = '<think>\n'
+                else:
+                    prepend = f'<{last_failed}>\n'
+
+                messages[-1]['content'] += prepend
+                output = prepend + self.llm.generate(messages)
                 try:
                     new_blocks = parse_output(output)
                 except ParsingBlockError as e:
@@ -121,12 +130,14 @@ class MathAgent:
                     if last_block['kind'] in self.tools:
                         tool_name = last_block['kind']
                         result = self.tools[tool_name].run(last_block['content'], agent=self, **self.config['tools'][tool_name])
+                        self.blocks.append(last_block)
                         self.blocks.append({"kind": "result", "content": deepcopy(result)})
-                    self.blocks.append(last_block)
+                    last_failed = ''
                     break
                 except ToolError as e:
                     self.logs.append({"status": "error", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(new_blocks)})
                     num_retry_tool += 1
+                    last_failed = last_block['kind']
                     if self.config['max_retry'][last_block['kind']] <= num_retry_tool:
                         raise MathAgentError(f"Max retry reach for {last_block['kind']}.")
             curr_depth += 1
