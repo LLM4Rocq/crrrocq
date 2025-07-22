@@ -39,7 +39,9 @@ def run_single_proof(
     - Other tools: Fresh instances per thread
     """
     thread_name = threading.current_thread().name
-    print(f"Theorem {theorem_id}: Starting proof on thread {thread_name}")
+    print(
+        f"Theorem {theorem}_{theorem_id} in {theorem_file} : Starting proof on thread {thread_name}"
+    )
 
     try:
 
