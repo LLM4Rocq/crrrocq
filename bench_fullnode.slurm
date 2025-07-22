@@ -8,7 +8,7 @@
 #SBATCH --error=bench-fn%j.err      # name of error file
 #SBATCH --constraint=h100             # h100 gpus
 #SBATCH --nodes=1                     # number of nodes
-#SBATCH --gres=gpu:4                  # number of gpus/node (changed from 2 to 4)
+#SBATCH --gres=gpu:3                  # number of gpus/node 
 #SBATCH --cpus-per-task=48            # total CPUs available
 #SBATCH --time=02:00:00               # maximum execution time requested (HH:MM:SS)
 #SBATCH --account=tdm@h100            # account
@@ -34,7 +34,7 @@ MODEL_EMB=/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-
 EVALUATION_JSON=/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json
 LOG_DIR=bench_$(date +%Y%m%d_%H%M%S)
 PORT_EMB=31000
-MAX_WORKERS=36
+MAX_WORKERS=24
 MAX_THEOREMS=150  # Adjust based on your needs
 NUM_ATTEMPT=${NUM_ATTEMPT:-8}
 MAX_ITERATIONS=100
@@ -52,7 +52,7 @@ detect_gpu_topology() {
         # Get CPU affinity for each GPU
         nvidia-smi topo -m > /tmp/gpu_topology.txt
         
-        # Parse CPU affinity for GPU0 (embedding) and GPU1-3 (main server)
+        # Parse CPU affinity for GPU0 (embedding) and GPU1-2 (main server)
         GPU0_CPUS=$(nvidia-smi topo -m | grep "^GPU0" | awk '{print $8}')
         GPU1_CPUS=$(nvidia-smi topo -m | grep "^GPU1" | awk '{print $8}')
         
@@ -118,7 +118,7 @@ detect_gpu_topology
 
 # Start main server on 3 GPUs (GPU1, GPU2, GPU3)
 start_server_with_binding "main" "1-3" \
-    "python -m sglang.launch_server --model-path $MODEL --base-gpu-id 1 --tp-size 3 --host 0.0.0.0" \
+    "python -m sglang.launch_server --model-path $MODEL --base-gpu-id 1 --tp-size 2 --host 0.0.0.0" \
     "$MAIN_CPUS" "$MAIN_NUMA_NODE"
 MAIN_PID=$!
 
