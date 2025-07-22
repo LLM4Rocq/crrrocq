@@ -12,6 +12,9 @@ class Status:
     success: bool
     proof: List[str]
 
+    def to_dict(self):
+        return asdict(self)
+
 
 # ===============================================
 # Parser Class

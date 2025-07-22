@@ -40,7 +40,7 @@ def run_single_proof(
     """
     thread_name = threading.current_thread().name
     print(
-        f"Theorem {theorem}_{theorem_id} in {theorem_file} : Starting proof on thread {thread_name}"
+        f"Theorem {theorem} (id: {theorem_id}) in {theorem_file} : Starting proof on thread {thread_name}"
     )
 
     try:
@@ -105,7 +105,7 @@ def run_single_proof(
         return {
             "theorem_id": theorem_id,
             "theorem": theorem,
-            "status": status,
+            "status": status.to_dict(),
             "success": status.success,
             "thread": thread_name,
         }
