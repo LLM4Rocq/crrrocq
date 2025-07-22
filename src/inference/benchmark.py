@@ -20,9 +20,6 @@ from .utils import (
     make_session_name,
 )
 
-# from src.embedding.models.qwen_embedding import Qwen3Embedding4b
-# from src.embedding.index.cosim_index import FaissIndex
-
 
 def run_single_proof(
     theorem: str,
@@ -74,7 +71,7 @@ def run_single_proof(
         )
 
         # Set the session name for this theorem
-        theorem_session_name = f"{theorem_file}_{theorem}_{theorem_id}"
+        theorem_session_name = f"{theorem_file[:-2]}_{theorem}_{theorem_id}"
 
         llm_config = tool_configs["llm"]
         llm = API_LLM(
