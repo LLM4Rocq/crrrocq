@@ -54,7 +54,7 @@ class ScriptTool(BaseTool):
         """
         assert self.state, ToolError("No current state, start a theorem (start_thm) before using tool.")
         try:
-            state, goals = self.client.run_tac(self.state, tactic)
+            state, goals = self.client.run_tac(self.state['pet_state'], tactic)
             self._update_state(state, goals)
             if state['goals']:
                 return "The goal to prove is:\n" + goals[0]['pp']
