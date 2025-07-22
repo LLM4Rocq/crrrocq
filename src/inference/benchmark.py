@@ -305,7 +305,14 @@ def main():
         "--num-attempt",
         type=int,
         default=8,
-        help="Number of attempts to prove each theorem",
+        help="Number of attempts for each script",
+    )
+
+    parser.add_argument(
+        "--num-full-attempt",
+        type=int,
+        default=1,
+        help="Number of full attempts to prove each theorem",
     )
 
     parser.add_argument(
@@ -348,6 +355,7 @@ def main():
 
     theorems = get_theorems(args.evaluation_json)
     theorems = theorems[: args.max_theorems] if args.max_theorems else theorems
+    theorems = [t for t in theorems for _ in range(args.num_full_attempt)]
 
     # Run parallel proofs
     results = run_parallel_proofs(

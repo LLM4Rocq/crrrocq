@@ -37,10 +37,11 @@ PORT_EMB=31000
 MAX_WORKERS=64
 MAX_THEOREMS=150  # Adjust based on your needs
 NUM_ATTEMPT=${NUM_ATTEMPT:-32}
+NUM_FULL_ATTEMPT=${NUM_FULL_ATTEMPT:-128}
 MAX_ITERATIONS=100
 
-python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.8 --host 0.0.0.0 &
-python -m sglang.launch_server --model-path $MODEL_EMB --base-gpu-id 2 --tp-size 2 --mem-fraction-static 0.19 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
+python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.7 --host 0.0.0.0 &
+python -m sglang.launch_server --model-path $MODEL_EMB --base-gpu-id 2 --tp-size 2 --mem-fraction-static 0.29 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
 
 
 # Wait for main server to be ready
