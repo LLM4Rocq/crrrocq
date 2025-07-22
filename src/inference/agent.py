@@ -81,7 +81,7 @@ class MathAgent:
             [
                 f"<{block['kind']}>\n{block['content']}\n</{block['kind']}>"
                 for block in self.blocks
-            ] + ['<think>\n']
+            ]
         )
         return output
 
@@ -99,12 +99,15 @@ class MathAgent:
             num_retry_tool = 0
             while True:
                 assert self.instruct, "Need to start a theorem"
+
+                blocks_aggregated = self.build_blocks()
+
                 messages = [
                     {"role": "user", "content": self.instruct},
-                    {"role": "assistant", "content": self.build_blocks()}
+                    {"role": "assistant", "content": blocks_aggregated}
                 ]
-
-                output = '\n<think>\n' + self.llm.generate(messages)
+                if not self.blocks or self.blocks[-1]['kind']=='think':
+                    output = '\n<think>\n' + self.llm.generate(messages)
                 try:
                     new_blocks = parse_output(output)
                 except ParsingBlockError as e:
