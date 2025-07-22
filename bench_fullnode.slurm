@@ -34,13 +34,13 @@ MODEL_EMB=/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-
 EVALUATION_JSON=/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json
 LOG_DIR=bench_$(date +%Y%m%d_%H%M%S)
 PORT_EMB=31000
-MAX_WORKERS=32
+MAX_WORKERS=64
 MAX_THEOREMS=150  # Adjust based on your needs
-NUM_ATTEMPT=${NUM_ATTEMPT:-16}
+NUM_ATTEMPT=${NUM_ATTEMPT:-32}
 MAX_ITERATIONS=100
 
-python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.7 --host 0.0.0.0 &
-python -m sglang.launch_server --model-path $MODEL_EMB --base-gpu-id 2 --tp-size 2 --mem-fraction-static 0.29 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
+python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.8 --host 0.0.0.0 &
+python -m sglang.launch_server --model-path $MODEL_EMB --base-gpu-id 2 --tp-size 2 --mem-fraction-static 0.19 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
 
 
 # Wait for main server to be ready

@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional, Union, Tuple
 import re
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 from .tools import Tool
 from .llm import LLM
