@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 import threading
 import concurrent.futures
+import os
 
 from pytanque import Pytanque
 from .tools import SearchTool, ScriptTool, HaveTool
