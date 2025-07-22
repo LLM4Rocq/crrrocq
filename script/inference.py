@@ -12,12 +12,14 @@ from src.inference.agent import MathAgent, MathAgentError
 
 def try_proof(agent_config, thm_name, export_dir, id):
     agent = MathAgent(agent_config)
-    agent.start_thm(thm_name)
-    agent.run_proof()
-    filepath = os.path.join(export_dir, f'SUCCESS_{thm_name}_{id}.json')
-    result = {"status": "success"}
-    filepath = os.path.join(export_dir, f'FAIL_{thm_name}_{id}.json')
-    result = {"status": "fail"}
+    try:
+        agent.start_thm(thm_name)
+        agent.run_proof()
+        filepath = os.path.join(export_dir, f'SUCCESS_{thm_name}_{id}.json')
+        result = {"status": "success"}
+    except Exception as e:
+        filepath = os.path.join(export_dir, f'FAIL_{thm_name}_{id}.json')
+        result = {"status": "fail"}
     
     result = agent.export_result() | result
     with open(filepath, 'w') as file:
@@ -77,8 +79,6 @@ def main():
     
     futures = []
     for thm_name in tqdm(thm_names, desc="Theorems", position=0):
-        try_proof(config, thm_name, folder_path, 0)
-        exit()
         with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
             for i in range(args.pass_k):
                 futures.append(executor.submit(try_proof, config, thm_name, folder_path, i))
