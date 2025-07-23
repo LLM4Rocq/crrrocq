@@ -28,8 +28,7 @@ If you want to prove another theorem you can launch:
 ```bash
 $ sbatch --export=THM=coef_prod_XsubC,FILE=poly.v,WORKSPACE=/lustre/fsn1/projects/rech/tdm/commun/math-comp/algebra,NUM_ATTEMPT=16 inference2.slurm
 ```
-**Warning!** once the inference is done for the theorem, the jobs continue so that you can do other inferences as follows:
-Connect to your node with `srun` to launch the embedding server:
+**Warning!** once the inference is done for the theorem, the job continues so that you can do other inferences as follows:
 ```bash
 $ srun --jobid xxx --overlap --pty bash
 $ source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
