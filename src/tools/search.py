@@ -24,14 +24,14 @@ class SearchTool(BaseTool):
     def tag(self) -> str:
         return "search"
 
-    def run(self, query: str, top_k=10, **kwargs) -> str:
+    def run(self, query: str, top_k=10, source="", **kwargs) -> str:
         """
         Execute a search and return results.
 
         Note: This is a placeholder. Implement actual search functionality here.
         """
         try:
-            search_result = self.client.query(query, top_k=top_k)
+            search_result = self.client.query(query, top_k=top_k, source=source)
             output = ""
             # TODO: retrain with clean format
             for k, (_, element, _) in enumerate(search_result, start=1):

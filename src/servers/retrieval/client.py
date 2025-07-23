@@ -19,12 +19,12 @@ class RetrievalClient:
         """
         self.base_url = base_url.rstrip("/")
 
-    def query(self, query:str, top_k:int=10):
+    def query(self, query:str, top_k:int=10, source=""):
         """
         Retrieve top_k docstrings given the query.
         """
         url = f"{self.base_url}/query"
-        payload = {'query': query, "top_k": top_k}
+        payload = {'query': query, "top_k": top_k, "source": source}
         response = requests.post(url, json=payload)
         if response.status_code == 200:
             output = response.json()

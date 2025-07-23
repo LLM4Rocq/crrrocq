@@ -47,6 +47,7 @@ class MathAgent:
         for tool_name, tool_config in config['tools'].items():
             self.tools[tool_name] = get_tool(tool_name, **tool_config)
         self.instruct = None
+        self.source = ""
         self.llm = get_llm(config['llm_kind'], **config['llm_config'])
 
     def duplicate(self, reset_blocks=False) -> Any:
@@ -66,6 +67,7 @@ class MathAgent:
         """Intialize agent to prove theorem."""
         assert "script" in self.tools, "Missing script tool."
         initial_goal = self.tools["script"].start_thm(thm_name)
+        self.source = thm_name
         self.instruct = self.load_instruct().format(initial_goal=initial_goal)
 
     def load_instruct(self) -> str:
@@ -129,7 +131,7 @@ class MathAgent:
                     # TODO: Add a dummy "think" tool
                     if last_block['kind'] in self.tools:
                         tool_name = last_block['kind']
-                        result = self.tools[tool_name].run(last_block['content'], agent=self, **self.config['tools'][tool_name])
+                        result = self.tools[tool_name].run(last_block['content'], agent=self, source=self.source, **self.config['tools'][tool_name])
                         self.blocks.append(last_block)
                         self.blocks.append({"kind": "result", "content": deepcopy(result)})
                     last_failed = ''
