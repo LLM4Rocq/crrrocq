@@ -8,8 +8,8 @@
 #SBATCH --error=infer-test%j.err   # name of error file
 #SBATCH --constraint=h100             # h100 gpus
 #SBATCH --nodes=1                     # number of nodes
-#SBATCH --gres=gpu:2                  # number of gpus/node
-#SBATCH --time=02:00:00               # maximum execution time requested (HH:MM:SS)
+#SBATCH --gres=gpu:4                  # number of gpus/node
+#SBATCH --time=01:00:00               # maximum execution time requested (HH:MM:SS)
 #SBATCH --account=tdm@h100            # account
 #SBATCH --qos=qos_gpu_h100-dev
 
@@ -39,8 +39,8 @@ NUM_ATTEMPT=${NUM_ATTEMPT:-32}
 MAX_ITERATIONS=100
 LOG_DIR=${LOG_DIR:-llm_logs}
 
-python -m sglang.launch_server --model-path $MODEL --tp-size 2 --mem-fraction-static 0.7 --host 0.0.0.0 &
-python -m sglang.launch_server --model-path $MODEL_EMB --base-gpu-id 1 --mem-fraction-static 0.29 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
+python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.7 --host 0.0.0.0 &
+python -m sglang.launch_server --model-path $MODEL_EMB --base-gpu-id 2 --tp-size 2 --mem-fraction-static 0.29 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
 
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for server to respond..."
