@@ -73,6 +73,20 @@ def main():
         "--eval", action="store_true", help="Running on evaluation dataset"
     )
 
+    parser.add_argument(
+        "--num-attempt",
+        type=int,
+        default=8,
+        help="Number of attempts for each script",
+    )
+
+    parser.add_argument(
+        "--log-dir",
+        type=str,
+        default="llm_logs",
+        help="Directory to store logs",
+    )
+
     args = parser.parse_args()
 
     # Setup Pytanque
@@ -151,13 +165,13 @@ def main():
         model=args.model,
         temperature=args.temperature,
         verbose=args.verbose,
-        log_dir="llm_logs",
+        log_dir=args.log_dir,
         session_name=session_name,
     )
 
     # Create agent and run proof with specified beam size
     agent = MathProofAgent(llm, search_tool, script_tool, have_tool)
-    status = agent.run_proof(num_attempt=5, verbose=args.verbose)
+    status = agent.run_proof(num_attempt=args.num_attempt, verbose=args.verbose)
 
     # Print results
     if status.success:
