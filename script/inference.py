@@ -19,7 +19,7 @@ def try_proof(agent_config, thm_name, export_dir, id):
         result = {"status": "success"}
     except Exception as e:
         filepath = os.path.join(export_dir, f'FAIL_{thm_name}_{id}.json')
-        result = {"status": "fail"}
+        result = {"status": "fail", "message": str(e)}
     
     result = agent.export_result() | result
     with open(filepath, 'w') as file:
