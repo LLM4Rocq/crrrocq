@@ -40,8 +40,10 @@ def query():
         data = request.get_json()
         query = data['query']
         top_k = data['top_k']
-
-        output = index.query(query, top_k=top_k)
+        source = ''
+        if 'source' in query:
+            source = query['source']
+        output = index.query(query, top_k=top_k, source=source)
         return jsonify(output), 200
     except Exception as e:
         return str(e), 500

@@ -79,16 +79,26 @@ class FaissIndex(CosimIndex):
                 del self.content[qualid_name]
                 print(e)
 
-    def query(self, query: str, top_k=10) -> List[Tuple[float, str, str]]:
+    def query(self, query: str, top_k=10, source='') -> List[Tuple[float, str, str]]:
         query_embedding = self.model.generate(query).detach().clone().cpu().to(torch.float32)
-        distances, indices = self.index.search(query_embedding, top_k)
+        if source in self.content:
+            source_element = self.content[source]
+            top_k *= 3
+        else:
+            source_element = {"parent": "#no parent"}
 
+        distances, indices = self.index.search(query_embedding, top_k)
         result = []
         for i, idx in enumerate(indices[0]):
+            fqn = self.all_fqn[idx]
             element = copy.deepcopy(self.all_constants[idx])
+
+            if element['parent'] == source_element['parent']:
+                if element['start_line'] >= source_element['start_line']:
+                    continue
             del element['embedding']
             result.append(
-                (float(distances[0][i]), element, self.all_fqn[idx])
+                (float(distances[0][i]), element, fqn)
             )
 
         return result
