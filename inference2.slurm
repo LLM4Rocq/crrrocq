@@ -187,15 +187,6 @@ fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Inference completed"
 
-# Log final resource usage
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Resource usage summary:"
-echo "Main server PID: $MAIN_PID"
-echo "Embedding server PID: $EMB_PID"
-echo "Pet server PID: $PET_PID"
-
-# Optional: Clean shutdown
-kill $PET_PID 2>/dev/null
-kill $EMB_PID 2>/dev/null  
-kill $MAIN_PID 2>/dev/null
+# Keep the script running until the SLURM job times out
 
 wait
