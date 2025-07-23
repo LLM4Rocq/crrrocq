@@ -39,7 +39,7 @@ NUM_ATTEMPT=${NUM_ATTEMPT:-32}
 MAX_ITERATIONS=100
 LOG_DIR=${LOG_DIR:-llm_logs}
 
-python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.7 --host 0.0.0.0 &
+python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.6 --host 0.0.0.0 &
 python -m sglang.launch_server --model-path $MODEL_EMB --base-gpu-id 2 --tp-size 2 --mem-fraction-static 0.29 --host 0.0.0.0 --port $PORT_EMB --is-embedding &
 
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:30000/v1/models | grep -q "200"; do
