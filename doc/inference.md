@@ -1,5 +1,60 @@
 # Simple Inference Pipeline
 
+## Code
+
+To prove one theorem use `inference-cli.py` for a bench `benchmark.py`.
+To modify the code:
+- the main logic for the proof strategy is coded in the `process_with_tools` method of the `ToolHandler` in the `agent.py` file. Here you can modify the `active_prompt` that will be given to the LLM depending on the tool call.
+- tools are defined in the `tools.py` file. For the script, the `ScriptEnv` is defined in the `env.py` file and is responsible for the interactions with the `pet-server`. In particular, there is a pb with some theorems with the `pet.start` cmd that should be modified here. For the moment, the have tool is treated as a script.
+- interactions with the LLM are done through the `API_LLM` class in the `llm.py` file. The `build_prompt` methods are not used anymore.
+
+
+
+## Inference SLURM file: `inference2.slurm`
+
+**Before you launch the job, you should modify line 156 with the location of your `crrrocq` repo.** Then:
+```bash
+$ sbatch inference2.slurm
+```
+
+It will: 
+- start a GPU with 2 nodes (H100) for 1h (you can add time up to 2h for more you should change the qos)
+- launch a sglang server with crrrocq on port 30000
+- launch a sglang server for the embedding model on port 31000
+- launch a pet-server
+- once the crrrocq server is up, it runs the inference for the theorem `foo` in the `examples/foo.v` file.
+
+If you want to prove another theorem you can launch:
+```bash
+$ sbatch --export=THM=coef_prod_XsubC,FILE=poly.v,WORKSPACE=/lustre/fsn1/projects/rech/tdm/commun/math-comp/algebra,NUM_ATTEMPT=16 inference2.slurm
+```
+**Warning!** once the inference is done for the theorem, the jobs continue so that you can do other inferences as follows:
+Connect to your node with `srun` to launch the embedding server:
+```bash
+$ srun --jobid xxx --overlap --pty bash
+$ source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
+$ cd where your crrrocq repo is
+$ python -m src.inference.inference-cli --theorem coef_prod_XsubC --file poly.v --workspace /lustre/fsn1/projects/rech/tdm/commun/math-comp/algebra --eval
+```
+By default, all logs are stored in `llm_logs` in your `crrrocq` repo.
+
+I do not understand why the `inference.slurm` file is not working...
+
+## Bench SLURM files
+
+Probably not useful anymore see the `inference` branch. 
+
+The files `bench.slurm` and `bench_qos.slurm` are using 2xH100 and one is used for the main server and the other for the embedding server. The only difference is the QOS `bench_qos.slurm` is limited to 2 hours but has a high priority.
+
+The file `bench_fullnode.slurm` uses 4xH100 and split the main server on the 4 GPUs and the embedding server on 2 GPUs (high priority, if you want to run for more than 2 hours, you should remove the `--qos`).
+
+The files are launching the `benchmark.py` file. First theorems and corresponding files are retrieved from the keys of the json file `/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json`. There are quite a few errors due to the problem with the start method of the `pet-server` (or bad parsing of the keys or both?). The new arguments are:
+- `max_workers`: number of // threads
+- `num_attempt`: number of attempts for a script
+- `num_full_attempt`: number of proof attempts per theorem.
+
+
+
 ## Manual
 
 Get resources:
@@ -47,19 +102,6 @@ $ python -m src.inference.inference-cli --theorem coef_prod_XsubC --file poly.v 
 ```
 
 
-## SLURM file: `inference2.slurm`
-
-Before you launch the job, you should modify line 156 with the location of your `crrrocq` repo. If you want to prove a given thm, you should change the lines 34-36. Then:
-```bash
-$ sbatch inference2.slurm
-```
-
-It will: 
-- start a GPU with 2 nodes (H100) for 1h (you can add time up to 2h for more you should change the qos)
-- launch a sglang server with crrrocq on port 30000
-- launch a sglang server for the embedding model on port 31000
-- launch a pet-server
-- once the crrrocq server is up, it run the inference for the theorem `foo` in the `examples/foo.v` file (see lines 34-36).
 
 
 Info below is not relevant anymore...

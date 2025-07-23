@@ -36,7 +36,6 @@ THM=${THM:-foo}
 FILE=${FILE:-foo.v}
 PORT_EMB=31000
 NUM_ATTEMPT=${NUM_ATTEMPT:-32}
-MAX_ITERATIONS=100
 LOG_DIR=${LOG_DIR:-llm_logs}
 
 python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.6 --host 0.0.0.0 &
@@ -56,7 +55,6 @@ pet-server &
 # launch inference 
 python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE \
         --num-attempt $NUM_ATTEMPT \
-        --max-iterations $MAX_ITERATIONS \
         --log-dir $LOG_DIR
 
 # Keep the script running until the SLURM job times out
