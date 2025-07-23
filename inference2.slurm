@@ -31,10 +31,13 @@ export TMPDIR=$JOBSCRATCH
 
 MODEL=/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/
 MODEL_EMB=/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b
-WORKSPACE=examples
-THM=foo
-FILE=foo.v
+WORKSPACE=${WORKSPACE:-examples}
+THM=${THM:-foo}
+FILE=${FILE:-foo.v}
 PORT_EMB=31000
+NUM_ATTEMPT=${NUM_ATTEMPT:-32}
+MAX_ITERATIONS=100
+LOG_DIR=${LOG_DIR:-llm_logs}
 
 # Function to detect GPU-CPU topology automatically
 detect_gpu_topology() {
@@ -172,7 +175,7 @@ sleep 5
 # Run inference
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting inference"
 if [[ "$USE_NUMA" == "true" ]] && [[ "$EMB_NUMA_NODE" =~ ^[0-9]+$ ]]; then
-    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
+    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --num-attempt $NUM_ATTEMPT --max-iterations $MAX_ITERATIONS --log-dir $LOG_DIRß
 elif [[ -n "$EMB_CPUS" ]]; then
     taskset -c $EMB_CPUS python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 else
