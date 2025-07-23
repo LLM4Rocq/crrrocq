@@ -21,7 +21,7 @@ module load arch/h100 cuda/12.8.0 nccl/2.25.1-1-cuda
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
 
 TP_SIZE=8
-MODEL_PATH="/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/"
+MODEL_PATH="/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_compress/"
 MODEL_PORT=30000
 EMBED_PATH="/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b"
 EMBED_PORT=30001

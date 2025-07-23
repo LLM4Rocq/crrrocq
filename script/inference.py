@@ -8,10 +8,11 @@ import concurrent.futures
 from tqdm import tqdm
 import yaml
 
-from src.inference.agent import MathAgent, MathAgentError
+from src.inference.agent_compress import MathAgentCompress
+from src.inference.agent import MathAgentError
 
 def try_proof(agent_config, thm_name, export_dir, id):
-    agent = MathAgent(agent_config)
+    agent = MathAgentCompress(agent_config)
     try:
         agent.start_thm(thm_name)
         agent.run_proof()

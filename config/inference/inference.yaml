@@ -4,7 +4,7 @@ llm_config:
   model_name: "/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/"
   api_key: "None"
   generation_parameters:
-    temperature: 0.6
+    temperature: 0.7
     max_tokens: 2048
     stop:
       - "</search>"
@@ -16,6 +16,6 @@ tools:
   script: {}
 max_retry:
   search: 2
-  have: 16
+  have: 32
   script: 32
 max_depth: 128
