@@ -37,8 +37,8 @@ class HaveTool(BaseTool):
             new_agent.tools['script'].run(have)
             new_agent.run_proof(initial_goals=initial_goals)
             new_agent.transfertools(agent)
-            goals = new_agent.tools['script'].goals
+            goals = new_agent.tools['script'].state['goals']
             return "The goal to prove is:\n" + goals[0]['pp']
         except Exception as e:
-            raise ToolError(e.message) from e
+            raise ToolError(str(e)) from e
         
