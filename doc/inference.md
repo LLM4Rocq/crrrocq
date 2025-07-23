@@ -52,7 +52,7 @@ The files are launching the `benchmark.py` file. First theorems and correspondin
 - `num_attempt`: number of attempts for a script
 - `num_full_attempt`: number of proof attempts per theorem.
 
-
+In the `bench_fullnode.slurm` the default logging directory is on my `$SCRATH`, this will probably make an error for you so you should modify this line.
 
 ## Manual
 
