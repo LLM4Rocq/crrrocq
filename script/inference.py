@@ -37,12 +37,12 @@ def main():
     parser.add_argument(
         "--pass-k",
         type=int,
-        default=32
+        default=64
     )
     parser.add_argument(
         "--max-workers",
         type=int,
-        default=32
+        default=64
     )
     parser.add_argument(
         "--evaluation-file",

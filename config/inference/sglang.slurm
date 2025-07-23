@@ -8,8 +8,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1                   # 1 task par nodes
 #SBATCH --ntasks-per-node=1           # Each task will see all GPUs of the node
-#SBATCH --cpus-per-task=32
-#SBATCH --gres=gpu:4
+#SBATCH --cpus-per-task=64
+#SBATCH --gres=gpu:8
 #SBATCH --time=04:00:00
 #SBATCH --hint=nomultithread          # no hyperthreading
 #SBATCH --constraint=a100             # h100 gpus
@@ -20,7 +20,7 @@ module purge
 module load arch/h100 cuda/12.8.0 nccl/2.25.1-1-cuda
 source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
 
-TP_SIZE=4
+TP_SIZE=8
 MODEL_PATH="/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/"
 MODEL_PORT=30000
 EMBED_PATH="/lustre/fsn1/projects/rech/tdm/commun/hf_home/hub/models--Qwen--Qwen3-Embedding-4B/snapshots/5cf2132abc99cad020ac570b19d031efec650f2b"
