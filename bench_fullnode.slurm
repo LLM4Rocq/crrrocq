@@ -4,15 +4,15 @@
 #SBATCH --nodes=1                     # number of nodes
 #SBATCH --ntasks-per-node=1           # number of MPI tasks per node
 #SBATCH --hint=nomultithread          # reservation of physical cores (no hyperthreading)
-#SBATCH --output=/lustre/fsn1/projects/rech/tdm/uuz44ie/experiments-crrrocq/bench-fn%j.out     # name of output file
-#SBATCH --error=/lustre/fsn1/projects/rech/tdm/uuz44ie/experiments-crrrocq/bench-fn%j.err      # name of error file
+#SBATCH --output=bench_logs/bench-fn%j.out     # name of output file
+#SBATCH --error=bench_logs/bench-fn%j.err      # name of error file
 #SBATCH --constraint=h100             # h100 gpus
 #SBATCH --nodes=1                     # number of nodes
 #SBATCH --gres=gpu:4                  # number of gpus/node 
 #SBATCH --cpus-per-task=48            # total CPUs available
-#SBATCH --time=20:00:00               # maximum execution time requested (HH:MM:SS)
+#SBATCH --time=02:00:00               # maximum execution time requested (HH:MM:SS)
 #SBATCH --account=tdm@h100            # account
-
+#SBATCH --qos=qos_gpu_h100-dev
 
 # clean out the modules loaded in interactive and inherited by default
 module purge
@@ -35,9 +35,9 @@ EVALUATION_JSON=/lustre/fsn1/projects/rech/tdm/commun/dataset/evaluation.json
 LOG_DIR=/lustre/fsn1/projects/rech/tdm/uuz44ie/experiments-crrrocq/bench_$(date +%Y%m%d_%H%M%S)
 PORT_EMB=31000
 MAX_WORKERS=${MAX_WORKERS:-32}
-MAX_THEOREMS=${MAX_THEOREMS:-150}  # Adjust based on your needs
+MAX_THEOREMS=${MAX_THEOREMS:-150}
 NUM_ATTEMPT=${NUM_ATTEMPT:-32}
-NUM_FULL_ATTEMPT=${NUM_FULL_ATTEMPT:-128}
+NUM_FULL_ATTEMPT=${NUM_FULL_ATTEMPT:-32}
 MAX_ITERATIONS=100
 
 python -m sglang.launch_server --model-path $MODEL --tp-size 4 --mem-fraction-static 0.7 --host 0.0.0.0 &
