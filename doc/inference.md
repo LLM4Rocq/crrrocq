@@ -6,13 +6,13 @@ To prove one theorem use `inference-cli.py` for a bench `benchmark.py`.
 To modify the code:
 - the main logic for the proof strategy is coded in the `process_with_tools` method of the `ToolHandler` in the `agent.py` file. Here you can modify the `active_prompt` that will be given to the LLM depending on the tool call.
 - tools are defined in the `tools.py` file. For the script, the `ScriptEnv` is defined in the `env.py` file and is responsible for the interactions with the `pet-server`. In particular, there is a pb with some theorems with the `pet.start` cmd that should be modified here. For the moment, the have tool is treated as a script.
-- interactions with the LLM are done through the `API_LLM` class in the `llm.py` file. The `build_prompt` methods are not used anymore.
+- interactions with the LLM are done through the `API_LLM` class in the `llm.py` file. The `build_prompt` methods there are not used anymore.
 
 
 
 ## Inference SLURM file: `inference2.slurm`
 
-**Before you launch the job, you should modify line 156 with the location of your `crrrocq` repo.** Then:
+**Before you launch the job, you should modify line 159 with the location of your `crrrocq` repo.** Then:
 ```bash
 $ sbatch inference2.slurm
 ```
