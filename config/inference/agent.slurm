@@ -3,13 +3,13 @@
 #SBATCH --output=SLURM_Logs/agent%j.out
 #SBATCH --error=SLURM_Logs/agent%j.err
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=cpu_p1
 #SBATCH --account=tdm@cpu
-#SBATCH --qos=qos_cpu-dev
+#SBATCH --qos=qos_cpu-t3
 #SBATCH --hint=nomultithread
-#SBATCH --time=01:00:00
+#SBATCH --time=04:00:00
 
 module purge
 conda deactivate

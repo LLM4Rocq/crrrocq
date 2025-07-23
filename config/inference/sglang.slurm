@@ -10,11 +10,11 @@
 #SBATCH --ntasks-per-node=1           # Each task will see all GPUs of the node
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:4
-#SBATCH --time=01:00:00
+#SBATCH --time=04:00:00
 #SBATCH --hint=nomultithread          # no hyperthreading
 #SBATCH --constraint=a100             # h100 gpus
 #SBATCH --account=tdm@a100            # account
-#SBATCH --qos=qos_gpu_a100-dev
+#SBATCH --qos=qos_gpu_a100-t3
 
 module purge
 module load arch/h100 cuda/12.8.0 nccl/2.25.1-1-cuda
