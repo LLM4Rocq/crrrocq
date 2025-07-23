@@ -175,7 +175,7 @@ sleep 5
 # Run inference
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting inference"
 if [[ "$USE_NUMA" == "true" ]] && [[ "$EMB_NUMA_NODE" =~ ^[0-9]+$ ]]; then
-    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --num-attempt $NUM_ATTEMPT --max-iterations $MAX_ITERATIONS --log-dir $LOG_DIRß
+    numactl --cpunodebind=$EMB_NUMA_NODE --membind=$EMB_NUMA_NODE python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE --num-attempt $NUM_ATTEMPT --log-dir $LOG_DIR
 elif [[ -n "$EMB_CPUS" ]]; then
     taskset -c $EMB_CPUS python -m src.inference.inference-cli --theorem $THM --file $FILE --workspace $WORKSPACE
 else
