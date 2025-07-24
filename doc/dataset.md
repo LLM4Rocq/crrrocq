@@ -4,7 +4,7 @@ This document describes the step-by-step process to generate the final datasets 
 
 ## Requirements
 
-- Install [petanqueV2](petanqueV2.md)
+- Install custom version of pytanque and coq-lsp [here](custom_pytanque_coq-lsp.md)
 - If working with mathcomp, install it by following these [guidelines](mathcomp_installation.md)
 - Install all dependencies in [requirements_dataset.txt](../requirements_dataset.txt)
 
