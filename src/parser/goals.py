@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 from pytanque import Goal
 
 # ====================
@@ -92,6 +92,10 @@ def replace_list(text: str, replace_list: list[Tuple[str, str]]) -> str:
         text = text.replace(old, new)
     return text
 
+def pp_hypothesis(names: list[str], def_: Optional[str], ty: str) -> str:
+    """Return the string representing an hypothesis."""
+    return "(" + " ".join(names) + (" := (" + def_ + ")" if def_ else "") + " : " + ty + ")"
+
 def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> Tuple[list[Tuple[str, str]], str]:
     """Return a string containing a lemma version of some goal."""
     renamed = []
@@ -108,7 +112,7 @@ def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> Tuple[l
                 names[i] = new_name
 
         if len(names) > 0:
-            lemma += " (" + " ".join(names) + (" := (" + replace_list(hyp.def_, renamed) + ")" if hyp.def_ else "") + " : " + replace_list(hyp.ty, renamed) + ")"
+            lemma += " " + pp_hypothesis(names, replace_list(hyp.def_, renamed), replace_list(hyp.ty, renamed))
 
     lemma += " : " + replace_list(goal.ty, renamed) + "."
     return renamed, lemma
@@ -129,7 +133,7 @@ def goal_to_lemma_def(goal: Goal, name: str, global_variables: list[str]) -> Tup
                 names[i] = new_name
 
         if len(names) > 0:
-            lemma += " (" + " ".join(names) + (" := (" + replace_list(hyp.def_, renamed) + ")" if hyp.def_ else " : " + replace_list(hyp.ty, renamed)) + ")"
+            lemma += " " + pp_hypothesis(names, replace_list(hyp.def_, renamed), replace_list(hyp.ty, renamed))
 
     lemma += " : " + replace_list(goal.ty, renamed) + "."
     return renamed, lemma
