@@ -328,6 +328,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
     if len(initial_goals) != 1:
         raise Exception(f"Error: {qualid_name} starts with a number of goals different from one.")
     initial_goal = initial_goals[0]
+    initial_goal_wgvars = initial_goal.pp
     initial_goal = remove_global_variables(initial_goal, global_variables_names)
     raw_initial_goal = pet.goals(pet.run(state, "Set Printing All."))[0]
     raw_initial_goal = remove_global_variables(raw_initial_goal, global_variables_names)
@@ -424,15 +425,23 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             state = pet.run(state, raw_chain)
 
         new_goals = pet.goals(state)
+        new_goals_wgvars = list(map(lambda g: g.pp, new_goals))
         new_goals = list(map(lambda g: remove_global_variables(g, global_variables_names), new_goals))
         goal_diff = goal_lists_diff(previous_goals, new_goals)
         previous_goals = new_goals
 
-        evaluation.append({"chain": raw_chain, "dependencies": dependencies, "goals": list(map(lambda g: g.pp, new_goals)), "goal_diff": goal_diff})
+        evaluation.append({
+            "chain": raw_chain,
+            "dependencies": dependencies,
+            "goals": list(map(lambda g: g.pp, new_goals)),
+            "goals_with_gvars": new_goals_wgvars,
+            "goal_diff": goal_diff
+        })
 
     new_theorem = {
         "global_variables": formatted_global_variables,
         "initial_goal": initial_goal.pp,
+        "initial_goal_with_gvars": initial_goal_wgvars,
         "statement_dependencies": sttt_dependencies,
         "statement_notations": sttt_notations,
         "evaluation": evaluation
