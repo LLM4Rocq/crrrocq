@@ -17,8 +17,6 @@ Pour éviter de dépenser trop d'argent, attendre la version 2 de la génératio
 
 Essayer de tester notre modèle sur Rocq Vanilla
 pour voir ce qu'il donne avec du Rocq plus simple.
-Il faudrait avoir les docstrings de la librairie standard de Rocq,
-elles peuvent être faites avec LLM4Docq.
 
 ## Amélioration des searchs
 
