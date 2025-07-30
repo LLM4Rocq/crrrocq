@@ -476,10 +476,8 @@ def make(to_do: str, dictionary: dict[str, Any], petanque_port: int):
                 json.dump(result, file, indent=4)
 
         except PetanqueError as err:
-            pass
             print("Petanque:", qualid_name, "\n->", err.message)
         except Exception as err:
-            pass
             print("Exception:", qualid_name, "\n->", str(err.args[0]))
 
     stop_pet_server(pet_server)
@@ -513,5 +511,5 @@ if __name__ == "__main__":
             content = json.load(file)
         result = result | content
 
-    with open(Path(args.output, f"{Path(args.input).stem}.json"), 'w') as file:
+    with open(Path(args.output, f"{dataset}.json"), 'w') as file:
         json.dump(result, file, indent=4)
