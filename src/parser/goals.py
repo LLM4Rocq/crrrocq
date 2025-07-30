@@ -2,6 +2,20 @@ from typing import Tuple, Optional
 from pytanque import Goal
 
 # ====================
+# Utils
+# ====================
+
+def pp_goal(g: Goal) -> str:
+    """Pretty-print a goal, same as in pytanque/client.py"""
+    hyps = "\n".join(
+        [
+            f"{', '.join(h.names)} {':= ' + h.def_ if h.def_ else ''} : {h.ty}"
+            for h in g.hyps
+        ]
+    )
+    return f"{hyps}\n|-{g.ty}"
+
+# ====================
 # Goals diff
 # ====================
 
@@ -81,6 +95,25 @@ def goal_lists_diff(goal_list1: list[Goal], goal_list2: list[Goal]) -> str:
         result.append("Goals modified:\n\n" + sep1.join(modified))
 
     return sep2.join(result)
+
+# ====================
+# Global variables
+# ====================
+
+def remove_global_variables(goal: Goal, gvars: list[str]) -> Goal:
+    """Remove the global variables `gvars` from a `goal`."""
+
+    new_hyps = []
+    for hyp in goal.hyps:
+        new_names = [name for name in hyp.names if not name in gvars]
+        if len(new_names) > 0:
+            hyp.names = new_names
+            new_hyps.append(hyp)
+
+    goal.hyps = new_hyps
+    goal.pp = pp_goal(goal)
+
+    return goal
 
 # ====================
 # Lemma correspondence

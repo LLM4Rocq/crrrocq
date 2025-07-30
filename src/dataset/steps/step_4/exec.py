@@ -13,8 +13,8 @@ from tqdm import tqdm
 from src.training.eval import start_pet_server, stop_pet_server
 from src.parser.ast import list_dependencies
 from src.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
-from src.parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
-from src.parser.goals import goal_lists_diff, replace_list, goal_to_lemma, goal_to_lemma_def, pp_hypothesis
+from src.parser.chains import proof_to_raw_chain_list
+from src.parser.goals import goal_lists_diff, goal_to_lemma, pp_hypothesis, remove_global_variables
 
 """
 Step 4: Evaluate all theorems (goals, dependencies, etc.).
@@ -267,16 +267,6 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     raw_chain_list = proof_to_raw_chain_list(skeleton_proof)
 
-    # Compute the global variables
-    global_variables = find_global_variables(pet, state)
-
-    # Compute the initial goal
-    initial_goals = pet.goals(state)
-    if len(initial_goals) != 1:
-        raise Exception(f"Error: {qualid_name} starts with a number of goals different from one.")
-    initial_goal = initial_goals[0]
-    raw_initial_goal = pet.goals(pet.run(state, "Set Printing All."))[0]
-
     # Compute the type dictionary
     type_dictionary = {}
     type_state = pet.run(state, "Search _.")
@@ -288,12 +278,15 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
                 type_ = match.group("type").strip()
                 type_dictionary[name] = type_
 
-    # Compute the notations and dependencies in global variables
+    # Compute the global variables
+    global_variables = find_global_variables(pet, state)
+
     global_variables_names = []
     formatted_global_variables = []
     all_dependencies = []
     all_notations = []
 
+    # Compute the notations and dependencies in global variables
     for hyp in global_variables:
         global_variables_names += hyp.names
         all_dependencies += hyp.names
@@ -312,6 +305,15 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             "notations": notations,
             "dependencies": dependencies
         })
+
+    # Compute the initial goal
+    initial_goals = pet.goals(state)
+    if len(initial_goals) != 1:
+        raise Exception(f"Error: {qualid_name} starts with a number of goals different from one.")
+    initial_goal = initial_goals[0]
+    initial_goal = remove_global_variables(initial_goal, global_variables_names)
+    raw_initial_goal = pet.goals(pet.run(state, "Set Printing All."))[0]
+    raw_initial_goal = remove_global_variables(raw_initial_goal, global_variables_names)
 
     # Compute the statement's notations
     sttt_notations = []
@@ -395,6 +397,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             state = pet.run(state, raw_chain)
 
         new_goals = pet.goals(state)
+        new_goals = list(map(lambda g: remove_global_variables(g, global_variables_names), new_goals))
         goal_diff = goal_lists_diff(previous_goals, new_goals)
         previous_goals = new_goals
 
