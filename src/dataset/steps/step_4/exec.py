@@ -146,7 +146,7 @@ def find_dependencies_in_tactic(pet: Pytanque, state: State, code: str, bad: lis
 
 def find_dependencies_in_hypothesis(pet: Pytanque, state: State, hypothesis: str, bad: list[str]) -> list[str]:
     """Find all dependencies in the hypothesis."""
-    lemma = "Variable " + hypothesis + "."
+    lemma = "Definition dependencies_in_hypothesis " + hypothesis + "."
     ast = pet.ast(state, lemma)
     dependencies = list_dependencies(ast)
     return [dependency for dependency in dependencies if not dependency in bad]
@@ -292,17 +292,26 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         all_dependencies += hyp.names
         hyp_str = quick_pp_hypothesis(hyp)
 
-        notations = find_notations_in_hypothesis(pet, state, hyp.ty, all_notations)
-        all_notations += notations
-        notations = format_notations(pet, state, notations, theorem["filepath"], dictionary["notations"])
+        # Notations in the definition
+        if hyp.def_:
+            def_notations = find_notations_in_hypothesis(pet, state, hyp.def_, all_notations)
+            all_notations += def_notations
+        else:
+            def_notations = []
 
-        dependencies = find_dependencies_in_hypothesis(pet, state, hyp_str, all_dependencies)
+        # Notations in the type
+        typ_notations = find_notations_in_hypothesis(pet, state, hyp.ty, all_notations)
+        all_notations += typ_notations
+
+        notations = format_notations(pet, state, def_notations + typ_notations, theorem["filepath"], dictionary["notations"])
+
+        dependencies = find_dependencies_in_hypothesis(pet, state, hyp_str[1:-1], all_dependencies)
         all_dependencies += dependencies
         dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], type_dictionary, dictionary["objects"])
 
         hyp_str = hyp_str[1:-1]
         colon_index = hyp_str.find(":")
-        hyp_names = hyp_str[:colon_index].split(' ')
+        hyp_names = hyp_str[:colon_index].split()
         if len(hyp_names) > 1:
             hyp_str = "Variables " + hyp_str + "."
         else:
@@ -331,9 +340,19 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         names = [name for name in hyp.names if not name in global_variables_names]
 
         if len(names) > 0:
-            raw_hyp_str = pp_hypothesis(names, raw_hyp.def_, raw_hyp.ty)
-            var_state = pet.run(var_state, f"Variable {raw_hyp_str}.")
+            raw_hyp_str = pp_hypothesis(names, None, raw_hyp.ty)
+            var_state = pet.run(var_state, f"Variables {raw_hyp_str}.")
 
+            # Notations in the definition
+            if hyp.def_:
+                try:
+                    notations = find_notations_in_hypothesis(pet, var_state, hyp.def_, all_notations)
+                    all_notations += notations
+                    sttt_notations += notations
+                except PetanqueError as err:
+                    pass
+
+            # Notations in the type
             try:
                 notations = find_notations_in_hypothesis(pet, var_state, hyp.ty, all_notations)
                 all_notations += notations
@@ -353,7 +372,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     for hyp in initial_goal.hyps:
         hyp_str = pp_hypothesis(hyp.names, hyp.def_, hyp.ty)
-        dependencies = find_dependencies_in_hypothesis(pet, state, hyp_str, all_dependencies)
+        dependencies = find_dependencies_in_hypothesis(pet, state, hyp_str[1:-1], all_dependencies)
         all_dependencies += dependencies
         sttt_dependencies += dependencies
 
