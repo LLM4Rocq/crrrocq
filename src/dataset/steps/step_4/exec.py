@@ -300,8 +300,16 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         all_dependencies += dependencies
         dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], type_dictionary, dictionary["objects"])
 
+        hyp_str = hyp_str[1:-1]
+        colon_index = hyp_str.find(":")
+        hyp_names = hyp_str[:colon_index].split(' ')
+        if len(hyp_names) > 1:
+            hyp_str = "Variables " + hyp_str + "."
+        else:
+            hyp_str = "Variable " + hyp_str + "."
+
         formatted_global_variables.append({
-            "pp": "Variables " + hyp_str[1:-1] + ".",
+            "pp": hyp_str,
             "notations": notations,
             "dependencies": dependencies
         })
