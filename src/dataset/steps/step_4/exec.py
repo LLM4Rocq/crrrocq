@@ -500,14 +500,12 @@ if __name__ == "__main__":
 
     dictionary = load_dictionary(args.dictionary)
 
-    make(to_do["mathcomp/solvable/abelian.v"], dictionary, 8765)
-
-    # with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
-    #     futures = []
-    #     for k, source in enumerate(to_do):
-    #         futures.append(executor.submit(make, to_do[source], dictionary, 8765 + k))
-    #     for _ in tqdm(concurrent.futures.as_completed(futures), desc="Overall progress", position=0, total=len(futures)):
-    #         pass
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
+        futures = []
+        for k, source in enumerate(to_do):
+            futures.append(executor.submit(make, to_do[source], dictionary, 8765 + k))
+        for _ in tqdm(concurrent.futures.as_completed(futures), desc="Overall progress", position=0, total=len(futures)):
+            pass
 
     result = {}
     for filepath in aux_path.iterdir():
