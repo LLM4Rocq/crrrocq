@@ -122,7 +122,7 @@ class MathAgent:
                 try:
                     new_blocks = parse_output(output)
                 except ParsingBlockError as e:
-                    self.logs.append({"status": "error", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(output)})
+                    self.logs.append({"status": "fail", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(output)})
                     num_retry_parse += 1
                     continue
                 try:
@@ -137,7 +137,7 @@ class MathAgent:
                     last_failed = ''
                     break
                 except ToolError as e:
-                    self.logs.append({"status": "error", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(new_blocks)})
+                    self.logs.append({"status": "fail", "message": str(e), "context": deepcopy(self.blocks), "content": deepcopy(new_blocks)})
                     num_retry_tool += 1
                     last_failed = last_block['kind']
                     if self.config['max_retry'][last_block['kind']] <= num_retry_tool:

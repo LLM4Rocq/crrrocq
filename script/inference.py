@@ -75,10 +75,10 @@ def main():
     config['tools']['script']['base_url'] = f"http://{pet_ip}"
 
     with open(args.evaluation_file, 'r') as file:
-        thm_names = yaml.safe_load(file)
+        thm_names = json.load(file)
 
     shutil.copyfile(args.config_file, os.path.join(folder_path, 'config.yaml'))
-    
+
     # pet client, only needed to restart server
     pet_client = PetClient(pet_ip)
     futures = []
