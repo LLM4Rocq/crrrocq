@@ -1,7 +1,7 @@
 llm_kind: "openai_instruct"
 prompt_path: "export/dataset/prompt.json"
 llm_config:
-  model_name: "/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_base/"
+  model_name: "/lustre/fsn1/projects/rech/tdm/commun/models/crrrocq_compress/"
   api_key: "None"
   generation_parameters:
     temperature: 0.7
