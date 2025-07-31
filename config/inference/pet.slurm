@@ -3,8 +3,8 @@
 #SBATCH --output=SLURM_Logs/pet%j.out
 #SBATCH --error=SLURM_Logs/pet%j.err
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=2
-#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=20
+#SBATCH --ntasks-per-node=2
 #SBATCH --partition=cpu_p1
 #SBATCH --account=tdm@cpu
 #SBATCH --qos=qos_cpu-t3
@@ -33,7 +33,7 @@ srun --export=ALL bash -lc '
 
 sleep 10
 
-gunicorn -w 9 -b 0.0.0.0:$FLASK_PORT src.servers.script.app:app &
+gunicorn -w 4 -b 0.0.0.0:$FLASK_PORT src.servers.script.app:app -t 90 &
 until curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health | grep -q "200"; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for pet server to respond..."
     sleep 20
