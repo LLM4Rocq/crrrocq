@@ -8,6 +8,7 @@ import concurrent.futures
 from tqdm import tqdm
 import yaml
 
+from src.servers.script.client import PetClient
 from src.inference.agent_compress import MathAgentCompress
 from src.inference.agent import MathAgentError
 
@@ -78,6 +79,8 @@ def main():
 
     shutil.copyfile(args.config_file, os.path.join(folder_path, 'config.yaml'))
     
+    # pet client, only needed to restart server
+    pet_client = PetClient(pet_ip)
     futures = []
     for thm_name in tqdm(thm_names, desc="Theorems", position=0):
         with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
@@ -85,6 +88,6 @@ def main():
                 futures.append(executor.submit(try_proof, config, thm_name, folder_path, i))
         for _ in tqdm(concurrent.futures.as_completed(futures), desc="Pass@k", position=1, total=len(futures)):
             pass
-
+        pet_client.restart_server()
 if __name__ == "__main__":
     main()

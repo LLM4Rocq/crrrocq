@@ -35,6 +35,18 @@ class PetClient:
         else:
             raise ClientError(response.status_code, response.text)
 
+    def restart_server(self):
+        """
+        Restart pet server
+        """
+        url = f"{self.base_url}/restart"
+        payload = {'login': self.login}
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            pass
+        else:
+            raise ClientError(response.status_code, response.text)
+    
     def start_thm(self, name: str) -> Tuple[State, Goals]:
         """
         Start a theorem proving session for the theorem at the given index.

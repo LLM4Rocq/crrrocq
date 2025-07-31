@@ -46,6 +46,13 @@ def login():
     except Exception as e:
         return str(e), 500
 
+@app.route('/restart', methods=['POST'])
+def restart():
+    """
+    TO IMPLEMENT
+    """
+    pass
+
 @app.route('/start_thm', methods=['POST'])
 def start_thm():
     """
@@ -70,7 +77,6 @@ def start_thm():
         filepath, line, character = entry['filepath'], entry['position']['line'], entry['position']['character']
         worker = pytanques[login_idx]
         state = worker.get_state_at_pos(filepath, line, character, 0)
-        # state = worker.start(file=filepath, thm=thm_name)
         goals = worker.goals(state)
         goals_json = [goal.to_json() for goal in goals]
         output = {"state": state.to_json(), "goals": goals_json}
