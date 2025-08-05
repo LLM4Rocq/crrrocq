@@ -1,9 +1,9 @@
 # gunicorn_config.py
 import subprocess
-import signal
 import yaml
 import time
 import os
+import json
 
 # keep references to the Popen objects
 pet_servers = []
@@ -26,7 +26,7 @@ def start_pet_servers():
         pet_servers.append(p)
     
     # Write current ports to file for workers
-    import json
+
     ports_file = os.environ.get('PET_PORTS_PATH', 'pet_ports.txt')
     with open(ports_file, 'w') as f:
         f.write(json.dumps({
@@ -64,13 +64,13 @@ def restart_pet_servers():
 def monitor_restart_file():
     """Monitor lock file for restart signals"""
     import json
-    lock_file = os.environ.get('PET_LOCK_PATH', 'pet_lock.txt')
-    print(f"[arbiter] Monitoring {lock_file} for restart signals")
+    restart_file = os.environ.get('PET_RESTART_FILE', 'pet_restart.txt')
+    print(f"[arbiter] Monitoring {restart_file} for restart signals")
     last_mtime = 0
     while True:
         try:
-            if os.path.exists(lock_file):
-                stat = os.stat(lock_file)
+            if os.path.exists(restart_file):
+                stat = os.stat(restart_file)
                 if stat.st_mtime > last_mtime:
                     last_mtime = stat.st_mtime
                     print("[arbiter] Restart signal detected - restarting pet servers...")

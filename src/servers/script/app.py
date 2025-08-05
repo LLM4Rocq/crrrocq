@@ -77,26 +77,15 @@ def restart():
         pet.close()
     
     # Signal both arbiter and workers to restart
-    lock_file = os.environ.get('PET_LOCK_PATH', 'pet_lock.txt')
-    with open(lock_file, 'w') as f:
+    restart_file = os.environ.get('PET_RESTART_FILE', 'pet_restart.txt')
+    with open(restart_file, 'w') as f:
         f.write(json.dumps({
             'sender': os.getpid(),
             'timestamp': time.time(),
             'message': 'restart_pet_servers'
         }))
         
-    time.sleep(3)  # Wait for port file to be updated
-    
-    # Recreate Pytanque instances with new ports
-    pytanques = create_pytanques()
-    
-    # Connect to new pet servers
-    for pet in pytanques:
-        try:
-            pet.connect()
-        except Exception as e:
-            print(f"[restart] Failed to connect: {e}")
-
+    # Let the listener handle reconnection like other workers
     return jsonify(status="pet-servers restarting"), 200
 
 @app.route('/start_thm', methods=['POST'])
@@ -165,32 +154,30 @@ def start_reconnect_listener():
     """Listen for reconnect messages from other workers via file"""
     def listener():
         current_pid = os.getpid()
-        lock_file = os.environ.get('PET_LOCK_PATH', 'pet_lock.txt')
-        print(f"Worker {current_pid}: Monitoring {lock_file} for reconnect messages")
+        restart_file = os.environ.get('PET_RESTART_FILE', 'pet_restart.txt')
+        print(f"Worker {current_pid}: Monitoring {restart_file} for reconnect messages")
         last_mtime = 0
         
         while True:
             try:
-                if os.path.exists(lock_file):
-                    stat = os.stat(lock_file)
+                if os.path.exists(restart_file):
+                    stat = os.stat(restart_file)
                     if stat.st_mtime > last_mtime:
                         last_mtime = stat.st_mtime
-                        with open(lock_file, 'r') as f:
+                        with open(restart_file, 'r') as f:
                             data = json.loads(f.read())
                             sender = data.get('sender')                            
-                            # Only react if message is from another worker
-                            if sender != current_pid:
-                                print(f"Worker {current_pid}: Received restart message from worker {sender}")
-                                global pytanques
-                                for pet in pytanques:
-                                    pet.close()
-                                time.sleep(5)  # Brief wait before reconnecting
-                                pytanques = create_pytanques()
-                                for pet in pytanques:
-                                    try:
-                                        pet.connect()
-                                    except Exception as e:
-                                        print(f"Worker {current_pid}: Failed to reconnect: {e}")
+                            print(f"Worker {current_pid}: Received restart message from worker{sender}")
+                            global pytanques
+                            for pet in pytanques:
+                                pet.close()
+                            time.sleep(5)  # Brief wait before reconnecting
+                            pytanques = create_pytanques()
+                            for pet in pytanques:
+                                try:
+                                    pet.connect()
+                                except Exception as e:
+                                    print(f"Worker {current_pid}: Failed to reconnect: {e}")
                 time.sleep(1)  # Check every second
             except Exception as e:
                 print(f"Worker {current_pid}: Error handling reconnect message: {e}")
