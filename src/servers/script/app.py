@@ -3,6 +3,9 @@ import json
 import yaml
 from pytanque import Pytanque, State
 from flask import Flask, request, jsonify
+import os
+import time
+import threading
 
 app = Flask(__name__)
 
@@ -15,8 +18,25 @@ with open(config['thm_paths'], 'r') as file:
 # Global index to balance load across pet servers
 server_idx_counter = 0
 
-# Initialize Pytanque instances for each server (assumed to run on ports 8765, 8766, ..., etc.)
-pytanques = [Pytanque("127.0.0.1", config['pet_server_start_port'] + k) for k in range(config['num_pet_server'])]
+
+def get_current_ports():
+    """Get current pet server ports from file"""
+    ports_file = os.environ.get('PET_PORTS_PATH', 'pet_ports.txt')
+    try:
+        with open(ports_file, 'r') as f:
+            port_data = json.loads(f.read())
+            return port_data['ports']
+    except:
+        # Fallback to default ports
+        return [config['pet_server_start_port'] + k for k in range(config['num_pet_server'])]
+
+def create_pytanques():
+    """Create Pytanque instances with current ports"""
+    ports = get_current_ports()
+    return [Pytanque("127.0.0.1", port) for port in ports]
+
+# Initialize Pytanque instances for each server
+pytanques = create_pytanques()
 for pet in pytanques:
     pet.connect()
 
@@ -49,9 +69,35 @@ def login():
 @app.route('/restart', methods=['POST'])
 def restart():
     """
-    TO IMPLEMENT
+    Restart the pet-servers and reconnect the sockets of all workers.
     """
-    pass
+    print("[restart] Restarting pet-servers via file coordination...")
+    global pytanques
+    for pet in pytanques:
+        pet.close()
+    
+    # Signal both arbiter and workers to restart
+    lock_file = os.environ.get('PET_LOCK_PATH', 'pet_lock.txt')
+    with open(lock_file, 'w') as f:
+        f.write(json.dumps({
+            'sender': os.getpid(),
+            'timestamp': time.time(),
+            'message': 'restart_pet_servers'
+        }))
+        
+    time.sleep(3)  # Wait for port file to be updated
+    
+    # Recreate Pytanque instances with new ports
+    pytanques = create_pytanques()
+    
+    # Connect to new pet servers
+    for pet in pytanques:
+        try:
+            pet.connect()
+        except Exception as e:
+            print(f"[restart] Failed to connect: {e}")
+
+    return jsonify(status="pet-servers restarting"), 200
 
 @app.route('/start_thm', methods=['POST'])
 def start_thm():
@@ -114,7 +160,47 @@ def run_tac():
         return jsonify(output), 200
     except Exception as e:
         return str(e), 500
+    
+def start_reconnect_listener():
+    """Listen for reconnect messages from other workers via file"""
+    def listener():
+        current_pid = os.getpid()
+        lock_file = os.environ.get('PET_LOCK_PATH', 'pet_lock.txt')
+        print(f"Worker {current_pid}: Monitoring {lock_file} for reconnect messages")
+        last_mtime = 0
+        
+        while True:
+            try:
+                if os.path.exists(lock_file):
+                    stat = os.stat(lock_file)
+                    if stat.st_mtime > last_mtime:
+                        last_mtime = stat.st_mtime
+                        with open(lock_file, 'r') as f:
+                            data = json.loads(f.read())
+                            sender = data.get('sender')                            
+                            # Only react if message is from another worker
+                            if sender != current_pid:
+                                print(f"Worker {current_pid}: Received restart message from worker {sender}")
+                                global pytanques
+                                for pet in pytanques:
+                                    pet.close()
+                                time.sleep(5)  # Brief wait before reconnecting
+                                pytanques = create_pytanques()
+                                for pet in pytanques:
+                                    try:
+                                        pet.connect()
+                                    except Exception as e:
+                                        print(f"Worker {current_pid}: Failed to reconnect: {e}")
+                time.sleep(1)  # Check every second
+            except Exception as e:
+                print(f"Worker {current_pid}: Error handling reconnect message: {e}")
+                time.sleep(1)
+    # Start listener thread
+    thread = threading.Thread(target=listener, daemon=True)
+    thread.start()
 
+# Start reconnect listener for all workers (including gunicorn workers)
+start_reconnect_listener()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=config['port'])

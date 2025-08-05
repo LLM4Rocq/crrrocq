@@ -9,7 +9,8 @@ TO DO
 Launch the pipeline with:
 
 ```bash
-./config/inference/start_all.sh
+cd  config/inference/
+bash start_all.sh
 ```
 
 This will start sequentially:

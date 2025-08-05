@@ -4,11 +4,15 @@ export RETRIEVAL_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/retrieval_ip_
 export PET_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/pet_ip_$ID.txt
 export MODEL_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/model_ip_$ID.txt
 export EMBED_IP_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/embed_ip_$ID.txt
+export PET_LOCK_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/pet_lock_$ID.txt
+export PET_PORTS_PATH=/lustre/fsn1/projects/rech/tdm/commun/tmp/pet_ports_$ID.txt
 
 rm -f $RETRIEVAL_IP_PATH
 rm -f $PET_IP_PATH
 rm -f $MODEL_IP_PATH
 rm -f $EMBED_IP_PATH
+rm -f $PET_LOCK_PATH
+rm -f $PET_PORTS_PATH
 
 sbatch --export=ALL sglang.slurm
 while [ ! -f "$MODEL_IP_PATH" ] || [ ! -f "$EMBED_IP_PATH" ]; do
