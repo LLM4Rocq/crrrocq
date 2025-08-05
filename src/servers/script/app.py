@@ -77,7 +77,7 @@ def restart():
         pet.close()
     
     # Signal both arbiter and workers to restart
-    restart_file = os.environ.get('PET_RESTART_FILE', 'pet_restart.txt')
+    restart_file = os.environ.get('PET_RESTART_PATH', 'pet_restart.txt')
     with open(restart_file, 'w') as f:
         f.write(json.dumps({
             'sender': os.getpid(),
@@ -154,7 +154,7 @@ def start_reconnect_listener():
     """Listen for reconnect messages from other workers via file"""
     def listener():
         current_pid = os.getpid()
-        restart_file = os.environ.get('PET_RESTART_FILE', 'pet_restart.txt')
+        restart_file = os.environ.get('PET_RESTART_PATH', 'pet_restart.txt')
         print(f"Worker {current_pid}: Monitoring {restart_file} for reconnect messages")
         last_mtime = 0
         

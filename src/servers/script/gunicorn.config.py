@@ -64,7 +64,7 @@ def restart_pet_servers():
 def monitor_restart_file():
     """Monitor lock file for restart signals"""
     import json
-    restart_file = os.environ.get('PET_RESTART_FILE', 'pet_restart.txt')
+    restart_file = os.environ.get('PET_RESTART_PATH', 'pet_restart.txt')
     print(f"[arbiter] Monitoring {restart_file} for restart signals")
     last_mtime = 0
     while True:
