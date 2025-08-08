@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 import shutil
 import concurrent.futures
+import random
 
 from tqdm import tqdm
 import yaml
@@ -39,7 +40,7 @@ def main():
     parser.add_argument(
         "--pass-k",
         type=int,
-        default=64
+        default=256
     )
     parser.add_argument(
         "--max-workers",
@@ -77,6 +78,9 @@ def main():
     with open(args.evaluation_file, 'r') as file:
         thm_names = json.load(file)
 
+    thm_names = list(thm_names.keys())
+    random.shuffle(thm_names)
+    
     shutil.copyfile(args.config_file, os.path.join(folder_path, 'config.yaml'))
 
     pet_client = PetClient(f"http://{pet_ip}")
