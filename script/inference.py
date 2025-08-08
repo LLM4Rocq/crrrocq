@@ -79,8 +79,7 @@ def main():
 
     shutil.copyfile(args.config_file, os.path.join(folder_path, 'config.yaml'))
 
-    # pet client, only needed to restart server
-    pet_client = PetClient(pet_ip)
+    pet_client = PetClient(f"http://{pet_ip}")
     futures = []
     for thm_name in tqdm(thm_names, desc="Theorems", position=0):
         with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
