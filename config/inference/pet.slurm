@@ -1,0 +1,32 @@
+#!/bin/bash
+#SBATCH --job-name=pet
+#SBATCH --output=SLURM_Logs/pet%j.out
+#SBATCH --error=SLURM_Logs/pet%j.err
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=20
+#SBATCH --ntasks-per-node=2
+#SBATCH --partition=cpu_p1
+#SBATCH --account=tdm@cpu
+#SBATCH --qos=qos_cpu-dev
+#SBATCH --hint=nomultithread
+#SBATCH --time=02:00:00
+
+module purge
+conda deactivate
+
+source /lustre/fswork/projects/rech/tdm/commun/.opam/opam-init/init.sh
+source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
+cd $WORK/crrrocq
+
+HEAD_NODE=$(scontrol show hostname "$SLURM_NODELIST" | head -n 1)
+FLASK_PORT=5000
+
+gunicorn -w 4 -b 0.0.0.0:$FLASK_PORT src.servers.script.app:app -t 90 -c src/servers/script/gunicorn.config.py &
+until curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health | grep -q "200"; do
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for pet server to respond..."
+    sleep 20
+done
+
+echo $HEAD_NODE:$FLASK_PORT > $PET_IP_PATH
+
+wait

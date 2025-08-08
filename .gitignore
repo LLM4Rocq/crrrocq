@@ -3,4 +3,6 @@
 .python-version
 .envrc
 __pycache__/
+inference
+dataset/math-comp*
 export/

@@ -1,9 +1,7 @@
-import os
-
 import torch
 from torch import Tensor
 import torch.nn.functional as F
-
+import openai
 from transformers import AutoModel, AutoTokenizer
 
 from .base import BaseEmbedding
@@ -26,15 +24,15 @@ def get_detailed_instruct(task_description: str, query: str) -> str:
 
 class Qwen3Embedding(BaseEmbedding):
     """Wrapper around Qwen embedding models."""
-    def __init__(self, device:str, size: str="0.6B", cache_dir="/lustre/fsn1/projects/rech/tdm/commun/hf_home/tokenizers"):
+    def __init__(self, device:str, size: str="0.6B"):
         super().__init__()
         assert size in ['0.6B', '4B', '8B']
         model_id = 'Qwen/Qwen3-Embedding-' + size
         self.device = device
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True, cache_dir=os.path.join(cache_dir, model_id))
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
         self.model = AutoModel.from_pretrained(model_id, trust_remote_code=True).to(device, dtype=torch.float32)
         self.prompt_query = 'Given a natural language query, retrieve formal Coq statements whose docstrings best match the intent of the query.'
-        
+    
     def generate(self, sentence:str, query=False) -> Tensor:
         if query:
             input_text = get_detailed_instruct(self.prompt_query, sentence)

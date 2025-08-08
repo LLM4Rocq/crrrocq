@@ -52,7 +52,6 @@ if __name__ == '__main__':
     parser.add_argument('--output',  default='export/output/steps/step_7/')
     parser.add_argument('--model-name', default='qwen_embedding_4b', help="Embedding model's name")
     parser.add_argument('--device', default='cpu', help="Device for embedding model")
-    parser.add_argument('--batch-size', default=32, help="Batch size used to pre compute embedding", type=int)
     parser.add_argument('--top-k', default=20, help="Top-k parameter use for retrieval", type=int)
     args = parser.parse_args()
 
@@ -64,7 +63,7 @@ if __name__ == '__main__':
         content = json.load(file)
     
     model = get_embedding_model(args.model_name, device=args.device)
-    index = FaissIndex(model, dictionary, batch_size=args.batch_size)
+    index = FaissIndex(model, dictionary)
 
     for entry in tqdm(list(content.values())):
         if 'output_blocks' not in entry:
