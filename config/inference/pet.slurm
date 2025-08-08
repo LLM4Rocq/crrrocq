@@ -7,9 +7,9 @@
 #SBATCH --ntasks-per-node=2
 #SBATCH --partition=cpu_p1
 #SBATCH --account=tdm@cpu
-#SBATCH --qos=qos_cpu-t3
+#SBATCH --qos=qos_cpu-dev
 #SBATCH --hint=nomultithread
-#SBATCH --time=04:00:00
+#SBATCH --time=02:00:00
 
 module purge
 conda deactivate
