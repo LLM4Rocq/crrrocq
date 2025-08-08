@@ -29,20 +29,20 @@ def number_of_tactics_have_proof(have_proof):
 
 def number_of_tactics(proof):
     "computer number of tactics in a proof (outside of have block)"
-    proof = proof.replace('Proof.', '').replace('Qed.', '') + ' '
+    proof = proof.replace('Proof.', '').replace('Qed.', '').replace('Defined', '') + ' '
     return len(re.findall(r'\.\s', proof))
 
 def select_diverse_documents(documents: List[str], top_k):
     """
     Extracts subset of diverse documents using BM25.
-    
+
     return index of selected documents
     """
     # Not efficient, but enough for the moment
     retriever = bm25s.BM25(corpus=documents)
     retriever.index(bm25s.tokenize(documents))
     similarity_matrix = np.zeros((len(documents), len(documents)))
-    
+
     for i, doc in tqdm(enumerate(documents)):
         tokenized_doc = bm25s.tokenize(doc)
         scores = retriever.retrieve(tokenized_doc, k=len(documents)).scores
@@ -52,7 +52,7 @@ def select_diverse_documents(documents: List[str], top_k):
     with tqdm(total=top_k) as pbar:
         while len(selected_indices) < top_k:
             min_similarities = []
-            
+
             for i in range(len(documents)):
                 if i not in selected_indices:
                     min_sim = min(similarity_matrix[i, selected_indices])
@@ -60,7 +60,7 @@ def select_diverse_documents(documents: List[str], top_k):
             next_doc = min(min_similarities, key=lambda x: x[1])[0]
             selected_indices.append(next_doc)
             pbar.update(1)
-    
+
     return selected_indices
 
 def make(dataset, k_have=500, k_wo_have=500, max_number_of_tactics=14, min_number_of_tactics=2):
@@ -97,14 +97,14 @@ def make(dataset, k_have=500, k_wo_have=500, max_number_of_tactics=14, min_numbe
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Select theorems in a dataset.")
-    parser.add_argument("--input", type=str, default="export/output/steps/step_2/result.json", help="The path to the previous step")
-    parser.add_argument("--output", type=str, default="export/output/steps/step_3/", help="Output path")
+    parser.add_argument("--input", type=str, default="export/output/steps/step_2/mathcomp.json", help="Path of the output of the previous step")
+    parser.add_argument("--output", type=str, default="export/output/steps/step_3/", help="Path of the output of this step")
     parser.add_argument("--k-have", type=int, default=500, help="Number of theorems with have blocks")
     parser.add_argument("--k-wo-have", type=int, default=500, help="Number of theorems without have blocks")
 
     args = parser.parse_args()
     os.makedirs(args.output, exist_ok=True)
     result = make(args.input, k_have=args.k_have, k_wo_have=args.k_wo_have)
-    
-    with open(os.path.join(args.output, 'result.json'), 'w') as file:
+
+    with open(Path(args.output, f"{Path(args.input).stem}.json"), 'w') as file:
         json.dump(result, file, indent=4)

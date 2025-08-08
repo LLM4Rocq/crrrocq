@@ -1,5 +1,19 @@
-from typing import Tuple
+from typing import Tuple, Optional
 from pytanque import Goal
+
+# ====================
+# Utils
+# ====================
+
+def pp_goal(g: Goal) -> str:
+    """Pretty-print a goal, same as in pytanque/client.py"""
+    hyps = "\n".join(
+        [
+            f"{', '.join(h.names)} {':= ' + h.def_ if h.def_ else ''} : {h.ty}"
+            for h in g.hyps
+        ]
+    )
+    return f"{hyps}\n|-{g.ty}"
 
 # ====================
 # Goals diff
@@ -83,6 +97,25 @@ def goal_lists_diff(goal_list1: list[Goal], goal_list2: list[Goal]) -> str:
     return sep2.join(result)
 
 # ====================
+# Global variables
+# ====================
+
+def remove_global_variables(goal: Goal, gvars: list[str]) -> Goal:
+    """Remove the global variables `gvars` from a `goal`."""
+
+    new_hyps = []
+    for hyp in goal.hyps:
+        new_names = [name for name in hyp.names if not name in gvars]
+        if len(new_names) > 0:
+            hyp.names = new_names
+            new_hyps.append(hyp)
+
+    goal.hyps = new_hyps
+    goal.pp = pp_goal(goal)
+
+    return goal
+
+# ====================
 # Lemma correspondence
 # ====================
 
@@ -91,6 +124,10 @@ def replace_list(text: str, replace_list: list[Tuple[str, str]]) -> str:
     for old, new in replace_list:
         text = text.replace(old, new)
     return text
+
+def pp_hypothesis(names: list[str], def_: Optional[str], ty: str) -> str:
+    """Return the string representing an hypothesis."""
+    return "(" + " ".join(names) + (" := (" + def_ + ")" if def_ else "") + " : " + ty + ")"
 
 def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> Tuple[list[Tuple[str, str]], str]:
     """Return a string containing a lemma version of some goal."""
@@ -108,7 +145,28 @@ def goal_to_lemma(goal: Goal, name: str, global_variables: list[str]) -> Tuple[l
                 names[i] = new_name
 
         if len(names) > 0:
-            lemma += " (" + " ".join(names) + (" := (" + replace_list(hyp.def_, renamed) + ")" if hyp.def_ else "") + " : " + replace_list(hyp.ty, renamed) + ")"
+            lemma += " " + pp_hypothesis(names, replace_list(hyp.def_, renamed), replace_list(hyp.ty, renamed))
+
+    lemma += " : " + replace_list(goal.ty, renamed) + "."
+    return renamed, lemma
+
+def goal_to_lemma_def(goal: Goal, name: str, global_variables: list[str]) -> Tuple[list[Tuple[str, str]], str]:
+    """Return a string containing a lemma version of some goal. If some hypotheses have a definition, their type is not written."""
+    renamed = []
+    lemma = f"Lemma {name}"
+
+    for hyp in goal.hyps:
+        names = [name for name in hyp.names if not name in global_variables]
+
+        # Variables named `_?_` are not possible to write as lemmas arguments
+        for i, name in enumerate(names):
+            if name[0] == '_' and name[-1] == '_':
+                new_name = name[1:]
+                renamed.append((name, new_name))
+                names[i] = new_name
+
+        if len(names) > 0:
+            lemma += " " + pp_hypothesis(names, replace_list(hyp.def_, renamed), replace_list(hyp.ty, renamed))
 
     lemma += " : " + replace_list(goal.ty, renamed) + "."
     return renamed, lemma

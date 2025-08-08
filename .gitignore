@@ -3,6 +3,6 @@
 .python-version
 .envrc
 __pycache__/
+inference
 dataset/math-comp*
 export/
-src/servers/script/thm_filename.json

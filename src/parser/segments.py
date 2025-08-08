@@ -332,6 +332,12 @@ def base_str_to_segment_list(string: str, segment_readers: list[SegmentReader]) 
 def str_to_comment_list(string: str) -> list[Comment]:
     return base_str_to_segment_list(string, [CommentReader()])
 
+def str_to_parentheses_list(string: str) -> list[Parentheses]:
+    return base_str_to_segment_list(string, [ParenthesesReader()])
+
+def parentheses_list_to_str(parentheses_list: list[Parentheses]) -> str:
+    return "".join(map(str, parentheses_list))
+
 segment_readers = [
     ParenthesesReader(),
     BracesReader(),

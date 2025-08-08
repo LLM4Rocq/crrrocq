@@ -65,6 +65,18 @@ def remove_parasite(tactic: str) -> str:
 
     return tactic
 
+def remove_segments(tactic: str) -> str:
+    """Remove content inside of segments in a tactic."""
+
+    segment_list = str_to_segment_list(tactic)
+
+    new_tactic = ""
+    for segment in segment_list:
+        if isinstance(segment, str):
+            new_tactic += segment
+
+    return new_tactic
+
 def is_have_tactic(tactic: str) -> bool:
     """Check if the given tactic is an interesting have."""
 
@@ -74,6 +86,7 @@ def is_have_tactic(tactic: str) -> bool:
         return False
 
     tactic = remove_parasite(tactic)
+    tactic = remove_segments(tactic)
 
     # Check if we have [have ... := ...] or [have ... : ...]
     if re.search(r"have[\s\S]*?:=", tactic):

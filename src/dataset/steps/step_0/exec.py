@@ -46,10 +46,11 @@ def make(dataset: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Keep only Rocq and Make files, remove comments in Rocq files.")
-    parser.add_argument("--input", type=str, default="export/mathcomp", help="The path of the dataset")
-    parser.add_argument("--output", type=str, default="export/output/steps/step_0", help="Output of step 0")
+    parser.add_argument("--input", type=str, default="export/mathcomp", help="Path of the dataset")
+    parser.add_argument("--output", type=str, default="export/output/steps/step_0", help="Path of the output of this step")
     args = parser.parse_args()
-    os.makedirs(args.output, exist_ok=True)
-    shutil.copytree(args.input, args.output, dirs_exist_ok=True)
-    make(args.output)
+    output_dir = Path(args.output, Path(args.input).stem)
+    os.makedirs(output_dir, exist_ok=True)
+    shutil.copytree(args.input, output_dir, dirs_exist_ok=True)
+    make(output_dir)
 
