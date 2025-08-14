@@ -81,13 +81,17 @@ RETRIEVAL_PID=$!
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for all services to be ready..."
 
 while true; do
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting health check loop..."
     model_ready=false
     embed_ready=false
     pet_ready=false
     retrieval_ready=false
     
     # Check model server
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$MODEL_PORT/v1/models | grep -q "200"; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking model server on port $MODEL_PORT..."
+    model_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$MODEL_PORT/v1/models 2>&1)
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Model server response: $model_response"
+    if echo "$model_response" | grep -q "200"; then
         model_ready=true
         if [ ! -f "$MODEL_IP_PATH" ]; then
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] Model server ready."
@@ -96,7 +100,10 @@ while true; do
     fi
     
     # Check embedding server
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$EMBED_PORT/v1/models | grep -q "200"; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking embedding server on port $EMBED_PORT..."
+    embed_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$EMBED_PORT/v1/models 2>&1)
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Embedding server response: $embed_response"
+    if echo "$embed_response" | grep -q "200"; then
         embed_ready=true
         if [ ! -f "$EMBED_IP_PATH" ]; then
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] Embedding server ready."
@@ -105,7 +112,10 @@ while true; do
     fi
     
     # Check PET server
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health | grep -q "200"; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking PET server on port $FLASK_PORT..."
+    pet_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health 2>&1)
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] PET server response: $pet_response"
+    if echo "$pet_response" | grep -q "200"; then
         pet_ready=true
         if [ ! -f "$PET_IP_PATH" ]; then
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] PET server ready."
@@ -114,7 +124,10 @@ while true; do
     fi
     
     # Check retrieval server
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$RETRIEVAL_PORT/health | grep -q "200"; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking retrieval server on port $RETRIEVAL_PORT..."
+    retrieval_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$RETRIEVAL_PORT/health 2>&1)
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Retrieval server response: $retrieval_response"
+    if echo "$retrieval_response" | grep -q "200"; then
         retrieval_ready=true
         if [ ! -f "$RETRIEVAL_IP_PATH" ]; then
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] Retrieval server ready."
@@ -124,11 +137,14 @@ while true; do
     
     # Break if all services are ready
     if [ "$model_ready" = true ] && [ "$embed_ready" = true ] && [ "$pet_ready" = true ] && [ "$retrieval_ready" = true ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] All services ready, breaking loop."
         break
     fi
     
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for services... (Model: $model_ready, Embed: $embed_ready, PET: $pet_ready, Retrieval: $retrieval_ready)"
-    sleep 20
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sleeping for 5 seconds..."
+    sleep 5
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Sleep completed, continuing loop..."
 done
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] All services ready. Starting agent..."
