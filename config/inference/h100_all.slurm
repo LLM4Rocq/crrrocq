@@ -80,6 +80,8 @@ RETRIEVAL_PID=$!
 # Wait loop for all services
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Waiting for all services to be ready..."
 
+sleep 60
+
 while true; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting health check loop..."
     model_ready=false
@@ -89,7 +91,7 @@ while true; do
     
     # Check model server
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking model server on port $MODEL_PORT..."
-    model_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$MODEL_PORT/v1/models 2>&1)
+    model_response=$(curl -s -m 10 -o /dev/null -w "%{http_code}" http://localhost:$MODEL_PORT/v1/models 2>&1)
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Model server response: $model_response"
     if echo "$model_response" | grep -q "200"; then
         model_ready=true
@@ -101,7 +103,7 @@ while true; do
     
     # Check embedding server
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking embedding server on port $EMBED_PORT..."
-    embed_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$EMBED_PORT/v1/models 2>&1)
+    embed_response=$(curl -s -m 10 -o /dev/null -w "%{http_code}" http://localhost:$EMBED_PORT/v1/models 2>&1)
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Embedding server response: $embed_response"
     if echo "$embed_response" | grep -q "200"; then
         embed_ready=true
@@ -113,7 +115,7 @@ while true; do
     
     # Check PET server
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking PET server on port $FLASK_PORT..."
-    pet_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health 2>&1)
+    pet_response=$(curl -s -m 10 -o /dev/null -w "%{http_code}" http://localhost:$FLASK_PORT/health 2>&1)
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] PET server response: $pet_response"
     if echo "$pet_response" | grep -q "200"; then
         pet_ready=true
@@ -125,7 +127,7 @@ while true; do
     
     # Check retrieval server
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking retrieval server on port $RETRIEVAL_PORT..."
-    retrieval_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$RETRIEVAL_PORT/health 2>&1)
+    retrieval_response=$(curl -s -m 10 -o /dev/null -w "%{http_code}" http://localhost:$RETRIEVAL_PORT/health 2>&1)
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Retrieval server response: $retrieval_response"
     if echo "$retrieval_response" | grep -q "200"; then
         retrieval_ready=true
