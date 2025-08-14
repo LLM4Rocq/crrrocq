@@ -37,7 +37,8 @@ rm -f $PET_PORTS_PATH
 # Load modules and activate environment
 module purge
 module load arch/h100 cuda/12.8.0 nccl/2.25.1-1-cuda
-source /lustre/fsn1/projects/rech/tdm/commun/venv/crrrocq/bin/activate
+source /lustre/fswork/projects/rech/tdm/commun/.opam/opam-init/init.sh
+source /lustre/fswork/projects/rech/tdm/commun/venv/crrrocq/bin/activate
 
 # SGLang configuration
 TP_SIZE=4  # Use all 4 H100 GPUs
@@ -57,16 +58,13 @@ unset HTTPS_PROXY
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting all servers..."
 
-# Start SGLang model server (using 3 GPUs with higher memory fraction)
-CUDA_VISIBLE_DEVICES=0,1,2 python -m sglang.launch_server --tp-size $TP_SIZE --mem-fraction-static 0.7 --model-path $MODEL_PATH --host 0.0.0.0 --port $MODEL_PORT &
+python -m sglang.launch_server --tp-size $TP_SIZE --mem-fraction-static 0.7 --model-path $MODEL_PATH --host 0.0.0.0 --port $MODEL_PORT &
 MODEL_PID=$!
-
-# Start SGLang embedding server (using 1 GPU)
-CUDA_VISIBLE_DEVICES=3 python -m sglang.launch_server --tp-size $TP_SIZE --mem-fraction-static 0.29 --model-path $EMBED_PATH --host 0.0.0.0 --port $EMBED_PORT --is-embedding &
+python -m sglang.launch_server --tp-size $TP_SIZE --mem-fraction-static 0.29 --model-path $EMBED_PATH --host 0.0.0.0 --port $EMBED_PORT --is-embedding &
 EMBED_PID=$!
 
 
-cd $SCRATCH/crrrocq
+cd $WORK/crrrocq
 
 # Start PET server on CPU
 source /lustre/fswork/projects/rech/tdm/commun/.opam/opam-init/init.sh
