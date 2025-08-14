@@ -52,7 +52,7 @@ def make(to_do, petanque_port: int, pet_timeout: int):
 
         error = ""
         try:
-            init_state = lambda : pet.get_state_at_pos(str(path), position["line"], position["character"], 0)
+            init_state = lambda : pet.get_state_at_pos(str(path), position["line"], position["character"])
             modified, chain_list = enclose_haves(pet, init_state, chain_list)
             reproof = chain_list_to_str(chain_list)
 

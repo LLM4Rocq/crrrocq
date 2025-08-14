@@ -478,7 +478,7 @@ def make(to_do: str, dictionary: dict[str, Any], petanque_port: int):
     for qualid_name, theorem, export_filepath in tqdm(to_do):
         try:
             path = Path(theorem["filepath_prefix"], theorem["filepath"])
-            state = pet.get_state_at_pos(str(path), theorem["position"]["line"], theorem["position"]["character"], 0)
+            state = pet.get_state_at_pos(str(path), theorem["position"]["line"], theorem["position"]["character"])
             result = dict(evaluate_theorem(pet, state, qualid_name, theorem, dictionary))
 
             with open(export_filepath, 'w') as file:
