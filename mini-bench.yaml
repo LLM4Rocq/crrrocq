@@ -1,0 +1,28 @@
+- file: exercise1.v
+  theorems:
+    - orbC
+    - Peirce
+    - bool_gimmics1
+    - find_me
+    - view_gimmics1
+    - bool_gimmics2
+    - ltn_neqAle
+    - mem_cat
+- file: arith.v
+  theorems:
+    - EvenT_2
+    - OddT_1
+    - OddT_2
+    - EvenT_S_OddT
+    - OddT_S_EvenT
+    - even_EvenT
+    - odd_OddT
+    - EvenT_Even
+    - OddT_Odd
+    - Even_EvenT
+    - Odd_OddT
+    - EvenT_even
+    - OddT_odd
+    - EvenT_OddT_dec
+    - OddT_EvenT_rect
+    - EvenT_OddT_rect
