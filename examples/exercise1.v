@@ -1,5 +1,4 @@
-(** source https://www-sop.inria.fr/teams/marelle/MC-2022/exercise1_todo.v
-*)
+(** source https://www-sop.inria.fr/teams/marelle/MC-2022/exercise1.v*)
 From elpi Require Import elpi.
 From HB Require Import structures.
 From mathcomp Require Import all_ssreflect.
