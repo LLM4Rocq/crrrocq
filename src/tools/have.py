@@ -32,7 +32,7 @@ class HaveTool(BaseTool):
         assert agent, "No MathAgent provided."
         try:
             new_agent = agent.duplicate(reset_blocks=True)
-            initial_goals = deepcopy(new_agent.tools['script'].goals)
+            initial_goals = deepcopy(new_agent.tools['script'].state['goals'])
 
             new_agent.tools['script'].run(have)
             new_agent.run_proof(initial_goals=initial_goals)

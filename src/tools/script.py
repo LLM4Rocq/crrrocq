@@ -48,6 +48,20 @@ class ScriptTool(BaseTool):
     def tag(self) -> str:
         return "script"
 
+    def qed(self):
+        """
+        Qed check.
+        """
+        try:
+            state, goals = self.client.run_tac(self.state['pet_state'], 'Qed.')
+            self._update_state(state, goals)
+            if goals:
+                return "The goal to prove is:\n" + goals[0]['pp']
+            else:
+                return "No goals remaining, the proof is finished."
+        except ClientError as e:
+            raise ToolError(e.message) from e
+        
     def run(self, tactic: str, **kwargs) -> str:
         """
         Execute Coq tactic and return the result.

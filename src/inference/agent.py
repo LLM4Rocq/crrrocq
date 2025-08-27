@@ -151,6 +151,7 @@ class MathAgent:
                 if all(match_subgoals):
                     return
             if not self.tools['script'].state['goals']:
+                self.tools['script'].qed()
                 self.logs.append({"status": "success", "context": deepcopy(self.blocks)})
                 return
         raise MathAgentError("Reach max depth without generating a complete proof.")
