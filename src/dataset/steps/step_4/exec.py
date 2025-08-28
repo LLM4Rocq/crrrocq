@@ -14,7 +14,7 @@ from src.training.eval import start_pet_server, stop_pet_server
 from src.parser.ast import list_dependencies
 from src.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
 from src.parser.chains import proof_to_raw_chain_list
-from src.parser.goals import goal_lists_diff, goal_to_lemma, pp_hypothesis, remove_global_variables
+from src.parser.goals import goal_lists_diff, goal_to_lemma, pp_hypothesis, pp_goal, remove_global_variables
 
 """
 Step 4: Evaluate all theorems (goals, dependencies, etc.).
@@ -305,10 +305,12 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
         notations = format_notations(pet, state, def_notations + typ_notations, theorem["filepath"], dictionary["notations"])
 
+        # Dependencies
         dependencies = find_dependencies_in_hypothesis(pet, state, hyp_str[1:-1], all_dependencies)
         all_dependencies += dependencies
         dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], type_dictionary, dictionary["objects"])
 
+        # Formatting
         hyp_str = hyp_str[1:-1]
         colon_index = hyp_str.find(":")
         hyp_names = hyp_str[:colon_index].split()
@@ -365,7 +367,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         statement_str = theorem["exact_statement"]
     else:
         statement_str = initial_goal.ty
-    sttt_notations += find_notations_in_statement(pet, var_state, initial_goal.ty, all_notations)
+    sttt_notations += find_notations_in_statement(pet, var_state, statement_str, all_notations)
     sttt_notations = format_notations(pet, state, sttt_notations, theorem["filepath"], dictionary["notations"])
 
     # Compute the statement's dependencies
@@ -373,11 +375,12 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     for hyp in initial_goal.hyps:
         hyp_str = pp_hypothesis(hyp.names, hyp.def_, hyp.ty)
+        all_dependencies += hyp.names
         dependencies = find_dependencies_in_hypothesis(pet, state, hyp_str[1:-1], all_dependencies)
         all_dependencies += dependencies
         sttt_dependencies += dependencies
 
-    dependencies = find_dependencies_in_statement(pet, state, initial_goal.ty, all_dependencies)
+    dependencies = find_dependencies_in_statement(pet, state, statement_str, all_dependencies)
     all_dependencies += dependencies
     sttt_dependencies += dependencies
     sttt_dependencies = format_dependencies(pet, state, sttt_dependencies, theorem["filepath"], type_dictionary, dictionary["objects"])
@@ -438,9 +441,10 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             "goal_diff": goal_diff
         })
 
+    initial_goal.ty = statement_str
     new_theorem = {
         "global_variables": formatted_global_variables,
-        "initial_goal": initial_goal.pp,
+        "initial_goal": pp_goal(initial_goal),
         "initial_goal_with_gvars": initial_goal_wgvars,
         "statement_dependencies": sttt_dependencies,
         "statement_notations": sttt_notations,
