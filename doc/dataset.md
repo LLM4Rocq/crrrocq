@@ -57,39 +57,31 @@ For example, once the step 0 is completed with the default mode for mathcomp, ru
 
 ### Step 1
 
-*Description*: saves all the theorems of the dataset into a json file.
-
-*Arguments*:
-- `--input`: output path of the previous step, default is "export/output/steps/step_0/mathcomp"
-- `--output`: output directory of this step, default is "export/output/steps/step_1"
-
-### Step 2
-
 *Description*: encloses all have tactics and their proofs inside of `(*<have>*)` and `(*</have>*)` tags, rewrites the proofs if necessary.
 
 *Arguments*:
-- `--input`: output path of the previous step, default is "export/output/steps/step_1/mathcomp.json"
-- `--output`: output directory of this step, default is "export/output/steps/step_2"
+- `--input`: output path of the previous step, default is "export/output/steps/step_0/mathcomp.json"
+- `--output`: output directory of this step, default is "export/output/steps/step_1"
 - `--pet-timeout`: timeout value when running a tactic, default is 40
 - `--max-workers`: number of petanque servers running concurrently, default is 8
 
-### Step 3
+### Step 2
 
 *Description*: selects a diverse set of theorems using BM25.
 
 *Arguments*:
-- `--input`: output path of the previous step, default is "export/output/steps/step_2/mathcomp.json"
-- `--output`: output directory of this step, default is "export/output/steps/step_3"
+- `--input`: output path of the previous step, default is "export/output/steps/step_1/mathcomp.json"
+- `--output`: output directory of this step, default is "export/output/steps/step_2"
 - `--k-have`: number of theorems containing have tactics, default is 500
 - `--k-wo-have`: number of theorems without a have tactic, default is 500
 
-### Step 4
+### Step 3
 
 *Description*: extracts notations and dependencies in theorems statements, finds global variables of theorems, decomposes proofs tactic by tactic, extracts dependencies from each tactic, shows goals evolution from tactic to tactic; notations and dependencies are annotated with docstrings given in a dictionary file.
 
 *Arguments*:
-- `--input`: output path of the previous step, default is "export/output/steps/step_3/mathcomp.json"
-- `--output`: output directory of this step, default is "export/output/steps/step_4"
+- `--input`: output path of the previous step, default is "export/output/steps/step_2/mathcomp.json"
+- `--output`: output directory of this step, default is "export/output/steps/step_3"
 - `--dictionary`: path of the dictionary, default is "export/docstrings/LLM4Docq.json"
 - `--max-workers`: number of petanque servers running concurrently, default is 8
 
