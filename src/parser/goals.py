@@ -15,6 +15,13 @@ def pp_goal(g: Goal) -> str:
     )
     return f"{hyps}\n|-{g.ty}"
 
+def get_hypotheses(g: Goal) -> list[str]:
+    """List all hypotheses of a goal."""
+    hypotheses = []
+    for hyp in g.hyps:
+        hypotheses += hyp.names
+    return hypotheses
+
 # ====================
 # Goals diff
 # ====================
@@ -110,10 +117,10 @@ def remove_global_variables(goal: Goal, gvars: list[str]) -> Goal:
             hyp.names = new_names
             new_hyps.append(hyp)
 
-    goal.hyps = new_hyps
-    goal.pp = pp_goal(goal)
+    new_goal = Goal(goal.info, new_hyps, goal.ty, None)
+    new_goal.pp = pp_goal(new_goal)
 
-    return goal
+    return new_goal
 
 # ====================
 # Lemma correspondence

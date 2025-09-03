@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Callable
 from dataclasses import dataclass
 from pytanque import Pytanque, State, PetanqueError
 
-from .chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_str, proof_to_chain_list
+from .chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_str, proof_to_chain_list, proof_to_raw_chain_list, raw_chain_list_to_str
 from .segments import str_to_segment_list, segment_list_to_str
 
 # ==================================== haves =====================================
@@ -334,10 +334,19 @@ class HaveTactic:
     suffix: str
 
     def __str__(self):
-        return self.prefix + self.tactic + self.proof + self.suffix
+        return self.prefix + self.tactic + "." + self.proof + self.suffix + "."
 
     def no_proof(self):
-        return self.prefix + self.tactic + " (*proof*)" + self.suffix
+        return self.prefix + self.tactic + "." + " (*proof*)" + self.suffix
+
+    def format_tactic(self):
+        return self.tactic + "."
+
+    def first_part(self):
+        return self.prefix + self.tactic + "."
+
+    def second_part(self):
+        return self.proof + self.suffix + "."
 
     def to_dict(self):
         return {
@@ -377,8 +386,17 @@ def parse_have_tactics(text: str) -> list:
     while match:
         # Parse the have tactic
         prefix, body, suffix = match.group("prefix"), match.group("body"), match.group("suffix")
-        bmatch = pattern.match(body)
-        have_tactic = HaveTactic(prefix, bmatch.group("tactic"), bmatch.group("proof"), suffix)
+
+        # Retrieve the tactic and the proof
+        raw_chain_list = proof_to_raw_chain_list(body)
+        tactic = raw_chain_list[0][:-1]
+        if len(raw_chain_list) == 1:
+            proof = ""
+        else:
+            proof = raw_chain_list[1:]
+            proof = raw_chain_list_to_str(proof)
+
+        have_tactic = HaveTactic(prefix, tactic, proof, suffix)
 
         # Update the result and the text
         if match.start() > 0:

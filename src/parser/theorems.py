@@ -87,28 +87,30 @@ def read_theorems_in_file(path: Path) -> list[Tuple[str, str]]:
 
     return read_theorems_in_module_list(prefix, module_list)
 
-def get_position(content: str, index: int) -> Tuple[int, int]:
-    """Return the position of some index in a string."""
+def end_position(content: str) -> Tuple[int, int]:
+    """Return the position at the end of a string."""
     line = 0
     char = 0
-    reset_char = True
-    for c in content[:index+1]:
+
+    for c in content:
         if c == '\n':
             line += 1
             char = 0
-            reset_char = True
-        elif not reset_char:
-            char += 1
         else:
-            reset_char = False
+            char += 1
+
     return line, char
 
+def index_position(content: str, index: int) -> Tuple[int, int]:
+    """Return the position of some index in a string."""
+    return end_position(content[:index])
+
 def add_positions(line1, char1, line2, char2):
-    """Add the first position to the second."""
-    if line1 == 0:
-        return line2, char1 + char2
+    """Add the second position to the first."""
+    if line2 == 0:
+        return line1, char1 + char2
     else:
-        return line1 + line2, char1
+        return line1 + line2, char2
 
 def format_theorem(prefix: str, theorem: str, file: Path) -> Tuple[str, dict[str, str]]:
     """Retrieve the statement and the proof of a theorem."""
@@ -121,7 +123,7 @@ def format_theorem(prefix: str, theorem: str, file: Path) -> Tuple[str, dict[str
     index = content.find(theorem)
     if index < 0:
         raise Exception(f"Error: the theorem {qualid_name} is not found in {str(file)}.")
-    line, char = get_position(content, index)
+    line, char = index_position(content, index)
 
     return qualid_name, {"position": {"line": line, "character": char}, "statement": match.group("statement"), "proof": match.group("proof")}
 
