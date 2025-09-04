@@ -1,6 +1,8 @@
 import re
 import json
 
+from pytanque import Pytanque, State
+
 def get_rocq_files(directory):
     """Retrieve all Rocq files in a directory, and remove non-Rocq and non-Make files."""
 
@@ -44,3 +46,15 @@ def append_get_index(l: list, e) -> int:
     else:
         l.append(e)
         return len(l) - 1
+
+def get_scopes(pet: Pytanque, state: State) -> list:
+    """Return the list of scopes."""
+
+    sstate = pet.run(state, "Print Scopes.")
+    message = sstate.feedback[0][1]
+
+    scopes = []
+    for match in re.finditer(r"Scope\s(?P<scope>\S*)", message):
+        scopes.append(match.group("scope"))
+
+    return scopes

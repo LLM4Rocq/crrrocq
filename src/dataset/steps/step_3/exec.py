@@ -11,7 +11,7 @@ from pytanque import Pytanque, State, Goal, PetanqueError
 from tqdm import tqdm
 
 from src.training.eval import start_pet_server, stop_pet_server
-from src.dataset.steps.utils import load_dictionary, append_get_index
+from src.dataset.steps.utils import load_dictionary, append_get_index, get_scopes
 from src.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
 from src.parser.chains import proof_to_raw_chain_list
 from src.parser.goals import goal_lists_diff, goal_to_lemma, pp_goal, get_hypotheses, remove_global_variables
@@ -93,6 +93,9 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
                 type_ = match.group("type").strip()
                 type_dictionary[name] = type_
 
+    # Compute the different scopes
+    scopes = get_scopes(pet, state)
+
     # Compute the global variables
     global_variables = find_global_variables(pet, state)
 
@@ -106,12 +109,12 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         global_variables_names += hyp.names
 
         # Notations in the definition
-        notations = find_notations(pet, state, hyp.def_, []) if hyp.def_ else []
+        notations = find_notations(pet, state, hyp.def_) if hyp.def_ else []
 
         # Notations in the type
-        notations += find_notations(pet, state, hyp.ty, [])
+        notations += find_notations(pet, state, hyp.ty)
 
-        notations = format_notations(pet, state, notations, theorem["filepath"], dictionary["notations"])
+        notations = format_notations(pet, state, notations, theorem["filepath"], scopes, dictionary["notations"])
         notations = [append_get_index(all_notations, notation) for notation in notations]
 
         # Dependencies
@@ -129,6 +132,9 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
                 gvar_str = "Parameter " + hyp.names[0] + " : " + hyp.ty + "."
 
         formatted_global_variables.append({
+            "names": hyp.names,
+            "def": hyp.def_,
+            "type": hyp.ty,
             "pp": gvar_str,
             "notations": notations,
             "dependencies": dependencies
@@ -143,14 +149,14 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     # Compute the statement's notations
     raw_initial_goal = pet.goals(pet.run(state, "Set Printing All."))[0]
-    raw_initial_goal = remove_global_variables(raw_initial_goal, global_variables_names)
     sttt_notations = notations_in_goal(
         pet,
         state,
-        initial_goal_wo_gvars,
+        initial_goal,
         raw_initial_goal,
-        [],
+        global_variables_names,
         theorem["filepath"],
+        scopes,
         dictionary["notations"],
         theorem["exact_statement"] if "exact_statement" in theorem else None
     )
@@ -217,7 +223,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             state = pet.run(state, have_tactic.proof + "." + raw_chain_end)
 
         else:
-            dependencies = find_dependencies(pet, state, raw_chain, all_dependencies + hypotheses)
+            dependencies = find_dependencies(pet, state, raw_chain, hypotheses)
 
             state = pet.run(state, raw_chain)
 
@@ -255,6 +261,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             "dependencies": sttt_dependencies,
         },
         "evaluation": evaluation,
+        "scopes": scopes,
         "notations": all_notations,
         "dependencies": all_dependencies
     }
