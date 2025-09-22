@@ -5,19 +5,60 @@ import argparse
 import shutil
 from pathlib import Path
 from collections import defaultdict
-from typing import Callable
+from typing import Tuple, Callable
 
-from pytanque import Pytanque, PetanqueError
+from pytanque import Pytanque, State, PetanqueError
 from tqdm import tqdm
 
 from src.dataset.steps.utils import get_rocq_files
 from src.parser.theorems import read_theorems_in_file, format_theorem
-from src.parser.haves import proof_to_chain_list, enclose_haves, chain_list_to_str
+from src.parser.haves import proof_to_chain_list, enclose_haves, open_tag, close_tag, chain_list_to_str
 from src.training.eval import start_pet_server, stop_pet_server, timeout, TimeoutError
 
 """
-Step 1: Extract all have, rewrite them if necessary, and create a new dataset.
+Step 1: Extract all have tactics, rewrite them if necessary, and create a new dataset.
 """
+
+def complete_enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: list) -> Tuple[bool, str]:
+    """Enclose all have tactics with their proofs."""
+
+    modified, chain_list = enclose_haves(pet, init_state, chain_list)
+    proof = chain_list_to_str(chain_list)
+
+    if modified:
+        new_proof = ""
+        rest_proof = proof
+
+        while len(rest_proof) > 0:
+
+            i = rest_proof.find(open_tag)
+            if i < 0:
+                new_proof += rest_proof
+                rest_proof = ""
+
+            else:
+                new_proof += rest_proof[:i+len(open_tag)]
+                rest_proof = rest_proof[i+len(open_tag):]
+
+                j = rest_proof.find(close_tag)
+                if j < 0:
+                    raise Exception("Error: there should be a matching closing tag.")
+                else:
+                    mid_proof = rest_proof[:j]
+                    rest_proof = rest_proof[j:]
+
+                    new_init_state = lambda : pet.run(init_state(), new_proof)
+                    chain_list = proof_to_chain_list(mid_proof)
+                    if len(chain_list) > 0:
+                        new_proof += str(chain_list[0])
+                    if len(chain_list) > 1:
+                        _, new_mid_proof = complete_enclose_haves(pet, new_init_state, chain_list[1:])
+                        new_proof += new_mid_proof
+
+        return modified, new_proof
+
+    else:
+        return modified, proof
 
 # ====================
 # Manipulate the dataset.
@@ -75,8 +116,7 @@ def chunk_dataset(dataset: Path, export_dir: str, error_path: str):
     for qualid_name, theorem in theorems.items():
         path = theorem["filepath"]
         error_filepath = Path(error_path, qualid_name + '.json')
-        if not error_filepath.exists():
-            to_do[path].append((theorem, error_filepath))
+        to_do[path].append((theorem, error_filepath))
 
     return to_do
 
@@ -103,8 +143,7 @@ def make(filepath: str, export_dir: str, to_do, petanque_port: int, pet_timeout:
         error = ""
         try:
             init_state = lambda : pet.get_state_at_pos(str(path), position["line"], position["character"], 0)
-            modified, chain_list = enclose_haves(pet, init_state, chain_list)
-            reproof = chain_list_to_str(chain_list)
+            modified, reproof = complete_enclose_haves(pet, init_state, chain_list)
 
             if modified:
                 state = init_state()
@@ -114,11 +153,11 @@ def make(filepath: str, export_dir: str, to_do, petanque_port: int, pet_timeout:
                 assert (proof == reproof)
 
         except PetanqueError as err:
-            error = "-> " + err.message
+            error = "Petanque -> " + err.message
         except Exception as err:
-            error = "-> " + str(err.args[0])
+            error = "Exception -> " + str(err.args[0])
         except TimeoutError as err:
-            error = "-> timeout"
+            error = "Timeout -> timeout"
             stop_pet_server(pet_server)
             pet_server = start_pet_server(petanque_port)
             pet = Pytanque("127.0.0.1", petanque_port)
