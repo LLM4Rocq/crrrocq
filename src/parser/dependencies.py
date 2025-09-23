@@ -2,15 +2,18 @@ import re
 from typing import Any, Optional, Tuple
 from pathlib import Path
 
-from pytanque import Pytanque, State, Goal
+from pytanque import Pytanque, State, Goal, PetanqueError
 
 from src.parser.ast import list_dependencies
 
 def find_dependencies(pet: Pytanque, state: State, code: str, bad: list) -> list:
     """Find dependencies in some Rocq code."""
-    ast = pet.ast(state, code)
-    dependencies = list_dependencies(ast)
-    return [dependency for dependency in dependencies if not dependency in bad]
+    try:
+        ast = pet.ast(state, code)
+        dependencies = list_dependencies(ast)
+        return [dependency for dependency in dependencies if not dependency in bad]
+    except PetanqueError:
+        return []
 
 def find_dependencies_in_hypothesis(pet: Pytanque, state: State, hyp: Any, bad: list) -> list:
     """Find dependencies in some hypothesis."""
@@ -21,7 +24,7 @@ def find_dependencies_in_type(pet: Pytanque, state: State, ty: str, bad: list) -
     """Find dependencies in some Rocq type."""
     return find_dependencies(pet, state, "Goal " + ty + ".", bad)
 
-def format_dependency(pet: Pytanque, state: State, dependency: str, filepath: str, type_dictionary: dict, info_dictionary: dict) -> Optional[dict]:
+def format_dependency(pet: Pytanque, state: State, dependency: str, filepath: str, dictionary: dict) -> Optional[dict]:
     """Format a dependency."""
 
     state = pet.run(state, f"Locate Term {dependency}.")
@@ -48,9 +51,23 @@ def format_dependency(pet: Pytanque, state: State, dependency: str, filepath: st
                 return None
 
     res = {"name": dependency}
-    if dependency in type_dictionary:
-        res["type"] = type_dictionary[dependency]
 
+    # Get the type
+    try:
+        state = pet.run(state, f"About {dependency}.")
+        message = state.feedback[0][1]
+
+        match = re.search(f"{dependency}\\s*:\\s(?P<type>[\\s\\S]*?)\\n\\n", message)
+        if not match:
+            pass
+            # TODO: Better handle notation cases
+            # raise Exception(f"Error: the type of the dependency should be in {message}.")
+        else:
+            res["type"] = match.group("type")
+    except PetanqueError:
+        pass
+
+    # Get the info
     filepath = Path(filepath)
     filename = filepath.stem
     for qname in qualid_names:
@@ -59,28 +76,18 @@ def format_dependency(pet: Pytanque, state: State, dependency: str, filepath: st
         if filename == qname.split('.', maxsplit=1)[0]:
             qname = '.'.join(list(filepath.parent.parts) + [qname])
 
-        if qname in info_dictionary:
-            res["info"] = info_dictionary[qname]
+        if qname in dictionary:
+            res["info"] = dictionary[qname]
             break
-
-    if not "info" in res:
-        pass
-        # print("INFO, QUALID NAMES:", qualid_names)
-    if not "type" in res:
-        pass
-        # state = pet.run(state, f"Check {dependency}.")
-        # message = state.feedback[0][1]
-        # match = re.search(f"{dependency}\\s*?:\\s(?P<type>[\\s\\S]*)", message)
-        # res["type"] = match.group("type").strip()
 
     return res
 
-def format_dependencies(pet: Pytanque, state: State, dependencies: list, filepath: str, type_dictionary: dict, info_dictionary: dict) -> list:
+def format_dependencies(pet: Pytanque, state: State, dependencies: list, filepath: str, dictionary: dict) -> list:
     """Format dependencies."""
-    dependencies = [format_dependency(pet, state, dependency, filepath, type_dictionary, info_dictionary) for dependency in dependencies]
+    dependencies = [format_dependency(pet, state, dependency, filepath, dictionary) for dependency in dependencies]
     return [dependency for dependency in dependencies if dependency]
 
-def dependencies_in_goal(pet: Pytanque, state: State, goal: Goal, bad: list, filepath: str, type_dictionary: dict, info_dictionary: dict, statement=None) -> Tuple[list, list]:
+def dependencies_in_goal(pet: Pytanque, state: State, goal: Goal, bad: list, filepath: str, dictionary: dict, statement=None) -> Tuple[list, list]:
     """Find and format dependencies appearing in a goal."""
 
     dependencies = []
@@ -95,7 +102,7 @@ def dependencies_in_goal(pet: Pytanque, state: State, goal: Goal, bad: list, fil
     bad += new_dependencies
     dependencies += new_dependencies
 
-    return format_dependencies(pet, state, dependencies, filepath, type_dictionary, info_dictionary)
+    return format_dependencies(pet, state, dependencies, filepath, dictionary)
 
 def dependency_to_str(dependency: dict) -> str:
     """Return a string version of a dependency."""

@@ -1,5 +1,5 @@
 import re
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 from pathlib import Path
 
 from pytanque import Pytanque, State, Goal, PetanqueError
@@ -23,7 +23,7 @@ def find_notations(pet: Pytanque, state: State, ty: str) -> list:
     except PetanqueError:
         return []
 
-def format_notation(pet: Pytanque, state: State, notation: dict, filepath: str, scopes: list, dictionary: dict) -> list:
+def format_notation(pet: Pytanque, state: State, notation: dict, filepath: str, scopes: list, dictionary: dict) -> Optional[list]:
     """Format a notation."""
 
     filepath = Path(filepath)
@@ -37,6 +37,9 @@ def format_notation(pet: Pytanque, state: State, notation: dict, filepath: str, 
     # Locate similar notations
     lstate = pet.run(state, f'Locate "{notation["notation"]}".')
     message = lstate.feedback[0][1]
+
+    if message == "Unknown notation":
+        return None
 
     # Extract all notations found
     notations = []
@@ -69,18 +72,22 @@ def format_notation(pet: Pytanque, state: State, notation: dict, filepath: str, 
     notation["locate"] = body.replace("(default interpretation)", "").strip()
 
     if notation["scope"]:
-        d = dictionary["scope"][notation["scope"]]
+        if notation["scope"] in dictionary["scope"]:
+            d = dictionary["scope"][notation["scope"]]
+        else:
+            d = None
     else:
         d = dictionary["noscope"]
 
-    if qname in d:
+    if d and qname in d:
         notation["info"] = d[qname]
 
     return notation
 
 def format_notations(pet: Pytanque, state: State, notations: list, filepath: str, scopes: list, dictionary: dict) -> list:
     """Format notations."""
-    return [format_notation(pet, state, notation, filepath, scopes, dictionary) for notation in notations]
+    notations = [format_notation(pet, state, notation, filepath, scopes, dictionary) for notation in notations]
+    return [notation for notation in notations if notation]
 
 def notations_in_goal(pet: Pytanque, state: State, goal: Goal, raw_goal: Goal, global_variables: list, filepath: str, scopes: list, dictionary: dict, statement=None) -> list:
     """Find and format all notations appearing in a goal."""
@@ -101,7 +108,11 @@ def notations_in_goal(pet: Pytanque, state: State, goal: Goal, raw_goal: Goal, g
         # Update the variable state
         names_wo_gvars = [name for name in raw_hyp.names if not name in global_variables]
         if len(names_wo_gvars) > 0:
-            var_state = pet.run(var_state, "Parameters " + " ".join(names_wo_gvars) + " : " + raw_hyp.ty + ".")
+            if raw_hyp.def_:
+                for name in names_wo_gvars:
+                    var_state = pet.run(var_state, "Unset Implicit Arguments. Definition " + name + " := " + raw_hyp.def_ + " : " + raw_hyp.ty + ". Set Implicit Arguments.")
+            else:
+                var_state = pet.run(var_state, "Unset Implicit Arguments. Parameters " + " ".join(names_wo_gvars) + " : " + raw_hyp.ty + ". Set Implicit Arguments.")
 
     statement_str = statement if statement else goal.ty
     notations += find_notations(pet, var_state, statement_str)

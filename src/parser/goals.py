@@ -123,7 +123,7 @@ def remove_global_variables(goal: Goal, gvars: list[str]) -> Goal:
     return new_goal
 
 # ====================
-# Lemma correspondence
+# Format
 # ====================
 
 def replace_list(text: str, replace_list: list[Tuple[str, str]]) -> str:
@@ -131,6 +131,32 @@ def replace_list(text: str, replace_list: list[Tuple[str, str]]) -> str:
     for old, new in replace_list:
         text = text.replace(old, new)
     return text
+
+def clean_goal(goal: Goal):
+    """
+    Clean the input goal:
+    - rename _?_ variables as ?
+    """
+
+    renamed = []
+    for hyp in goal.hyps:
+
+        for i, name in enumerate(hyp.names):
+            if name[0] == '_' and name[-1] == '_':
+                new_name = name[1:]
+                renamed.append((name, new_name))
+                hyp.names[i] = new_name
+
+        if hyp.def_:
+            hyp.def_ = replace_list(hyp.def_, renamed)
+        hyp.ty = replace_list(hyp.ty, renamed)
+
+    goal.ty = replace_list(goal.ty, renamed)
+    goal.pp = pp_goal(goal)
+
+# ====================
+# Lemma correspondence
+# ====================
 
 def pp_hypothesis(names: list[str], def_: Optional[str], ty: str) -> str:
     """Return the string representing an hypothesis."""

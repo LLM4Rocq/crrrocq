@@ -1,7 +1,10 @@
 import re
 import json
+from typing import Tuple
 
 from pytanque import Pytanque, State
+
+from src.parser.theorems import end_position, add_positions
 
 def get_rocq_files(directory):
     """Retrieve all Rocq files in a directory, and remove non-Rocq and non-Make files."""
@@ -58,3 +61,8 @@ def get_scopes(pet: Pytanque, state: State) -> list:
         scopes.append(match.group("scope"))
 
     return scopes
+
+def update_position(line: int, char: int, text: str) -> Tuple[int, int]:
+    """Return the new line and char positions after some text is added to it."""
+    l, c = end_position(text)
+    return add_positions(line, char, l, c)

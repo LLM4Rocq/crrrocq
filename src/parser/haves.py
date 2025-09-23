@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pytanque import Pytanque, State, PetanqueError
 
 from .chains import Tactic, BranchTactic, Chain, copy_chain_list, chain_list_to_str, proof_to_chain_list, proof_to_raw_chain_list, raw_chain_list_to_str
-from .segments import str_to_segment_list, segment_list_to_str
+from .segments import str_to_segment_list, segment_list_to_str, add_to_segment_list
 
 # ==================================== haves =====================================
 #
@@ -183,7 +183,7 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
                                 base_state_checkpoint += 1
 
                             new_chain_list.append(Chain([Tactic(have_statement)], '.'))
-                            new_chain_list.append(Chain([Tactic(have_proof)], close_tag + '.'))
+                            new_chain_list.append(Chain([Tactic(have_proof)], '.' + close_tag))
                             added = True
                             base_state = state
                             base_state_checkpoint += 2
@@ -269,7 +269,7 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
                 # If we have finished the proof, just add the proof to the new chain-list, update the base state and reset the new chain
                 if (not is_have_by or success) and nbr_new_goals == 0:
                     new_chain.append(tactic)
-                    new_chain_list.append(Chain(new_chain, close_tag + '.'))
+                    new_chain_list.append(Chain(new_chain, '.' + close_tag))
                     base_state = state
                     base_state_checkpoint += 1
                     new_chain = []
@@ -306,7 +306,7 @@ def enclose_haves(pet: Pytanque, init_state: Callable[[], State], chain_list: li
             in_have_proof = False
 
             # We add the tag at the end of the proof
-            new_chain_list[-1].suffix = close_tag + new_chain_list[-1].suffix
+            new_chain_list[-1].suffix += close_tag
 
         # If we are not in a have proof at the end of a chain, we simply go on to the next chain
         else:
@@ -334,19 +334,10 @@ class HaveTactic:
     suffix: str
 
     def __str__(self):
-        return self.prefix + self.tactic + "." + self.proof + self.suffix + "."
+        return self.prefix + self.tactic + self.proof + self.suffix + "."
 
     def no_proof(self):
-        return self.prefix + self.tactic + "." + " (*proof*)" + self.suffix
-
-    def format_tactic(self):
-        return self.tactic + "."
-
-    def first_part(self):
-        return self.prefix + self.tactic + "."
-
-    def second_part(self):
-        return self.proof + self.suffix + "."
+        return self.prefix + self.tactic + self.suffix
 
     def to_dict(self):
         return {
@@ -371,40 +362,127 @@ class HaveTactic:
 
         raise Exception("Error: there should be a statement inside of a have tactic.")
 
+def have_tactic_from_str(text: str) -> HaveTactic:
+    prefix = text[:len(open_tag)]
+    # Append trailing whitespace to the prefix
+    for c in text[len(open_tag):]:
+        if c.isspace():
+            prefix += c
+        else:
+            break
+
+    suffix = text[len(text)-len(close_tag):]
+    # Append preceding whitespace to the suffix
+    for c in text[:len(text)-len(close_tag):-1]:
+        if c.isspace():
+            suffix = c + suffix
+        else:
+            break
+
+    text = text[len(prefix):len(text) - len(suffix)]
+    raw_chain_list = proof_to_raw_chain_list(text)
+    if len(raw_chain_list) == 0:
+        raise Exception("Error: the raw chain list should contain at least one element.")
+    elif len(raw_chain_list) == 1:
+        proof = ""
+    else:
+        proof = raw_chain_list_to_str(raw_chain_list[1:])
+
+    return HaveTactic(prefix, str(raw_chain_list[0]), proof, suffix)
 
 def parse_have_tags(text: str) -> Optional[re.Match]:
     """Search for have tags in a text."""
-    pattern = re.compile(f"(?P<prefix>\\s*{ropen_tag}\\s*)(?P<body>[\\s\\S]*?)(?P<suffix>\\s*{rclose_tag}\\s*)")
+    pattern = re.compile(f"{ropen_tag}\\s*(?P<index>\\d+)\\s*{rclose_tag}")
     return pattern.search(text)
 
-def parse_have_tactics(text: str) -> list:
-    """Parse all have tactics in some text."""
-    parsed_text = []
-    pattern = re.compile(r"(?P<tactic>[\s\S]*?\.)(?P<proof>\s[\s\S]*)")
+def flatten_segment_list(sl: list) -> str:
+    """Flatten a segment list back to a str."""
 
-    match = parse_have_tags(text)
-    while match:
-        # Parse the have tactic
-        prefix, body, suffix = match.group("prefix"), match.group("body"), match.group("suffix")
-
-        # Retrieve the tactic and the proof
-        raw_chain_list = proof_to_raw_chain_list(body)
-        tactic = raw_chain_list[0][:-1]
-        if len(raw_chain_list) == 1:
-            proof = ""
+    result = ""
+    for s in sl:
+        if isinstance(s, str):
+            result += s
         else:
-            proof = raw_chain_list[1:]
-            proof = raw_chain_list_to_str(proof)
+            result += flatten_segment_list(s)
 
-        have_tactic = HaveTactic(prefix, tactic, proof, suffix)
+    return result
 
-        # Update the result and the text
-        if match.start() > 0:
-            parsed_text.append(text[:match.start()])
-        parsed_text.append(have_tactic)
-        text = text[match.end():]
-        match = parse_have_tags(text)
+def parse_have_tactics(text: str) -> list:
+    """Parse all top level have tactics in some text."""
+    pre_parsed_text = [[""]]
 
-    if len(text) > 0:
-        parsed_text.append(text)
+    # Extract all have tags and their content
+    while len(text) > 0:
+        i = text.find(open_tag)
+        j = text.find(close_tag)
+
+        if i < 0 and j < 0:
+            add_to_segment_list(pre_parsed_text[-1], text)
+            text = ""
+
+        elif i >= 0 and j < 0:
+            raise Exception("Error: too much opening tags.")
+
+        elif i >= 0 and i < j:
+            add_to_segment_list(pre_parsed_text[-1], text[:i])
+            pre_parsed_text.append([text[i:i+len(open_tag)]])
+            text = text[i+len(open_tag):]
+
+        else:
+            if len(pre_parsed_text) <= 1:
+                raise Exception("Error: too much closing tags.")
+            add_to_segment_list(pre_parsed_text[-1], text[:j+len(close_tag)])
+            last_segment_list = pre_parsed_text.pop()
+            pre_parsed_text[-1].append(last_segment_list)
+            text = text[j+len(close_tag):]
+
+    if len(pre_parsed_text) > 1:
+        raise Exception("Error: too much opening tags.")
+
+    # Extract only top-level have tags and format them to HaveTactics
+    pre_parsed_text = pre_parsed_text[0]
+    parsed_text = []
+
+    for segment in pre_parsed_text:
+        if isinstance(segment, str):
+            parsed_text.append(segment)
+
+        elif isinstance(segment, list):
+            have_tactic = flatten_segment_list(segment)
+            have_tactic = have_tactic_from_str(have_tactic)
+            parsed_text.append(have_tactic)
+
     return parsed_text
+
+
+# def parse_have_tactics(text: str) -> list:
+#     """Parse all have tactics in some text."""
+#     parsed_text = []
+#     pattern = re.compile(r"(?P<tactic>[\s\S]*?\.)(?P<proof>\s[\s\S]*)")
+
+#     match = parse_have_tags(text)
+#     while match:
+#         # Parse the have tactic
+#         prefix, body, suffix = match.group("prefix"), match.group("body"), match.group("suffix")
+
+#         # Retrieve the tactic and the proof
+#         raw_chain_list = proof_to_raw_chain_list(body)
+#         tactic = raw_chain_list[0][:-1]
+#         if len(raw_chain_list) == 1:
+#             proof = ""
+#         else:
+#             proof = raw_chain_list[1:]
+#             proof = raw_chain_list_to_str(proof)
+
+#         have_tactic = HaveTactic(prefix, tactic, proof, suffix)
+
+#         # Update the result and the text
+#         if match.start() > 0:
+#             parsed_text.append(text[:match.start()])
+#         parsed_text.append(have_tactic)
+#         text = text[match.end():]
+#         match = parse_have_tags(text)
+
+#     if len(text) > 0:
+#         parsed_text.append(text)
+#     return parsed_text

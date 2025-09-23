@@ -11,13 +11,12 @@ from pytanque import Pytanque, State, Goal, PetanqueError
 from tqdm import tqdm
 
 from src.training.eval import start_pet_server, stop_pet_server
-from src.dataset.steps.utils import load_dictionary, append_get_index, get_scopes
+from src.dataset.steps.utils import load_dictionary, append_get_index, get_scopes, update_position
 from src.parser.haves import HaveTactic, parse_have_tags, parse_have_tactics, enclose_haves_in_proof
-from src.parser.chains import proof_to_raw_chain_list
+from src.parser.chains import proof_to_raw_chain_list, raw_chain_list_to_str
 from src.parser.goals import goal_lists_diff, goal_to_lemma, pp_goal, get_hypotheses, remove_global_variables
 from src.parser.notations import find_notations, format_notations, notations_in_goal
 from src.parser.dependencies import find_dependencies, find_dependencies_in_hypothesis, format_dependencies, dependencies_in_goal
-from src.parser.theorems import end_position, add_positions
 
 """
 Step 3: Evaluate all theorems (goals, dependencies, etc.).
@@ -27,10 +26,17 @@ Step 3: Evaluate all theorems (goals, dependencies, etc.).
 # Utils
 # ====================
 
-def update_position(line: int, char: int, text: str) -> Tuple[int, int]:
-    """Return the new line and char positions after some text is added to it."""
-    l, c = end_position(text)
-    return add_positions(line, char, l, c)
+def blank_beginning(text: str) -> str:
+    """Extract the first blank character of a text."""
+
+    result = ""
+    for c in text:
+        if c.isspace():
+            result += c
+        else:
+            break
+
+    return result
 
 # ====================
 # Global variables
@@ -73,7 +79,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         if isinstance(segment, str):
             skeleton_proof += segment
         elif isinstance(segment, HaveTactic):
-            skeleton_proof += segment.prefix + str(have_idx) + segment.suffix
+            skeleton_proof += segment.prefix + str(have_idx) + segment.suffix + "."
             have_idx += 1
 
     # Preprocess have tactics
@@ -81,17 +87,6 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
     assert (len(have_tactics) == have_idx)
 
     raw_chain_list = proof_to_raw_chain_list(skeleton_proof)
-
-    # Compute the type dictionary
-    type_dictionary = {}
-    type_state = pet.run(state, "Search _.")
-    for s, msg in type_state.feedback:
-        if s == 3:
-            match = re.search(r"(?P<name>[a-zA-Z0-9_'][a-zA-Z0-9_']*[a-zA-Z0-9_']):\s(?P<type>[\s\S]*)", msg)
-            if match:
-                name = match.group("name").strip()
-                type_ = match.group("type").strip()
-                type_dictionary[name] = type_
 
     # Compute the different scopes
     scopes = get_scopes(pet, state)
@@ -118,8 +113,8 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         notations = [append_get_index(all_notations, notation) for notation in notations]
 
         # Dependencies
-        dependencies = find_dependencies_in_hypothesis(pet, state, hyp, hyp.names)
-        dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], type_dictionary, dictionary["objects"])
+        dependencies = find_dependencies_in_hypothesis(pet, state, hyp, global_variables_names)
+        dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], dictionary["objects"])
         dependencies = [append_get_index(all_dependencies, dependency) for dependency in dependencies]
 
         # Formatting
@@ -169,7 +164,6 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
         initial_goal_wo_gvars,
         [],
         theorem["filepath"],
-        type_dictionary,
         dictionary["objects"],
         theorem["exact_statement"] if "exact_statement" in theorem else None
     )
@@ -179,39 +173,44 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
     evaluation = []
     have_theorems = []
     previous_goals = initial_goals
-    line, char = theorem["position"]["line"], theorem["position"]["character"]
+    prev_line, prev_char = theorem["position"]["line"], theorem["position"]["character"]
+    prev_raw_chain = theorem["statement_str"]
+    line, char = update_position(prev_line, prev_char, prev_raw_chain)
+
     for raw_chain in raw_chain_list:
         # If there is some have tactic in the raw chain, expend it
         match = parse_have_tags(raw_chain)
         hypotheses = get_hypotheses(previous_goals[0]) if len(previous_goals) > 0 else []
+        have_qualid_name = None
 
         if match:
             if parse_have_tags(raw_chain[match.end():]):
                 raise Exception("Error: there should be only one have tactic by raw chain.")
 
-            idx = int(match.group("body"))
+            idx = int(match.group("index"))
             have_tactic = have_tactics[idx]
             raw_chain_start = raw_chain[:match.start()]
-            raw_chain_end = raw_chain[match.end()+1:] # The + 1 account for the point that we don't want inside of a have proof
+            raw_chain_end = raw_chain[match.end()+1:] # The +1 accounts for the point that we added after the suffix of the have tactic that should be removed
             raw_chain = raw_chain_start + have_tactic.no_proof() + raw_chain_end
 
-            dependencies = find_dependencies(pet, state, raw_chain_start + have_tactic.format_tactic(), hypotheses)
+            dependencies = find_dependencies(pet, state, raw_chain_start + have_tactic.tactic + raw_chain_end, hypotheses)
 
-            state = pet.run(state, raw_chain_start + have_tactic.format_tactic())
+            state = pet.run(state, raw_chain_start + have_tactic.tactic)
 
-            proof = enclose_haves_in_proof(pet, state, have_tactic.proof)
+            # proof = enclose_haves_in_proof(pet, state, have_tactic.proof)
             have_qualid_name = qualid_name + '_have_' + str(idx+1)
-            line, char = update_position(line, char, have_tactic.first_part())
+            line, char = update_position(line, char, raw_chain_start + have_tactic.prefix)
 
             have_theorem = {
                 "filepath_prefix": theorem["filepath_prefix"],
                 "filepath": theorem["filepath"],
                 "position": {"line": line, "character": char},
-                "proof": proof,
-                "exact_statement": have_tactic.get_statement()
+                "statement_str": have_tactic.tactic,
+                "exact_statement": have_tactic.get_statement(),
+                "proof": have_tactic.proof
             }
 
-            line, char = update_position(line, char, have_tactic.second_part())
+            line, char = update_position(line, char, have_tactic.tactic + have_tactic.proof + have_tactic.suffix + raw_chain_end)
 
             try:
                 have_state = format_have_tactic(pet, state, have_qualid_name, global_variables_names)
@@ -220,7 +219,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
             except PetanqueError as err:
                 pass
 
-            state = pet.run(state, have_tactic.proof + "." + raw_chain_end)
+            state = pet.run(state, have_tactic.proof + raw_chain_end)
 
         else:
             dependencies = find_dependencies(pet, state, raw_chain, hypotheses)
@@ -229,21 +228,54 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
             line, char = update_position(line, char, raw_chain)
 
-        dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], type_dictionary, dictionary["objects"])
+        dependencies = format_dependencies(pet, state, dependencies, theorem["filepath"], dictionary["objects"])
         dependencies = [append_get_index(all_dependencies, dependency) for dependency in dependencies]
 
         goals = pet.goals(state)
         goals_wo_gvars = list(map(lambda g: remove_global_variables(g, global_variables_names), goals))
 
-        evaluation.append({
-            "chain": raw_chain,
+        step = {
+            "position": {"line": prev_line, "character": prev_char},
+            "tactic": raw_chain,
             "dependencies": dependencies,
             "goals_wo_gvars": list(map(lambda g: g.pp, goals_wo_gvars)),
             "goals": list(map(lambda g: g.pp, goals)),
             "goals_diff": goal_lists_diff(previous_goals, goals)
-        })
+        }
+        if have_qualid_name:
+            step["have"] = have_qualid_name
+            step["have_proof"] = have_tactic.proof
+
+        evaluation.append(step)
 
         previous_goals = goals
+
+        prev_line, prev_char = update_position(prev_line, prev_char, prev_raw_chain)
+
+        # Extract the new previous raw chain
+        if have_qualid_name:
+            prev_line, prev_char = update_position(prev_line, prev_char, raw_chain_start + have_tactic.prefix)
+            hp_rcl = proof_to_raw_chain_list(have_tactic.proof)
+
+            if len(hp_rcl) > 0:
+                prev_line, prev_char = update_position(prev_line, prev_char, have_tactic.tactic + raw_chain_list_to_str(hp_rcl[:-1]))
+                prev_raw_chain = str(hp_rcl[-1])
+            else:
+                prev_raw_chain = have_tactic.tactic
+
+        else:
+            prev_raw_chain = step["tactic"]
+
+        # Extract all beginning -, + and *
+        match = re.search(r"^\s*(-|\+|\*)\s*", prev_raw_chain)
+        if match:
+            prev_line, prev_char = update_position(prev_line, prev_char, prev_raw_chain[:match.end()])
+            prev_raw_chain = prev_raw_chain[match.end():]
+
+        # Remove white spaces at the beginning
+        bb = blank_beginning(prev_raw_chain)
+        prev_line, prev_char = update_position(prev_line, prev_char, bb)
+        prev_raw_chain = prev_raw_chain[len(bb):]
 
     if "exact_statement" in theorem:
         initial_goal_wo_gvars.ty = theorem["exact_statement"]
@@ -268,7 +300,7 @@ def evaluate_theorem(pet: Pytanque, state: State, qualid_name: str, theorem: dic
 
     return [(qualid_name, new_theorem)] + have_theorems
 
-def chunk_dataset(dataset: str, export_path: str):
+def chunk_dataset(dataset: str, export_path: str, error_path: str):
     """Chunk dataset to run tasks in parallel."""
 
     datafile = Path(dataset)
@@ -283,8 +315,9 @@ def chunk_dataset(dataset: str, export_path: str):
     for qualid_name, theorem in theorems.items():
         path = theorem["filepath"]
         export_filepath = Path(export_path, qualid_name + ".json")
-        if not export_filepath.exists():
-            to_do[path].append((qualid_name, theorem, export_filepath))
+        error_filepath = Path(error_path, qualid_name + ".txt")
+        if not export_filepath.exists() and not error_filepath.exists():
+            to_do[path].append((qualid_name, theorem, export_filepath, error_filepath))
     return to_do
 
 def make(to_do: str, dictionary: dict[str, Any], petanque_port: int):
@@ -294,19 +327,23 @@ def make(to_do: str, dictionary: dict[str, Any], petanque_port: int):
     pet = Pytanque("127.0.0.1", petanque_port)
     pet.connect()
 
-    for qualid_name, theorem, export_filepath in tqdm(to_do):
+    for qualid_name, theorem, export_filepath, error_filepath in tqdm(to_do):
         try:
             path = Path(theorem["filepath_prefix"], theorem["filepath"])
             state = pet.get_state_at_pos(str(path), theorem["position"]["line"], theorem["position"]["character"], 0)
+            theorem["statement_str"] = theorem["statement"]
             result = dict(evaluate_theorem(pet, state, qualid_name, theorem, dictionary))
 
             with open(export_filepath, 'w') as file:
                 json.dump(result, file, indent=4)
 
         except PetanqueError as err:
-            print("Petanque:", qualid_name, "\n->", err.message)
+            with open(error_filepath, 'w') as file:
+                file.write("Petanque:\n\n" + err.message)
+
         except Exception as err:
-            print("Exception:", qualid_name, "\n->", str(err.args[0]))
+            with open(error_filepath, 'w') as file:
+                file.write("Exception:\n\n" + str(err.args[0]))
 
     stop_pet_server(pet_server)
 
@@ -321,10 +358,15 @@ if __name__ == "__main__":
     dataset = Path(args.input).stem
     aux_path = Path(args.output, "aux", dataset)
     os.makedirs(aux_path, exist_ok=True)
+    error_path = Path(args.output, "errors", dataset)
+    os.makedirs(error_path, exist_ok=True)
 
-    to_do = chunk_dataset(args.input, aux_path)
+    to_do = chunk_dataset(args.input, aux_path, error_path)
 
     dictionary = load_dictionary(args.dictionary)
+
+    # for k, source in enumerate(to_do):
+    #     make(to_do[source], dictionary, 8765 + k)
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
         futures = []
